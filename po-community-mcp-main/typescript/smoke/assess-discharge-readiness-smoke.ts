@@ -1,12 +1,24 @@
 import assert from "node:assert/strict";
 import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discharge-readiness";
-import { BlockerCategory } from "../discharge-readiness/contract";
+import { BlockerCategory, BlockerPriority } from "../discharge-readiness/contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 
 const response = assessDischargeReadinessV1(FIRST_SYNTHETIC_SCENARIO_V1);
 
+const priorityWeight: Record<BlockerPriority, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
 assert.equal(response.verdict, "not_ready");
 assert.ok(response.blockers.length >= 4, "Expected at least four blockers.");
+assert.match(response.summary, /^Verdict: /, "Summary should start with a verdict label.");
+assert.match(
+  response.summary,
+  /Verdict: NOT READY/,
+  "Summary should clearly mirror the not_ready verdict.",
+);
 
 const blockerCategories = new Set(response.blockers.map((blocker) => blocker.category));
 const expectedCategories: BlockerCategory[] = [
@@ -22,6 +34,18 @@ for (const category of expectedCategories) {
   assert.ok(blockerCategories.has(category), `Missing blocker category: ${category}`);
 }
 
+for (let i = 1; i < response.blockers.length; i++) {
+  const previous = response.blockers[i - 1];
+  const current = response.blockers[i];
+  assert.ok(previous, "Previous blocker should exist.");
+  assert.ok(current, "Current blocker should exist.");
+  assert.ok(
+    priorityWeight[previous.priority] >= priorityWeight[current.priority],
+    "Blockers should be sorted by descending priority.",
+  );
+}
+
+const blockerById = new Map(response.blockers.map((blocker) => [blocker.id, blocker]));
 const evidenceIds = new Set(response.evidence.map((trace) => trace.id));
 for (const blocker of response.blockers) {
   assert.ok(blocker.evidence.length > 0, `Blocker ${blocker.id} missing evidence.`);
@@ -33,8 +57,38 @@ for (const blocker of response.blockers) {
   }
 }
 
+for (const trace of response.evidence) {
+  assert.ok(trace.supports_blockers.length > 0, `Evidence ${trace.id} has no linked blockers.`);
+  for (const blockerId of trace.supports_blockers) {
+    const blocker = blockerById.get(blockerId);
+    assert.ok(blocker, `Evidence ${trace.id} references unknown blocker ${blockerId}.`);
+    assert.ok(
+      blocker.evidence.includes(trace.id),
+      `Evidence ${trace.id} should be back-linked from blocker ${blockerId}.`,
+    );
+  }
+}
+
 assert.equal(response.next_steps.length, response.blockers.length);
-assert.ok(response.summary.length > 0);
+for (const step of response.next_steps) {
+  assert.equal(
+    step.linked_blockers.length,
+    1,
+    `Next step ${step.id} should link to exactly one blocker in v1.`,
+  );
+
+  const linkedBlockerId = step.linked_blockers[0];
+  assert.ok(linkedBlockerId, `Next step ${step.id} is missing linked blocker id.`);
+  const blocker = blockerById.get(linkedBlockerId);
+  assert.ok(blocker, `Next step ${step.id} references unknown blocker ${linkedBlockerId}.`);
+  assert.equal(
+    step.priority,
+    blocker.priority,
+    `Next step ${step.id} priority should match blocker ${linkedBlockerId}.`,
+  );
+  assert.ok(step.action.length > 0, `Next step ${step.id} is missing an action.`);
+  assert.ok(step.owner.length > 0, `Next step ${step.id} is missing an owner.`);
+}
 
 console.log("SMOKE PASS: assess_discharge_readiness v1");
 console.log(
