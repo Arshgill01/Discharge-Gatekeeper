@@ -1,4 +1,5 @@
 import {
+  EvidenceAssertion,
   BlockerCategory,
   EvidenceAmbiguity,
   EvidenceContradiction,
@@ -298,6 +299,20 @@ const inferLegacyNoteCategory = (evidence: EvidenceRecord): BlockerCategory => {
   return "clinical_stability";
 };
 
+const mapAssertionToSignalState = (
+  assertion: EvidenceAssertion,
+): "supports_readiness" | "blocks_readiness" | "ambiguous" => {
+  if (assertion === "supports_blocker") {
+    return "blocks_readiness";
+  }
+
+  if (assertion === "supports_readiness") {
+    return "supports_readiness";
+  }
+
+  return "ambiguous";
+};
+
 const normalizeNoteDocumentSignals = (
   input: ReadinessInput,
   evidenceIndex: Map<string, EvidenceRecord>,
@@ -338,12 +353,19 @@ const normalizeNoteDocumentSignals = (
       continue;
     }
 
-    const category = inferLegacyNoteCategory(evidence);
+    const category = evidence.category ?? inferLegacyNoteCategory(evidence);
+    const signalKey = evidence.assertion
+      ? `assertion_${category}`
+      : `legacy_${category}_note_signal`;
+    const state = evidence.assertion
+      ? mapAssertionToSignalState(evidence.assertion)
+      : "blocks_readiness";
+
     signals.push({
       id: `signal-legacy-${evidence.id}`,
       category,
-      signal_key: `legacy_${category}_note_signal`,
-      state: "blocks_readiness",
+      signal_key: signalKey,
+      state,
       source_id: evidence.id,
       source_type: evidence.source_type,
       source_label: evidence.source_label,

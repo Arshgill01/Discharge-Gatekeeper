@@ -2,6 +2,9 @@ export const V1_TOOL_NAME = "assess_discharge_readiness";
 export const V1_PRIMARY_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
 export const V1_SCENARIO_ID = V1_PRIMARY_SCENARIO_ID;
 export const V1_SCENARIO_2_ID = "second_synthetic_discharge_slice_ready_with_caveats_v1";
+export const V1_SCENARIO_ID_READY_WITH_CAVEATS = V1_SCENARIO_2_ID;
+export const V1_SCENARIO_ID_EVIDENCE_AMBIGUITY =
+  "third_synthetic_discharge_slice_ambiguity_v1";
 export const V1_SUPPORTED_SCENARIO_IDS = [
   V1_PRIMARY_SCENARIO_ID,
   V1_SCENARIO_2_ID,
@@ -27,12 +30,20 @@ export type BlockerPriority = (typeof BLOCKER_PRIORITIES)[number];
 
 export const EVIDENCE_SOURCE_TYPES = ["structured", "note", "document"] as const;
 export type EvidenceSourceType = (typeof EVIDENCE_SOURCE_TYPES)[number];
+export const EVIDENCE_ASSERTIONS = [
+  "supports_blocker",
+  "supports_readiness",
+  "uncertain",
+] as const;
+export type EvidenceAssertion = (typeof EVIDENCE_ASSERTIONS)[number];
 
 export type EvidenceRecord = {
   id: string;
   source_type: EvidenceSourceType;
   source_label: string;
   detail: string;
+  category?: BlockerCategory;
+  assertion?: EvidenceAssertion;
 };
 
 export const EVIDENCE_SIGNAL_STATES = [

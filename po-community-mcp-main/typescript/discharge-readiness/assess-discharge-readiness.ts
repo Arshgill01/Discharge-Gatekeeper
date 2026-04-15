@@ -52,6 +52,47 @@ const OWNER_BY_CATEGORY: Record<BlockerCategory, string> = {
   administrative_and_documentation: "Primary team / Case management",
 };
 
+const BLOCKER_ID_BY_CATEGORY: Record<BlockerCategory, string> = {
+  clinical_stability: "blocker-clinical-stability",
+  pending_diagnostics: "blocker-pending-diagnostics",
+  medication_reconciliation: "blocker-medication-reconciliation",
+  follow_up_and_referrals: "blocker-follow-up-and-referrals",
+  patient_education: "blocker-patient-education",
+  home_support_and_services: "blocker-home-support-and-services",
+  equipment_and_transport: "blocker-equipment-and-transport",
+  administrative_and_documentation: "blocker-administrative-and-documentation",
+};
+
+const EVIDENCE_UNCERTAINTY_PRIORITY: Record<BlockerCategory, BlockerPriority> = {
+  clinical_stability: "high",
+  pending_diagnostics: "high",
+  medication_reconciliation: "high",
+  follow_up_and_referrals: "medium",
+  patient_education: "medium",
+  home_support_and_services: "high",
+  equipment_and_transport: "medium",
+  administrative_and_documentation: "medium",
+};
+
+const EVIDENCE_UNCERTAINTY_ACTION: Record<BlockerCategory, string> = {
+  clinical_stability:
+    "Resolve conflicting stability evidence with repeat bedside assessment and explicit clinician documentation before discharge.",
+  pending_diagnostics:
+    "Resolve contradictory diagnostic status documentation and record one reconciled interpretation for discharge-critical results.",
+  medication_reconciliation:
+    "Resolve uncertain or conflicting medication evidence and document one finalized discharge medication plan.",
+  follow_up_and_referrals:
+    "Reconcile conflicting referral/follow-up documentation and publish a single closed-loop follow-up plan.",
+  patient_education:
+    "Resolve uncertainty in education evidence with repeat teach-back and final documented understanding.",
+  home_support_and_services:
+    "Resolve contradictory home-support evidence and confirm caregiver/services with named contacts and timing.",
+  equipment_and_transport:
+    "Resolve conflicting logistics documentation and confirm final transport/equipment timing before departure.",
+  administrative_and_documentation:
+    "Resolve conflicting administrative documentation and capture a finalized signed discharge packet status.",
+};
+
 const REQUIRED_INPUT_SECTIONS = [
   "clinical_stability",
   "pending_diagnostics",
@@ -233,11 +274,49 @@ const formatGaps = (issues: string[], fallback: string): string => {
   return issues.length > 0 ? issues.join(" ") : fallback;
 };
 
+const hasEvidenceConflict = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): boolean => {
+  return normalizedEvidence.contradictions.some(
+    (contradiction) => contradiction.category === category,
+  );
+};
+
+const hasEvidenceAmbiguity = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): boolean => {
+  return normalizedEvidence.ambiguities.some((ambiguity) => ambiguity.category === category);
+};
+
+const buildEvidenceUncertaintyPhrase = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): string | null => {
+  const conflict = hasEvidenceConflict(category, normalizedEvidence);
+  const ambiguity = hasEvidenceAmbiguity(category, normalizedEvidence);
+
+  if (!conflict && !ambiguity) {
+    return null;
+  }
+
+  if (conflict && ambiguity) {
+    return "Evidence conflict and evidence uncertainty remain unresolved across sources.";
+  }
+
+  if (conflict) {
+    return "Evidence conflict remains unresolved across sources.";
+  }
+
+  return "Evidence uncertainty remains unresolved across sources.";
+};
+
 const assertEvidenceCoverage = (
   blockers: DischargeBlocker[],
-  input: ReadinessInput,
+  evidenceCatalog: ReadinessInput["evidence_catalog"],
 ): void => {
-  const availableEvidenceIds = new Set(input.evidence_catalog.map((record) => record.id));
+  const availableEvidenceIds = new Set(evidenceCatalog.map((record) => record.id));
   const missingEvidenceIds = new Set<string>();
 
   for (const blocker of blockers) {
@@ -431,8 +510,37 @@ export const assessDischargeReadinessV1 = (
     });
   }
 
+  const seenCategories = new Set(blockers.map((blocker) => blocker.category));
+  const allCategories = Object.keys(CATEGORY_ORDER) as BlockerCategory[];
+  for (const category of allCategories) {
+    const uncertaintyPhrase = buildEvidenceUncertaintyPhrase(category, normalizedEvidence);
+    if (!uncertaintyPhrase) {
+      continue;
+    }
+
+    if (!seenCategories.has(category)) {
+      blockers.push({
+        id: BLOCKER_ID_BY_CATEGORY[category],
+        category,
+        priority: EVIDENCE_UNCERTAINTY_PRIORITY[category],
+        description:
+          `Readiness evidence remains unresolved for ${CATEGORY_LABEL[category]}. ${uncertaintyPhrase}`,
+        evidence: evidenceForCategory(category),
+        actionability: EVIDENCE_UNCERTAINTY_ACTION[category],
+      });
+      seenCategories.add(category);
+      continue;
+    }
+
+    const existing = blockers.find((blocker) => blocker.category === category);
+    if (existing && !existing.description.includes("Evidence conflict") &&
+      !existing.description.includes("Evidence uncertainty")) {
+      existing.description = `${existing.description} ${uncertaintyPhrase}`;
+    }
+  }
+
   const orderedBlockers = sortedByPriority(blockers);
-  assertEvidenceCoverage(orderedBlockers, input);
+  assertEvidenceCoverage(orderedBlockers, normalizedEvidence.evidence_catalog);
   const verdict = determineVerdict(orderedBlockers);
   const evidence = buildEvidenceTrace(orderedBlockers, normalizedEvidence.evidence_catalog);
   const nextSteps = buildNextSteps(orderedBlockers);
