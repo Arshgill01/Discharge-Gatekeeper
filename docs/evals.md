@@ -22,7 +22,7 @@ Expected behavior:
 
 Expected behavior:
 - returns a structured blocker list
-- each blocker has category and severity
+- each blocker has category and severity or priority
 - each blocker has an evidence basis
 
 ### Prompt C
@@ -117,3 +117,54 @@ The MVP passes if:
 - Prompt B returns at least three real blockers
 - Prompt C returns a sensible plan
 - Prompt D returns one usable artifact
+
+## V1 readiness smoke checks (Agent 3 slice)
+Tool under test: `assess_discharge_readiness`
+
+Required response contract keys:
+- `verdict`
+- `blockers`
+- `evidence`
+- `next_steps`
+- `summary`
+
+Accepted v1 verdict states:
+- `ready`
+- `ready_with_caveats`
+- `not_ready`
+
+Accepted v1 blocker categories:
+- `clinical`
+- `medications`
+- `follow_up`
+- `education`
+- `home_support`
+- `logistics`
+
+First scenario expectation (`first_synthetic_discharge_slice_v1`):
+- verdict is `not_ready`
+- blocker list contains all six categories above
+- every blocker references evidence by ID
+- `next_steps` aligns one-to-one with blockers and preserves priority
+
+Smoke prompts for this scenario:
+1. `Can this patient be safely discharged today?`
+2. `What exactly is blocking discharge right now?`
+3. `What must happen before this patient leaves?`
+
+Expected outputs:
+- Prompt 1: explicit `not_ready` verdict with a concise summary
+- Prompt 2: six blockers with category + priority + evidence linkage
+- Prompt 3: ordered `next_steps` mapped to blocker IDs
+
+Smoke command:
+- `npm run smoke:readiness` (from `po-community-mcp-main/typescript`)
+
+Pass condition:
+- smoke script exits 0 and prints `SMOKE PASS: assess_discharge_readiness v1`
+
+Fail condition:
+- missing required response keys
+- non-canonical verdict/category labels
+- evidence IDs referenced by blockers are not present in `evidence`
+- verdict deviates from expected first-scenario output

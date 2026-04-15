@@ -1,4 +1,9 @@
 import { PatientAgeToolInstance } from "./PatientAgeTool";
 import { PatientIdToolInstance } from "./PatientIdTool";
+import { AssessDischargeReadinessToolInstance } from "./AssessDischargeReadinessTool";
 
-export { PatientAgeToolInstance, PatientIdToolInstance };
+export {
+  PatientAgeToolInstance,
+  PatientIdToolInstance,
+  AssessDischargeReadinessToolInstance,
+};
