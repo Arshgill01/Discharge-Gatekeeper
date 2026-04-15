@@ -57,7 +57,9 @@ class FhirClient {
   private _getFhirContextOrThrow(req: Request) {
     const fhirContext = FhirUtilities.getFhirContext(req);
     if (!fhirContext) {
-      throw new Error("The fhir context could not be retrieved");
+      throw new Error(
+        "The FHIR context could not be retrieved. Confirm x-fhir-server-url is present.",
+      );
     }
 
     return fhirContext;
