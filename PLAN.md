@@ -64,6 +64,10 @@ Current focus (2026-04-15, Agent 3):
 - implement first-pass `assess_discharge_readiness` logic with frozen v1 output contract
 - return inspectable blockers + evidence + next steps for one synthetic scenario
 - add a runnable smoke check for verdict/category/evidence shape
+Current focus (2026-04-15, Agent 1):
+- harden Prompt Opinion integration runtime path for the TypeScript MCP server
+- document local run, dev tunnel, Prompt Opinion connection, and end-to-end smoke steps
+- reduce integration demo risk with lightweight observability and failure-mode guidance
 
 ### 5) Evals
 Owner: open

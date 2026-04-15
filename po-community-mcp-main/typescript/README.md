@@ -1,15 +1,35 @@
-# Local development
+# TypeScript MCP server
 
-Start with `npm install`.
+## Quick start
 
-And then run `npm run start`.
+```bash
+npm install
+cp .env.example .env
+npm run start
+```
 
-# Debugging with vscode
+Endpoints:
+- `http://localhost:5000/mcp`
+- `http://localhost:5000/healthz`
 
-We use [tsx](https://tsx.is/vscode) to debug the server locally. To debug in vscode:
+## Validation
 
-- (Optional) Add your breakpoints in vscode now. You can always do this later.
-- Ensure `index.ts` is opened and it is the current active tab.
-- On the left hand navigation pane in vscode, select the `Run and Debug` tab.
-- Ensure `tsx` is the selected configuration in the dropdown.
-- Click on the green play (Start Debugging) button.
+```bash
+npm run typecheck
+npm run smoke:readiness
+```
+
+## Prompt Opinion integration runbook
+
+Use this full guide for local run, ngrok tunneling, Prompt Opinion connection, smoke testing, and troubleshooting:
+
+- [`docs/prompt-opinion-integration-runbook.md`](../../docs/prompt-opinion-integration-runbook.md)
+
+## Debugging with VS Code
+
+We use [tsx](https://tsx.is/vscode) to debug the server locally:
+
+1. Open `index.ts`.
+2. In VS Code, open `Run and Debug`.
+3. Select the `tsx` configuration.
+4. Start debugging.
