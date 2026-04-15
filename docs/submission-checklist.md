@@ -3,6 +3,10 @@
 ## Goal
 Make the project easy for judges to find, invoke, understand, and trust.
 
+## Judge-facing value proposition
+Use this one-liner in the video and listing:
+"Discharge Gatekeeper determines discharge readiness, shows blocker evidence, and returns the next-step plan before a risky handoff."
+
 ## Core requirements to protect
 - Prompt Opinion-compatible integration path
 - patient/FHIR context behavior when needed
@@ -18,6 +22,7 @@ Make the project easy for judges to find, invoke, understand, and trust.
 - public endpoint plan exists
 - integration smoke test exists
 - fallback plan exists if the public URL changes
+- integration runbook is current (`docs/prompt-opinion-integration-runbook.md`)
 
 ## Prompt Opinion checklist
 - server is added correctly
@@ -32,8 +37,19 @@ Make the project easy for judges to find, invoke, understand, and trust.
 - three prompts max
 - verdict visible immediately
 - blockers visible immediately
-- one transition artifact visible immediately
+- next-step plan visible immediately
 - narration stays under time
+
+## First-slice invocation path
+1. Launchpad prompt: `Is this patient safe to discharge today?`
+2. Follow-up prompt: `What exactly is blocking discharge right now?`
+3. Follow-up prompt: `What must happen before this patient leaves?`
+
+Expected first-slice result shape:
+- verdict: `not_ready`
+- blockers: six categories (`clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`)
+- evidence: source-linked trace entries
+- next steps: ordered, owner-tagged actions
 
 ## Marketplace checklist
 - title is memorable
@@ -54,8 +70,19 @@ Suggested order:
 1. hook
 2. patient discharge question
 3. blockers with evidence
-4. transition package
+4. next-step plan
 5. closing value statement
+
+## On-screen discipline
+Show:
+- verdict + summary line
+- blocker category/priority/evidence linkage
+- next-step owner mapping
+
+Skip:
+- long infrastructure setup
+- extra scenarios
+- roadmap features not in first slice
 
 ## Final pre-submit smoke test
 Run this from a fresh session:
@@ -63,12 +90,16 @@ Run this from a fresh session:
 2. invoke the main discharge-readiness flow
 3. confirm the verdict renders
 4. confirm blockers render
-5. confirm one transition artifact renders
+5. confirm prioritized next steps render
 6. confirm nothing depends on hidden local state
+
+Repo-level command check before recording:
+1. from `po-community-mcp-main/typescript`, run `npm run smoke:readiness`
+2. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
 
 ## Last-minute cut rule
 If time is short, protect these in order:
 1. verdict quality
 2. blocker quality
-3. transition artifact quality
+3. next-step plan quality
 4. polish extras

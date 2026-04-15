@@ -64,6 +64,13 @@ Current focus (2026-04-15, Agent 3):
 - implement first-pass `assess_discharge_readiness` logic with frozen v1 output contract
 - return inspectable blockers + evidence + next steps for one synthetic scenario
 - add a runnable smoke check for verdict/category/evidence shape
+Current focus (2026-04-15, Agent 1):
+- harden Prompt Opinion integration runtime path for the TypeScript MCP server
+- document local run, dev tunnel, Prompt Opinion connection, and end-to-end smoke steps
+- reduce integration demo risk with lightweight observability and failure-mode guidance
+Current focus (2026-04-15, Agent 2):
+- polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
+- tighten smoke assertions for demo-facing output consistency and evidence linkage quality
 
 ### 5) Evals
 Owner: open
@@ -85,6 +92,10 @@ Deliverables:
 - Marketplace checklist
 - publish smoke test plan
 - 3-minute video structure
+Current focus (2026-04-15, Agent 3):
+- tighten first-slice 3-prompt demo path around `assess_discharge_readiness`
+- publish judge-facing runbook text with expected outputs for the synthetic v1 scenario
+- align smoke-eval checklist with demo prompts and visible evidence trace
 
 ## Recommended implementation sequence
 1. Analyze `po-community-mcp` and extract reusable patterns.

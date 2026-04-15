@@ -4,27 +4,51 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
 import { IMcpTool } from "./IMcpTool";
 import cors from "cors";
+import { randomUUID } from "node:crypto";
+import { getRuntimeConfig } from "./runtime-config";
+import { V1_TOOL_NAME } from "./discharge-readiness/contract";
 
-const env = process.env["PO_ENV"]?.toString();
-const allowedHosts: string[] = [];
+const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
+const startTimeMs = Date.now();
 
-switch (env) {
-  case "dev":
-    allowedHosts.push("ts.fhir-mcp.dev.promptopinion.ai");
-    break;
-  case "prod":
-    allowedHosts.push("ts.fhir-mcp.promptopinion.ai");
-    break;
-  default:
-    allowedHosts.push("localhost");
-}
+const REGISTERED_TOOL_NAMES = ["FindPatientId", "GetPatientAge", V1_TOOL_NAME];
 
 const app = createMcpExpressApp({
-  host: "0.0.0.0",
-  allowedHosts,
+  host: config.host,
+  allowedHosts: config.allowedHosts,
 });
 
-const port = process.env["PORT"] || 5000;
+const log = (
+  level: "info" | "error",
+  message: string,
+  metadata: Record<string, unknown> = {},
+): void => {
+  const line = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...metadata,
+  });
+
+  if (level === "error") {
+    console.error(line);
+    return;
+  }
+
+  console.log(line);
+};
+
+const formatError = (error: unknown): Record<string, unknown> => {
+  if (error instanceof Error) {
+    return {
+      error_name: error.name,
+      error_message: error.message,
+      error_stack: error.stack,
+    };
+  }
+
+  return { error_message: String(error) };
+};
 
 app.use(cors());
 
@@ -32,12 +56,33 @@ app.get("/hello-world", async (_, res) => {
   res.send("Hello World");
 });
 
+app.get("/healthz", async (_, res) => {
+  res.status(200).json({
+    status: "ok",
+    server_name: config.serverName,
+    server_version: config.serverVersion,
+    po_env: config.poEnv,
+    tool_count: REGISTERED_TOOL_NAMES.length,
+    tools: REGISTERED_TOOL_NAMES,
+    uptime_seconds: Math.floor((Date.now() - startTimeMs) / 1000),
+  });
+});
+
 app.post("/mcp", async (req, res) => {
+  const requestId = req.headers["x-request-id"]?.toString() || randomUUID();
+
+  log("info", "MCP request received", {
+    request_id: requestId,
+    host: req.headers.host || null,
+    path: req.path,
+    method: req.method,
+  });
+
   try {
     const server = new McpServer(
       {
-        name: "Typescript Template",
-        version: "1.0.0",
+        name: config.serverName,
+        version: config.serverVersion,
       },
       {
         capabilities: {
@@ -73,7 +118,7 @@ app.post("/mcp", async (req, res) => {
     });
 
     res.on("close", () => {
-      console.log("Request closed");
+      log("info", "MCP request closed", { request_id: requestId });
 
       transport.close();
       server.close();
@@ -82,7 +127,11 @@ app.post("/mcp", async (req, res) => {
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
-    console.log("Error handling MCP request:", error);
+    log("error", "MCP request failed", {
+      request_id: requestId,
+      ...formatError(error),
+    });
+
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",
@@ -96,6 +145,13 @@ app.post("/mcp", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`MCP server listening on port ${port}`);
+app.listen(config.port, () => {
+  log("info", "MCP server listening", {
+    host: config.host,
+    port: config.port,
+    po_env: config.poEnv,
+    allowed_hosts: config.allowedHosts,
+    mcp_endpoint: `http://localhost:${config.port}/mcp`,
+    health_endpoint: `http://localhost:${config.port}/healthz`,
+  });
 });
