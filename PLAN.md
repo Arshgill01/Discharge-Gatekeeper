@@ -33,6 +33,10 @@ Deliverables:
 - final naming and positioning
 - blocker taxonomy
 - demo story
+Current focus (2026-04-15, Agent 2):
+- harden top-level and runtime identity so first impressions are Discharge Gatekeeper, not starter substrate
+- align front-door docs and metadata with discharge-readiness MCP positioning
+- de-emphasize inherited starter language on visible repo surfaces without changing MCP behavior
 
 ### 2) Architecture
 Owner: open
@@ -78,6 +82,10 @@ Current focus (2026-04-15, Agent 2):
 Current focus (2026-04-15, Agent 3):
 - clean runtime-visible MCP surface so only discharge-readiness-facing tool metadata is exposed in the active TypeScript server path
 - remove or quarantine starter/default tool exposure and hello-world runtime leakage without breaking the `assess_discharge_readiness` slice
+
+Current focus (2026-04-15, Agent 2):
+- remediate known npm audit vulnerabilities in the TypeScript MCP runtime without changing product behavior
+- validate post-fix stability with typecheck, smoke test, and refreshed audit output
 
 ### 5) Evals
 Owner: open

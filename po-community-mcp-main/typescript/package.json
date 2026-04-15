@@ -1,7 +1,7 @@
 {
-  "name": "discharge-gatekeeper-mcp-ts",
+  "name": "discharge-gatekeeper-mcp-server-ts",
   "version": "1.0.0",
-  "description": "Discharge Gatekeeper MCP server (TypeScript runtime)",
+  "description": "TypeScript MCP server for Discharge Gatekeeper discharge-readiness workflows",
   "main": "index.ts",
   "scripts": {
     "start": "npx tsx index.ts",
@@ -9,7 +9,7 @@
     "smoke:readiness": "npx tsx smoke/assess-discharge-readiness-smoke.ts",
     "test": "npm run typecheck && npm run smoke:readiness"
   },
-  "author": "Discharge Gatekeeper",
+  "author": "Discharge Gatekeeper Team",
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^9.39.2",

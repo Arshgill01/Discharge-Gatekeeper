@@ -1,4 +1,9 @@
-# TypeScript MCP server
+# Discharge Gatekeeper MCP Server (TypeScript)
+
+This is the active runtime for the Discharge Gatekeeper demo lane.
+
+First-slice tool:
+- `assess_discharge_readiness`
 
 ## Quick start
 
