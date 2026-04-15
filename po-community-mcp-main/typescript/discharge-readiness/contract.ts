@@ -1,5 +1,11 @@
 export const V1_TOOL_NAME = "assess_discharge_readiness";
-export const V1_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
+export const V1_PRIMARY_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
+export const V1_SCENARIO_ID = V1_PRIMARY_SCENARIO_ID;
+export const V1_SCENARIO_2_ID = "second_synthetic_discharge_slice_ready_with_caveats_v1";
+export const V1_SUPPORTED_SCENARIO_IDS = [
+  V1_PRIMARY_SCENARIO_ID,
+  V1_SCENARIO_2_ID,
+] as const;
 
 export const V1_VERDICTS = ["ready", "ready_with_caveats", "not_ready"] as const;
 export type ReadinessVerdict = (typeof V1_VERDICTS)[number];
@@ -64,6 +70,9 @@ export type ReadinessInput = {
     documented_gaps: string[];
   };
   evidence_catalog: EvidenceRecord[];
+  source_consistency?: {
+    contradictory_evidence: string[];
+  };
 };
 
 export type DischargeBlocker = {

@@ -48,6 +48,57 @@ const OWNER_BY_CATEGORY: Record<BlockerCategory, string> = {
   administrative_and_documentation: "Primary team / Case management",
 };
 
+const REQUIRED_INPUT_SECTIONS = [
+  "clinical_stability",
+  "pending_diagnostics",
+  "medication_reconciliation",
+  "follow_up_and_referrals",
+  "patient_education",
+  "home_support_and_services",
+  "equipment_and_transport",
+  "administrative_and_documentation",
+] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const assertValidReadinessInput: (input: unknown) => asserts input is ReadinessInput = (
+  input: unknown,
+) => {
+  if (!isRecord(input)) {
+    throw new Error("Missing patient context: readiness input payload is required.");
+  }
+
+  const candidate = input as Partial<ReadinessInput>;
+
+  if (
+    typeof candidate.scenario_id !== "string" ||
+    candidate.scenario_id.trim().length === 0
+  ) {
+    throw new Error("Missing patient context: scenario_id is required.");
+  }
+
+  for (const section of REQUIRED_INPUT_SECTIONS) {
+    if (!isRecord(candidate[section])) {
+      throw new Error(`Malformed readiness input: missing required section '${section}'.`);
+    }
+  }
+
+  if (!Array.isArray(candidate.evidence_catalog) || candidate.evidence_catalog.length === 0) {
+    throw new Error(
+      "Insufficient evidence: no evidence_catalog entries were provided for readiness assessment.",
+    );
+  }
+
+  const contradictions = candidate.source_consistency?.contradictory_evidence ?? [];
+  if (contradictions.length > 0) {
+    throw new Error(
+      `Contradictory evidence across sources: ${contradictions.join(" | ")}`,
+    );
+  }
+};
+
 const sortedByPriority = (blockers: DischargeBlocker[]): DischargeBlocker[] => {
   return [...blockers].sort((a, b) => {
     const priorityDelta = PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority];
@@ -173,9 +224,33 @@ const formatGaps = (issues: string[], fallback: string): string => {
   return issues.length > 0 ? issues.join(" ") : fallback;
 };
 
+const assertEvidenceCoverage = (
+  blockers: DischargeBlocker[],
+  input: ReadinessInput,
+): void => {
+  const availableEvidenceIds = new Set(input.evidence_catalog.map((record) => record.id));
+  const missingEvidenceIds = new Set<string>();
+
+  for (const blocker of blockers) {
+    for (const evidenceId of blocker.evidence) {
+      if (!availableEvidenceIds.has(evidenceId)) {
+        missingEvidenceIds.add(evidenceId);
+      }
+    }
+  }
+
+  if (missingEvidenceIds.size > 0) {
+    throw new Error(
+      `Insufficient evidence: blocker-linked evidence is missing from evidence_catalog (${[...missingEvidenceIds].join(", ")}).`,
+    );
+  }
+};
+
 export const assessDischargeReadinessV1 = (
   input: ReadinessInput,
 ): AssessDischargeReadinessResponse => {
+  assertValidReadinessInput(input);
+
   const blockers: DischargeBlocker[] = [];
 
   const oxygenAboveBaseline =
@@ -339,6 +414,7 @@ export const assessDischargeReadinessV1 = (
   }
 
   const orderedBlockers = sortedByPriority(blockers);
+  assertEvidenceCoverage(orderedBlockers, input);
   const verdict = determineVerdict(orderedBlockers);
   const evidence = buildEvidenceTrace(orderedBlockers, input);
   const nextSteps = buildNextSteps(orderedBlockers);

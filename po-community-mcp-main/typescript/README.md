@@ -22,6 +22,7 @@ Endpoints:
 ```bash
 npm run typecheck
 npm run smoke:readiness
+npm run smoke:readiness:regression
 ```
 
 ## Prompt Opinion integration runbook
