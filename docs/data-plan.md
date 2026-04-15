@@ -75,3 +75,11 @@ The first data pack is done when a tool can confidently produce:
 - three to four blockers
 - one next-step plan
 - one patient-facing artifact
+
+## Regression expansion (v2)
+Keep the primary demo scenario as the default.
+Add one secondary scenario for regression protection:
+- `scenario_id`: `second_synthetic_discharge_slice_ready_with_caveats_v1`
+- expected verdict: `ready_with_caveats`
+- purpose: prove caveat handling without high-priority blockers
+- expected triggered categories: `follow_up_and_referrals`, `patient_education`, `equipment_and_transport`, `administrative_and_documentation`

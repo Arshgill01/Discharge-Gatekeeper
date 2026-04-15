@@ -87,6 +87,8 @@ Run this flow from a fresh Prompt Opinion session:
 2. If tool call selection is manual, pick `assess_discharge_readiness`
 3. Optional explicit tool test prompt:
    `Call assess_discharge_readiness with scenario_id=first_synthetic_discharge_slice_v1 and return the JSON payload.`
+   Optional regression prompt:
+   `Call assess_discharge_readiness with scenario_id=second_synthetic_discharge_slice_ready_with_caveats_v1 and return the JSON payload.`
 4. Verify output contains:
    - `verdict` (`not_ready` for v1 scenario)
    - blocker categories including scenario-triggered canonical labels: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
@@ -101,6 +103,7 @@ From `po-community-mcp-main/typescript`:
 ```bash
 npm run typecheck
 npm run smoke:readiness
+npm run smoke:readiness:regression
 ```
 
 Expected:
@@ -122,8 +125,8 @@ Expected:
   - Fix: reconnect MCP server and confirm health endpoint/tool list locally
 
 - `Unsupported scenario_id` from tool:
-  - Cause: scenario other than `first_synthetic_discharge_slice_v1`
-  - Fix: omit `scenario_id` or use the supported ID
+  - Cause: scenario other than `first_synthetic_discharge_slice_v1` or `second_synthetic_discharge_slice_ready_with_caveats_v1`
+  - Fix: omit `scenario_id` for primary demo default, or use one of the supported IDs
 
 - No visible starter tools in tool list:
   - Cause: intentional runtime cleanup; only `assess_discharge_readiness` is exposed in the first-slice server
@@ -135,6 +138,7 @@ Before demo or judge review:
 
 1. `npm run typecheck` passes
 2. `npm run smoke:readiness` passes
-3. `/healthz` is reachable through the public URL
-4. Prompt Opinion connection test succeeds
-5. `assess_discharge_readiness` returns expected structured response in Prompt Opinion
+3. `npm run smoke:readiness:regression` passes
+4. `/healthz` is reachable through the public URL
+5. Prompt Opinion connection test succeeds
+6. `assess_discharge_readiness` returns expected structured response in Prompt Opinion
