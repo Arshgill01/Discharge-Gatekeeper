@@ -76,6 +76,10 @@ Current focus (2026-04-15, Agent 1 - taxonomy/contract lane):
 - unify discharge blocker taxonomy and response-contract terminology across readiness code, evals, and demo docs
 - align `assess_discharge_readiness` v1 outputs with canonical blocker labels while preserving stable top-level response keys
 - remove cross-file vocabulary drift to keep judge-path behavior and expectations consistent
+Current focus (2026-04-15, Agent 1 - evidence layer lane):
+- add a normalized internal evidence bundle that merges structured context and note/document signals for readiness assessment
+- make contradiction, ambiguity, and missing-evidence states explicit for downstream readiness logic and traceability
+- add smoke checks for evidence normalization behavior without changing frozen public tool contract keys/verdict labels
 Current focus (2026-04-15, Agent 2):
 - polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
 - tighten smoke assertions for demo-facing output consistency and evidence linkage quality
