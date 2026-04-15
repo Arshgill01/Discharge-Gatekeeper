@@ -1,9 +1,4 @@
-import { PatientAgeToolInstance } from "./PatientAgeTool";
-import { PatientIdToolInstance } from "./PatientIdTool";
+import { IMcpTool } from "../IMcpTool";
 import { AssessDischargeReadinessToolInstance } from "./AssessDischargeReadinessTool";
 
-export {
-  PatientAgeToolInstance,
-  PatientIdToolInstance,
-  AssessDischargeReadinessToolInstance,
-};
+export const REGISTERED_TOOLS: IMcpTool[] = [AssessDischargeReadinessToolInstance];

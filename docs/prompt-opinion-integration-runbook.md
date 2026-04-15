@@ -125,9 +125,9 @@ Expected:
   - Cause: scenario other than `first_synthetic_discharge_slice_v1`
   - Fix: omit `scenario_id` or use the supported ID
 
-- FHIR-related tool errors (`GetPatientAge`, `FindPatientId`):
-  - Cause: missing Prompt Opinion FHIR context headers/token in test session
-  - Fix: run those tools only in sessions with patient context; `assess_discharge_readiness` v1 does not require FHIR context
+- No visible starter tools in tool list:
+  - Cause: intentional runtime cleanup; only `assess_discharge_readiness` is exposed in the first-slice server
+  - Fix: none required for demo path; keep follow-up prompts aligned to discharge-readiness flow
 
 ## 8) Minimal deployment-ready checklist
 

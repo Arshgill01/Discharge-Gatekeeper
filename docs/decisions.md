@@ -45,3 +45,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The v1 tool contract already returns deterministic `next_steps`; centering this keeps the demo short, reliable, and aligned with current implementation.
 - Affected files or lanes: demo/submission, evals
 - Follow-up: Reintroduce transition-package prompt only after a dedicated artifact generator is shipped and smoke-tested.
+
+- Date: 2026-04-15
+- Decision: Restrict the active TypeScript MCP runtime tool surface to `assess_discharge_readiness` and remove starter endpoint exposure (`/hello-world`).
+- Why: The judge path should present a discharge-specific product surface, not generic starter tooling.
+- Affected files or lanes: implementation, Prompt Opinion integration, demo/submission
+- Follow-up: Keep starter utility/tool code quarantined unless explicitly reintroduced with discharge-specific value.
