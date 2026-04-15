@@ -2,42 +2,49 @@ import { ReadinessInput, V1_SCENARIO_ID } from "./contract";
 
 export const FIRST_SYNTHETIC_SCENARIO_V1: ReadinessInput = {
   scenario_id: V1_SCENARIO_ID,
-  clinical: {
+  clinical_stability: {
     vitals_stable: true,
     oxygen_lpm: 2,
     baseline_oxygen_lpm: 0,
-    pending_critical_labs: false,
   },
-  medications: {
+  pending_diagnostics: {
+    critical_results_pending: false,
+    pending_items: [],
+  },
+  medication_reconciliation: {
     reconciliation_complete: false,
     unresolved_issues: [
       "Discharge draft omits home anticoagulation restart timing.",
       "Active inpatient insulin correction order still listed in discharge meds.",
     ],
   },
-  follow_up: {
+  follow_up_and_referrals: {
     appointments_scheduled: false,
     missing_referrals: ["Pulmonology follow-up visit not yet booked."],
   },
-  education: {
+  patient_education: {
     teach_back_complete: false,
     documented_gaps: [
       "Patient cannot describe red-flag dyspnea symptoms that require escalation.",
     ],
   },
-  home_support: {
+  home_support_and_services: {
     caregiver_confirmed: false,
     services_confirmed: false,
     documented_gaps: [
       "Case manager documented that caregiver availability is still unconfirmed.",
     ],
   },
-  logistics: {
+  equipment_and_transport: {
     transport_confirmed: true,
     equipment_ready: false,
     documented_gaps: [
       "Home oxygen delivery window not confirmed by vendor.",
     ],
+  },
+  administrative_and_documentation: {
+    discharge_documents_complete: true,
+    documented_gaps: [],
   },
   evidence_catalog: [
     {

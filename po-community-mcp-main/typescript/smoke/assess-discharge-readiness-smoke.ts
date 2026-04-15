@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discharge-readiness";
-import { BlockerCategory, BlockerPriority } from "../discharge-readiness/contract";
+import {
+  BlockerCategory,
+  BlockerPriority,
+  V1_BLOCKER_CATEGORIES,
+} from "../discharge-readiness/contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 
 const response = assessDischargeReadinessV1(FIRST_SYNTHETIC_SCENARIO_V1);
@@ -21,13 +25,21 @@ assert.match(
 );
 
 const blockerCategories = new Set(response.blockers.map((blocker) => blocker.category));
+const allowedCategories = new Set(V1_BLOCKER_CATEGORIES);
+for (const category of blockerCategories) {
+  assert.ok(
+    allowedCategories.has(category),
+    `Unexpected blocker category outside canonical taxonomy: ${category}`,
+  );
+}
+
 const expectedCategories: BlockerCategory[] = [
-  "clinical",
-  "medications",
-  "follow_up",
-  "education",
-  "home_support",
-  "logistics",
+  "clinical_stability",
+  "medication_reconciliation",
+  "follow_up_and_referrals",
+  "patient_education",
+  "home_support_and_services",
+  "equipment_and_transport",
 ];
 
 for (const category of expectedCategories) {
