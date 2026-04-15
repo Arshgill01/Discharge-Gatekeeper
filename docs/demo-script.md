@@ -1,97 +1,86 @@
 # Demo Script
 
-## Demo objective
-Show judges a workflow that is:
-- immediately useful
-- clearly AI-native
-- clearly interoperable
-- obviously feasible today
+## Goal
+Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and one tool call path:
+`assess_discharge_readiness`.
 
-## Demo length target
-2 minutes 20 seconds to 2 minutes 50 seconds.
-Leave a small buffer.
+## Locked scenario
+- `scenario_id`: `first_synthetic_discharge_slice_v1`
+- Expected verdict: `not_ready`
+- Expected categories: `clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`
 
-## Core story
-A patient appears close to discharge, but hidden blockers remain across notes, meds, follow-up, and home support.
-Discharge Gatekeeper catches those blockers before an unsafe transition happens.
+## Off-camera prep (30 to 45 seconds)
+1. Run smoke check from `po-community-mcp-main/typescript`:
+   - `npm run smoke:readiness`
+2. Open Prompt Opinion workspace and select the synthetic patient context.
+3. Keep one view ready where verdict, blockers, and evidence IDs are visible together.
 
-## Recommended patient shape
-A single patient with 3 to 4 blockers is enough.
-Do not overload the story.
-The output should feel crisp, not chaotic.
+## On-camera 3-prompt flow
 
-## Prompt 1
-### User asks
-“Is this patient safe to discharge today?”
+### Prompt 1
+User prompt:
+`Is this patient safe to discharge today?`
 
-### What should happen
-- Prompt Opinion invokes the MCP toolchain.
-- The system assesses discharge readiness.
-- The system returns `not_ready` or `ready_with_caveats`.
-- The result includes a short blocker summary.
+Show on screen:
+- explicit verdict (`not_ready`)
+- one-sentence summary with blocker count and priority mix
 
-### What the judge should feel
-“This is not a chatbot summary. It is making a clear discharge-readiness call.”
+Expected value:
+- proves this is a decision-support control point, not a generic summary bot
 
-## Prompt 2
-### User asks
-“What exactly is blocking discharge?”
+### Prompt 2
+User prompt:
+`What exactly is blocking discharge right now?`
 
-### What should happen
-- The system returns a structured blocker list.
-- Each blocker includes category, severity, and evidence.
-- The reasoning feels grounded and inspectable.
+Show on screen:
+- six blockers with category + priority + actionability
+- evidence linkage per blocker
 
-### What the judge should feel
-“It found things scattered across the chart and notes that a simple checklist would miss.”
+Expected value:
+- shows structured, inspectable blockers grounded in chart/note evidence
 
-## Prompt 3
-### User asks
-“Prepare the transition package.”
+### Prompt 3
+User prompt:
+`What must happen before this patient leaves?`
 
-### What should happen
-- The system returns a prioritized next-step plan.
-- The system drafts at least one clinician-facing artifact and one patient-facing artifact.
+Show on screen:
+- ordered `next_steps` list
+- owner + linked blocker for each step
 
-### What the judge should feel
-“This could save real time and reduce a risky handoff.”
+Expected value:
+- converts blockers into an execution-ready transition checklist for the care team
 
-## On-screen emphasis
-During the demo, make sure the audience can quickly see:
-- the verdict
-- the blockers
-- the evidence
-- the transition outputs
+## Expected output snapshot (first slice)
+- Verdict: `not_ready`
+- Blockers: 6 total (4 `high`, 2 `medium`)
+- Evidence trace entries: 6 total, each linked to blocker IDs
+- Next steps: 6 total, one mapped to each blocker
+- Summary anchor: discharge deferred until high-priority blockers are resolved and clinically reviewed
 
-Do not spend time on low-value UI wandering.
+## Narration lines (keep these short)
+- Prompt 1: "We ask one question first: is discharge safe today?"
+- Prompt 2: "Now we inspect exactly what is blocking discharge, with source-linked evidence."
+- Prompt 3: "Then we move from analysis to execution with owner-assigned next steps."
 
-## Narration guidance
-Say less.
-Explain the value in one sentence per step.
-Avoid long architecture speeches.
+## Show vs skip
+Show:
+- verdict field
+- blocker categories and priorities
+- evidence IDs/source labels tied to blockers
+- next-step owners
 
-Suggested framing:
-- “We ask one question: is this patient truly safe for discharge today?”
-- “The agent synthesizes patient context, FHIR data, and notes.”
-- “It returns blockers with evidence, then prepares the transition plan.”
+Skip:
+- long setup explanation of MCP internals
+- raw note wall-of-text
+- extra patients
+- speculative roadmap features
 
-## What not to do
-- Do not show more than one patient unless the first story is extremely clean.
-- Do not drown the judge in long note text.
-- Do not overclaim medical autonomy.
-- Do not show speculative dashboards.
-- Do not make the demo depend on a fragile manual setup step.
+## Fallback if output is partially degraded
+If a richer view fails, keep the story intact in this order:
+1. verdict
+2. blocker list with at least one evidence link
+3. top 3 next steps with owners
 
-## Backup path
-If tool traces or richer outputs fail during a live demo:
-- still show the verdict
-- still show the blocker list
-- still show one transition artifact
-
-The core story must survive partial failure.
-
-## Success test
-A judge who looks away for 10 seconds should still understand:
-- why the patient is not yet safe to discharge
-- what has to happen next
-- why this is better than a generic chatbot
+## Done check
+A teammate can run this script and explain the value in 15 seconds:
+"It decides readiness, shows why with evidence, and tells the team what to do next."
