@@ -60,6 +60,10 @@ Deliverables:
 - first tool
 - context parsing
 - starter tests or smoke checks
+Current focus (2026-04-15, Agent 3):
+- implement first-pass `assess_discharge_readiness` logic with frozen v1 output contract
+- return inspectable blockers + evidence + next steps for one synthetic scenario
+- add a runnable smoke check for verdict/category/evidence shape
 
 ### 5) Evals
 Owner: open
@@ -69,6 +73,9 @@ Deliverables:
 - fail cases
 - output quality rubric
 - regression checklist
+Current focus (2026-04-15, Agent 3):
+- add prompt-based smoke evals and expected outputs for the first readiness scenario
+- define explicit pass/fail checks for evidence-backed blocker output
 
 ### 6) Demo and submission
 Owner: open
