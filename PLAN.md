@@ -95,6 +95,10 @@ Deliverables:
 - fail cases
 - output quality rubric
 - regression checklist
+Current focus (2026-04-15, Agent 3 - scenario regression lane):
+- add a second synthetic readiness scenario with distinct expected verdict (`ready_with_caveats`) while preserving the primary v1 demo scenario as default
+- add truth fixtures and failure fixtures (missing context, insufficient evidence, contradictory evidence, malformed input) for repeatable regression checks
+- add a runnable regression smoke path to guard contract/taxonomy/demo behavior from silent drift
 Current focus (2026-04-15, Agent 3):
 - add prompt-based smoke evals and expected outputs for the first readiness scenario
 - define explicit pass/fail checks for evidence-backed blocker output

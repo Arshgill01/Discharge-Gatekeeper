@@ -63,3 +63,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: First impressions were still starter-branded, which weakens ownership clarity for teammates and judges.
 - Affected files or lanes: product, implementation, demo/submission
 - Follow-up: Keep any future public-facing text and package metadata aligned to Discharge Gatekeeper naming.
+
+- Date: 2026-04-15
+- Decision: Add a secondary regression scenario (`second_synthetic_discharge_slice_ready_with_caveats_v1`) and a matrix smoke harness that includes explicit failure fixtures for missing context, insufficient evidence, contradictory evidence, and malformed input.
+- Why: Protect the judge demo path from silent logic drift while preserving the primary `first_synthetic_discharge_slice_v1` scenario as the default on-camera flow.
+- Affected files or lanes: data, evals, implementation, demo/submission
+- Follow-up: Keep truth fixtures and failure expectations aligned with canonical response keys, verdict states, and blocker taxonomy whenever readiness logic changes.

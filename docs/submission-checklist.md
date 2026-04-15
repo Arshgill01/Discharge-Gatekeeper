@@ -95,7 +95,9 @@ Run this from a fresh session:
 
 Repo-level command check before recording:
 1. from `po-community-mcp-main/typescript`, run `npm run smoke:readiness`
-2. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
+2. run `npm run smoke:readiness:regression`
+3. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
+4. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
 
 ## Last-minute cut rule
 If time is short, protect these in order:
