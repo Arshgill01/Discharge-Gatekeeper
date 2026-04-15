@@ -29,10 +29,16 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Follow-up: Only change with explicit cross-file updates.
 
 - Date: 2026-04-15
-- Decision: Freeze `assess_discharge_readiness` v1 response contract to `verdict`, `blockers`, `evidence`, `next_steps`, `summary` with first-pass blocker categories `clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`.
+- Decision: Initial v1 freeze used `assess_discharge_readiness` response keys `verdict`, `blockers`, `evidence`, `next_steps`, `summary` with first-pass blocker labels `clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics` (superseded by taxonomy unification decision below).
 - Why: The first vertical slice needs a compact, inspectable contract for deterministic smoke checks and judge-facing clarity.
 - Affected files or lanes: architecture, implementation, evals
-- Follow-up: If taxonomy expansion is needed, add an explicit mapping plan before changing labels.
+- Follow-up: Keep as historical context only; do not use these six labels in active contracts, prompts, or evals.
+
+- Date: 2026-04-15
+- Decision: Canonicalize blocker taxonomy for all active code/docs/evals to `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`, `administrative_and_documentation` while preserving the v1 top-level response keys (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`).
+- Why: AGENTS/product docs already define the canonical discharge taxonomy; unifying runtime and eval language removes drift and prevents judge-path confusion.
+- Affected files or lanes: architecture, implementation, evals, demo/submission
+- Follow-up: Treat old labels as deprecated aliases with explicit mapping only for migration references: `clinical -> clinical_stability`, `medications -> medication_reconciliation`, `follow_up -> follow_up_and_referrals`, `education -> patient_education`, `home_support -> home_support_and_services`, `logistics -> equipment_and_transport`. The v1 scenario currently triggers six categories and does not trigger `pending_diagnostics` or `administrative_and_documentation` by default.
 
 - Date: 2026-04-15
 - Decision: Standardize integration runtime config on explicit `ALLOWED_HOSTS` plus `/healthz` for local/tunnel readiness checks.
