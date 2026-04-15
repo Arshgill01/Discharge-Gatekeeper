@@ -8,6 +8,10 @@ import {
   ReadinessInput,
   ReadinessVerdict,
 } from "./contract";
+import {
+  buildNormalizedEvidenceBundle,
+  getEvidenceIdsForCategory,
+} from "./evidence-layer";
 
 const PRIORITY_WEIGHT: Record<BlockerPriority, number> = {
   high: 3,
@@ -80,7 +84,7 @@ const determineVerdict = (blockers: DischargeBlocker[]): ReadinessVerdict => {
 
 const buildEvidenceTrace = (
   blockers: DischargeBlocker[],
-  input: ReadinessInput,
+  evidenceCatalog: ReadinessInput["evidence_catalog"],
 ): EvidenceTrace[] => {
   const evidenceToBlockers = new Map<string, string[]>();
   const blockerOrder = new Map<string, number>();
@@ -96,12 +100,17 @@ const buildEvidenceTrace = (
     }
   }
 
+  const evidenceById = new Map(evidenceCatalog.map((evidence) => [evidence.id, evidence]));
   const trace: EvidenceTrace[] = [];
-  for (const evidence of input.evidence_catalog) {
-    const supports = evidenceToBlockers.get(evidence.id);
-    if (!supports?.length) {
-      continue;
-    }
+
+  for (const [evidenceId, supports] of evidenceToBlockers.entries()) {
+    const evidence = evidenceById.get(evidenceId) ?? {
+      id: evidenceId,
+      source_type: "structured" as const,
+      source_label: "Evidence/normalization-gap",
+      detail:
+        "Evidence ID was referenced by readiness logic but not found in the normalized evidence catalog.",
+    };
 
     const uniqueSupports = [...new Set(supports)].sort((a, b) => {
       return (blockerOrder.get(a) ?? Number.MAX_SAFE_INTEGER) -
@@ -176,6 +185,16 @@ const formatGaps = (issues: string[], fallback: string): string => {
 export const assessDischargeReadinessV1 = (
   input: ReadinessInput,
 ): AssessDischargeReadinessResponse => {
+  const normalizedEvidence = buildNormalizedEvidenceBundle(input);
+  const evidenceForCategory = (category: BlockerCategory): string[] => {
+    const evidenceIds = getEvidenceIdsForCategory(normalizedEvidence, category);
+    if (evidenceIds.length > 0) {
+      return evidenceIds;
+    }
+
+    return [`missing-evidence-${category}`];
+  };
+
   const blockers: DischargeBlocker[] = [];
 
   const oxygenAboveBaseline =
@@ -200,7 +219,7 @@ export const assessDischargeReadinessV1 = (
       priority: "high",
       description:
         `Clinical stability is not yet cleared for home discharge. ${reasons.join(" ")}`,
-      evidence: ["obs-oxygen-2lpm"],
+      evidence: evidenceForCategory("clinical_stability"),
       actionability:
         "Reassess oxygen and overall stability, then explicitly document whether home transition criteria are met. Complete only after unresolved stability findings are reviewed by the primary team.",
     });
@@ -218,7 +237,7 @@ export const assessDischargeReadinessV1 = (
         input.pending_diagnostics.pending_items,
         "Pending diagnostic items require review before discharge.",
       )}`,
-      evidence: ["note-pending-diagnostics"],
+      evidence: evidenceForCategory("pending_diagnostics"),
       actionability:
         "Review pending diagnostics, document interpretation, and close any results that could alter discharge safety.",
     });
@@ -236,7 +255,7 @@ export const assessDischargeReadinessV1 = (
         input.medication_reconciliation.unresolved_issues,
         "Medication discrepancies are unresolved.",
       )}`,
-      evidence: ["note-med-rec-gap"],
+      evidence: evidenceForCategory("medication_reconciliation"),
       actionability:
         "Resolve medication discrepancies and publish one finalized discharge medication list. Complete when all active inpatient-only orders are reconciled and restart timing/instructions are explicit.",
     });
@@ -254,7 +273,7 @@ export const assessDischargeReadinessV1 = (
         input.follow_up_and_referrals.missing_referrals,
         "Required appointments or referrals are not fully confirmed.",
       )}`,
-      evidence: ["note-followup-missing"],
+      evidence: evidenceForCategory("follow_up_and_referrals"),
       actionability:
         "Schedule required follow-up/referrals and include date, location, and contact details in the transition packet before discharge.",
     });
@@ -272,7 +291,7 @@ export const assessDischargeReadinessV1 = (
         input.patient_education.documented_gaps,
         "Teach-back and escalation instructions are not yet documented as complete.",
       )}`,
-      evidence: ["note-teachback-incomplete"],
+      evidence: evidenceForCategory("patient_education"),
       actionability:
         "Complete teach-back for warning signs, medication use, and escalation pathways, then document patient understanding in the discharge note.",
     });
@@ -291,7 +310,7 @@ export const assessDischargeReadinessV1 = (
         input.home_support_and_services.documented_gaps,
         "Caregiver coverage and home services remain unverified.",
       )}`,
-      evidence: ["note-caregiver-unconfirmed"],
+      evidence: evidenceForCategory("home_support_and_services"),
       actionability:
         "Confirm caregiver availability and required home services with named contacts and start timing documented in the discharge plan.",
     });
@@ -314,7 +333,7 @@ export const assessDischargeReadinessV1 = (
         input.equipment_and_transport.documented_gaps,
         "Transport and required equipment status are not fully confirmed.",
       )}`,
-      evidence: ["note-oxygen-delivery-pending"],
+      evidence: evidenceForCategory("equipment_and_transport"),
       actionability:
         "Confirm equipment delivery and transportation timing with an explicit handoff timestamp before patient departure.",
     });
@@ -332,7 +351,7 @@ export const assessDischargeReadinessV1 = (
         input.administrative_and_documentation.documented_gaps,
         "Required discharge forms and sign-offs are not fully completed.",
       )}`,
-      evidence: ["note-admin-documentation-gap"],
+      evidence: evidenceForCategory("administrative_and_documentation"),
       actionability:
         "Complete required discharge documents, finalize sign-offs, and verify the transition packet is complete before patient departure.",
     });
@@ -340,7 +359,7 @@ export const assessDischargeReadinessV1 = (
 
   const orderedBlockers = sortedByPriority(blockers);
   const verdict = determineVerdict(orderedBlockers);
-  const evidence = buildEvidenceTrace(orderedBlockers, input);
+  const evidence = buildEvidenceTrace(orderedBlockers, normalizedEvidence.evidence_catalog);
   const nextSteps = buildNextSteps(orderedBlockers);
   const summary = buildSummary(verdict, orderedBlockers);
 
