@@ -75,6 +75,9 @@ Current focus (2026-04-15, Agent 1 - taxonomy/contract lane):
 Current focus (2026-04-15, Agent 2):
 - polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
 - tighten smoke assertions for demo-facing output consistency and evidence linkage quality
+Current focus (2026-04-15, Agent 3):
+- clean runtime-visible MCP surface so only discharge-readiness-facing tool metadata is exposed in the active TypeScript server path
+- remove or quarantine starter/default tool exposure and hello-world runtime leakage without breaking the `assess_discharge_readiness` slice
 
 ### 5) Evals
 Owner: open
