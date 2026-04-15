@@ -1,8 +1,7 @@
-import * as tools from "./tools";
+import { REGISTERED_TOOLS } from "./tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
-import { IMcpTool } from "./IMcpTool";
 import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
@@ -11,7 +10,7 @@ import { V1_TOOL_NAME } from "./discharge-readiness/contract";
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const startTimeMs = Date.now();
 
-const REGISTERED_TOOL_NAMES = ["FindPatientId", "GetPatientAge", V1_TOOL_NAME];
+const REGISTERED_TOOL_NAMES = [V1_TOOL_NAME];
 
 const app = createMcpExpressApp({
   host: config.host,
@@ -51,10 +50,6 @@ const formatError = (error: unknown): Record<string, unknown> => {
 };
 
 app.use(cors());
-
-app.get("/hello-world", async (_, res) => {
-  res.send("Hello World");
-});
 
 app.get("/healthz", async (_, res) => {
   res.status(200).json({
@@ -109,7 +104,7 @@ app.post("/mcp", async (req, res) => {
       },
     );
 
-    for (const tool of Object.values<IMcpTool>(tools)) {
+    for (const tool of REGISTERED_TOOLS) {
       tool.registerTool(server, req);
     }
 

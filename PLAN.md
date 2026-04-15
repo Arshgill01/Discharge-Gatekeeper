@@ -33,6 +33,10 @@ Deliverables:
 - final naming and positioning
 - blocker taxonomy
 - demo story
+Current focus (2026-04-15, Agent 2):
+- harden top-level and runtime identity so first impressions are Discharge Gatekeeper, not starter substrate
+- align front-door docs and metadata with discharge-readiness MCP positioning
+- de-emphasize inherited starter language on visible repo surfaces without changing MCP behavior
 
 ### 2) Architecture
 Owner: open
@@ -68,9 +72,20 @@ Current focus (2026-04-15, Agent 1):
 - harden Prompt Opinion integration runtime path for the TypeScript MCP server
 - document local run, dev tunnel, Prompt Opinion connection, and end-to-end smoke steps
 - reduce integration demo risk with lightweight observability and failure-mode guidance
+Current focus (2026-04-15, Agent 1 - taxonomy/contract lane):
+- unify discharge blocker taxonomy and response-contract terminology across readiness code, evals, and demo docs
+- align `assess_discharge_readiness` v1 outputs with canonical blocker labels while preserving stable top-level response keys
+- remove cross-file vocabulary drift to keep judge-path behavior and expectations consistent
 Current focus (2026-04-15, Agent 2):
 - polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
 - tighten smoke assertions for demo-facing output consistency and evidence linkage quality
+Current focus (2026-04-15, Agent 3):
+- clean runtime-visible MCP surface so only discharge-readiness-facing tool metadata is exposed in the active TypeScript server path
+- remove or quarantine starter/default tool exposure and hello-world runtime leakage without breaking the `assess_discharge_readiness` slice
+
+Current focus (2026-04-15, Agent 2):
+- remediate known npm audit vulnerabilities in the TypeScript MCP runtime without changing product behavior
+- validate post-fix stability with typecheck, smoke test, and refreshed audit output
 
 ### 5) Evals
 Owner: open

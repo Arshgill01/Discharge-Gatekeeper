@@ -89,7 +89,7 @@ Run this flow from a fresh Prompt Opinion session:
    `Call assess_discharge_readiness with scenario_id=first_synthetic_discharge_slice_v1 and return the JSON payload.`
 4. Verify output contains:
    - `verdict` (`not_ready` for v1 scenario)
-   - blocker categories including `clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`
+   - blocker categories including scenario-triggered canonical labels: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
    - `evidence`
    - `next_steps`
    - `summary`
@@ -125,9 +125,9 @@ Expected:
   - Cause: scenario other than `first_synthetic_discharge_slice_v1`
   - Fix: omit `scenario_id` or use the supported ID
 
-- FHIR-related tool errors (`GetPatientAge`, `FindPatientId`):
-  - Cause: missing Prompt Opinion FHIR context headers/token in test session
-  - Fix: run those tools only in sessions with patient context; `assess_discharge_readiness` v1 does not require FHIR context
+- No visible starter tools in tool list:
+  - Cause: intentional runtime cleanup; only `assess_discharge_readiness` is exposed in the first-slice server
+  - Fix: none required for demo path; keep follow-up prompts aligned to discharge-readiness flow
 
 ## 8) Minimal deployment-ready checklist
 

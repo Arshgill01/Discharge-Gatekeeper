@@ -5,12 +5,14 @@ export const V1_VERDICTS = ["ready", "ready_with_caveats", "not_ready"] as const
 export type ReadinessVerdict = (typeof V1_VERDICTS)[number];
 
 export const V1_BLOCKER_CATEGORIES = [
-  "clinical",
-  "medications",
-  "follow_up",
-  "education",
-  "home_support",
-  "logistics",
+  "clinical_stability",
+  "pending_diagnostics",
+  "medication_reconciliation",
+  "follow_up_and_referrals",
+  "patient_education",
+  "home_support_and_services",
+  "equipment_and_transport",
+  "administrative_and_documentation",
 ] as const;
 export type BlockerCategory = (typeof V1_BLOCKER_CATEGORIES)[number];
 
@@ -26,32 +28,39 @@ export type EvidenceRecord = {
 
 export type ReadinessInput = {
   scenario_id: string;
-  clinical: {
+  clinical_stability: {
     vitals_stable: boolean;
     oxygen_lpm: number;
     baseline_oxygen_lpm: number;
-    pending_critical_labs: boolean;
   };
-  medications: {
+  pending_diagnostics: {
+    critical_results_pending: boolean;
+    pending_items: string[];
+  };
+  medication_reconciliation: {
     reconciliation_complete: boolean;
     unresolved_issues: string[];
   };
-  follow_up: {
+  follow_up_and_referrals: {
     appointments_scheduled: boolean;
     missing_referrals: string[];
   };
-  education: {
+  patient_education: {
     teach_back_complete: boolean;
     documented_gaps: string[];
   };
-  home_support: {
+  home_support_and_services: {
     caregiver_confirmed: boolean;
     services_confirmed: boolean;
     documented_gaps: string[];
   };
-  logistics: {
+  equipment_and_transport: {
     transport_confirmed: boolean;
     equipment_ready: boolean;
+    documented_gaps: string[];
+  };
+  administrative_and_documentation: {
+    discharge_documents_complete: boolean;
     documented_gaps: string[];
   };
   evidence_catalog: EvidenceRecord[];
