@@ -3,7 +3,12 @@
 ## Evaluation goal
 Build a regression net that protects demo reliability and catches contract drift in `assess_discharge_readiness`.
 
+## First-slice smoke eval package
 Tool under test: `assess_discharge_readiness`
+Scenario coverage:
+- `first_synthetic_discharge_slice_v1` (primary `not_ready`)
+- `second_synthetic_discharge_slice_ready_with_caveats_v1` (distinct `ready_with_caveats`)
+- optional ambiguity/uncertainty fixture coverage in smoke checks
 
 ## Scenario matrix (success)
 
@@ -93,4 +98,31 @@ Expected for primary demo scenario:
 Expected for primary demo scenario:
 - six ordered `next_steps`
 - each step links to one blocker ID
-- owner field is present
+- owner field is present so execution responsibility is clear
+
+## Negative checks (quick)
+### Missing patient context
+Expected:
+- no fabricated verdict
+- clear message about missing context
+
+### Weak evidence inputs
+Expected:
+- signals insufficient evidence
+- requests additional data instead of overconfident claims
+
+### Contradictory notes
+Expected:
+- conflict is surfaced explicitly
+- unresolved blockers remain visible
+
+## Regression checklist
+Run when readiness logic changes:
+- verdict labels unchanged
+- blocker category labels unchanged
+- every blocker references evidence that exists in `evidence`
+- `next_steps.length === blockers.length`
+- primary scenario still triggers canonical six-category blocker set
+- second scenario still separates to `ready_with_caveats`
+- contradictory/insufficient evidence remains explicit (no silent optimistic closure)
+- summary stays assistive (no autonomous discharge claim)
