@@ -33,6 +33,10 @@ Deliverables:
 - final naming and positioning
 - blocker taxonomy
 - demo story
+Current focus (2026-04-15, Agent 2):
+- harden top-level and runtime identity so first impressions are Discharge Gatekeeper, not starter substrate
+- align front-door docs and metadata with discharge-readiness MCP positioning
+- de-emphasize inherited starter language on visible repo surfaces without changing MCP behavior
 
 ### 2) Architecture
 Owner: open

@@ -57,3 +57,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The judge path should present a discharge-specific product surface, not generic starter tooling.
 - Affected files or lanes: implementation, Prompt Opinion integration, demo/submission
 - Follow-up: Keep starter utility/tool code quarantined unless explicitly reintroduced with discharge-specific value.
+
+- Date: 2026-04-15
+- Decision: Standardize visible runtime and repo identity on "Discharge Gatekeeper" across root docs and TypeScript package metadata; treat `po-community-mcp-main` as substrate.
+- Why: First impressions were still starter-branded, which weakens ownership clarity for teammates and judges.
+- Affected files or lanes: product, implementation, demo/submission
+- Follow-up: Keep any future public-facing text and package metadata aligned to Discharge Gatekeeper naming.
