@@ -46,6 +46,88 @@ export const FIRST_SYNTHETIC_SCENARIO_V1: ReadinessInput = {
     discharge_documents_complete: true,
     documented_gaps: [],
   },
+  note_documents: [
+    {
+      id: "med-rec-note",
+      source_type: "note",
+      source_label: "Medication reconciliation note",
+      signals: [
+        {
+          id: "med-rec-blocking-signal",
+          category: "medication_reconciliation",
+          signal_key: "medication_reconciliation_status",
+          state: "blocks_readiness",
+          detail:
+            "Medication reconciliation note describes unresolved discrepancies between active inpatient orders and the discharge draft.",
+          source_evidence_id: "note-med-rec-gap",
+        },
+      ],
+    },
+    {
+      id: "discharge-planning-note",
+      source_type: "note",
+      source_label: "Discharge planning note",
+      signals: [
+        {
+          id: "followup-blocking-signal",
+          category: "follow_up_and_referrals",
+          signal_key: "follow_up_coordination_status",
+          state: "blocks_readiness",
+          detail:
+            "Discharge planning note shows required pulmonology follow-up is not yet scheduled.",
+          source_evidence_id: "note-followup-missing",
+        },
+      ],
+    },
+    {
+      id: "education-note",
+      source_type: "note",
+      source_label: "Nursing discharge education note",
+      signals: [
+        {
+          id: "teach-back-blocking-signal",
+          category: "patient_education",
+          signal_key: "teach_back_status",
+          state: "blocks_readiness",
+          detail:
+            "Nursing education note records incomplete teach-back on warning signs and escalation pathways.",
+          source_evidence_id: "note-teachback-incomplete",
+        },
+      ],
+    },
+    {
+      id: "case-management-note",
+      source_type: "note",
+      source_label: "Case management note",
+      signals: [
+        {
+          id: "home-support-blocking-signal",
+          category: "home_support_and_services",
+          signal_key: "home_support_status",
+          state: "blocks_readiness",
+          detail:
+            "Case management note documents that caregiver support and home services remain unconfirmed.",
+          source_evidence_id: "note-caregiver-unconfirmed",
+        },
+      ],
+    },
+    {
+      id: "dme-coordination-note",
+      source_type: "note",
+      source_label: "Durable medical equipment coordination note",
+      signals: [
+        {
+          id: "equipment-blocking-signal",
+          category: "equipment_and_transport",
+          signal_key: "equipment_and_transport_status",
+          state: "blocks_readiness",
+          detail:
+            "DME coordination note shows home oxygen vendor has not confirmed delivery timing.",
+          source_evidence_id: "note-oxygen-delivery-pending",
+        },
+      ],
+    },
+  ],
   evidence_catalog: [
     {
       id: "obs-oxygen-2lpm",

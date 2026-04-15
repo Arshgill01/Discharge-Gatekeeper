@@ -63,3 +63,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: First impressions were still starter-branded, which weakens ownership clarity for teammates and judges.
 - Affected files or lanes: product, implementation, demo/submission
 - Follow-up: Keep any future public-facing text and package metadata aligned to Discharge Gatekeeper naming.
+
+- Date: 2026-04-15
+- Decision: Introduce an internal normalized evidence bundle for `assess_discharge_readiness` that merges structured signals and note/document signals, and explicitly tracks contradiction, ambiguity, and missing-evidence markers.
+- Why: The readiness engine needs a deterministic evidence substrate that is source-aware and inspectable, without changing the frozen public v1 response keys or verdict labels.
+- Affected files or lanes: implementation, evals
+- Follow-up: Keep new readiness logic and future tools consuming the normalized bundle instead of hardcoded scenario evidence IDs.

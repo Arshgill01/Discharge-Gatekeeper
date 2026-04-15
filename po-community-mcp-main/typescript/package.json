@@ -7,7 +7,8 @@
     "start": "npx tsx index.ts",
     "typecheck": "npx tsc --noEmit",
     "smoke:readiness": "npx tsx smoke/assess-discharge-readiness-smoke.ts",
-    "test": "npm run typecheck && npm run smoke:readiness"
+    "smoke:evidence-layer": "npx tsx smoke/evidence-layer-smoke.ts",
+    "test": "npm run typecheck && npm run smoke:readiness && npm run smoke:evidence-layer"
   },
   "author": "Discharge Gatekeeper Team",
   "license": "ISC",

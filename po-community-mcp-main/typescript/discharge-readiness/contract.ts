@@ -19,11 +19,37 @@ export type BlockerCategory = (typeof V1_BLOCKER_CATEGORIES)[number];
 export const BLOCKER_PRIORITIES = ["high", "medium", "low"] as const;
 export type BlockerPriority = (typeof BLOCKER_PRIORITIES)[number];
 
+export const EVIDENCE_SOURCE_TYPES = ["structured", "note", "document"] as const;
+export type EvidenceSourceType = (typeof EVIDENCE_SOURCE_TYPES)[number];
+
 export type EvidenceRecord = {
   id: string;
-  source_type: "structured" | "note";
+  source_type: EvidenceSourceType;
   source_label: string;
   detail: string;
+};
+
+export const EVIDENCE_SIGNAL_STATES = [
+  "supports_readiness",
+  "blocks_readiness",
+  "ambiguous",
+] as const;
+export type EvidenceSignalState = (typeof EVIDENCE_SIGNAL_STATES)[number];
+
+export type NoteDocumentSignalInput = {
+  id: string;
+  category: BlockerCategory;
+  signal_key: string;
+  state: EvidenceSignalState;
+  detail: string;
+  source_evidence_id?: string;
+};
+
+export type NoteDocumentInput = {
+  id: string;
+  source_type: "note" | "document";
+  source_label: string;
+  signals: NoteDocumentSignalInput[];
 };
 
 export type ReadinessInput = {
@@ -64,6 +90,54 @@ export type ReadinessInput = {
     documented_gaps: string[];
   };
   evidence_catalog: EvidenceRecord[];
+  note_documents?: NoteDocumentInput[];
+};
+
+export type NormalizedEvidenceSignal = {
+  id: string;
+  category: BlockerCategory;
+  signal_key: string;
+  state: EvidenceSignalState;
+  source_id: string;
+  source_type: EvidenceSourceType;
+  source_label: string;
+  detail: string;
+};
+
+export type EvidenceContradiction = {
+  id: string;
+  category: BlockerCategory;
+  signal_key: string;
+  signal_ids: string[];
+  source_ids: string[];
+  detail: string;
+};
+
+export type EvidenceAmbiguity = {
+  id: string;
+  category: BlockerCategory;
+  signal_key: string;
+  signal_ids: string[];
+  source_ids: string[];
+  detail: string;
+};
+
+export type MissingEvidenceMarker = {
+  id: string;
+  category: BlockerCategory;
+  signal_key: string;
+  expected_source: EvidenceSourceType;
+  detail: string;
+};
+
+export type NormalizedEvidenceBundle = {
+  scenario_id: string;
+  evidence_catalog: EvidenceRecord[];
+  structured_signals: NormalizedEvidenceSignal[];
+  note_document_signals: NormalizedEvidenceSignal[];
+  contradictions: EvidenceContradiction[];
+  ambiguities: EvidenceAmbiguity[];
+  missing_evidence: MissingEvidenceMarker[];
 };
 
 export type DischargeBlocker = {
