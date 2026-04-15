@@ -64,6 +64,9 @@ Current focus (2026-04-15, Agent 3):
 - implement first-pass `assess_discharge_readiness` logic with frozen v1 output contract
 - return inspectable blockers + evidence + next steps for one synthetic scenario
 - add a runnable smoke check for verdict/category/evidence shape
+Current focus (2026-04-15, Agent 2):
+- polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
+- tighten smoke assertions for demo-facing output consistency and evidence linkage quality
 
 ### 5) Evals
 Owner: open
