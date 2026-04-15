@@ -39,3 +39,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: Prompt Opinion testing via dev tunnels fails if host allowlisting is implicit; an explicit env knob and health endpoint reduce integration guesswork and demo risk.
 - Affected files or lanes: implementation, architecture, demo/submission
 - Follow-up: If deployment moves from dev tunnel to hosted endpoint, keep `ALLOWED_HOSTS` and health checks in the runbook.
+
+- Date: 2026-04-15
+- Decision: Lock the first-slice judge demo to a 3-prompt path ending in "What must happen before this patient leaves?" instead of a broader transition-package prompt.
+- Why: The v1 tool contract already returns deterministic `next_steps`; centering this keeps the demo short, reliable, and aligned with current implementation.
+- Affected files or lanes: demo/submission, evals
+- Follow-up: Reintroduce transition-package prompt only after a dedicated artifact generator is shipped and smoke-tested.

@@ -92,6 +92,10 @@ Deliverables:
 - Marketplace checklist
 - publish smoke test plan
 - 3-minute video structure
+Current focus (2026-04-15, Agent 3):
+- tighten first-slice 3-prompt demo path around `assess_discharge_readiness`
+- publish judge-facing runbook text with expected outputs for the synthetic v1 scenario
+- align smoke-eval checklist with demo prompts and visible evidence trace
 
 ## Recommended implementation sequence
 1. Analyze `po-community-mcp` and extract reusable patterns.
