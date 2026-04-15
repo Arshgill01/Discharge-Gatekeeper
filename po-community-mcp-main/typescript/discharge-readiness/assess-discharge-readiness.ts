@@ -8,6 +8,10 @@ import {
   ReadinessInput,
   ReadinessVerdict,
 } from "./contract";
+import {
+  buildNormalizedEvidenceBundle,
+  getEvidenceIdsForCategory,
+} from "./evidence-layer";
 
 const PRIORITY_WEIGHT: Record<BlockerPriority, number> = {
   high: 3,
@@ -48,6 +52,98 @@ const OWNER_BY_CATEGORY: Record<BlockerCategory, string> = {
   administrative_and_documentation: "Primary team / Case management",
 };
 
+const BLOCKER_ID_BY_CATEGORY: Record<BlockerCategory, string> = {
+  clinical_stability: "blocker-clinical-stability",
+  pending_diagnostics: "blocker-pending-diagnostics",
+  medication_reconciliation: "blocker-medication-reconciliation",
+  follow_up_and_referrals: "blocker-follow-up-and-referrals",
+  patient_education: "blocker-patient-education",
+  home_support_and_services: "blocker-home-support-and-services",
+  equipment_and_transport: "blocker-equipment-and-transport",
+  administrative_and_documentation: "blocker-administrative-and-documentation",
+};
+
+const EVIDENCE_UNCERTAINTY_PRIORITY: Record<BlockerCategory, BlockerPriority> = {
+  clinical_stability: "high",
+  pending_diagnostics: "high",
+  medication_reconciliation: "high",
+  follow_up_and_referrals: "medium",
+  patient_education: "medium",
+  home_support_and_services: "high",
+  equipment_and_transport: "medium",
+  administrative_and_documentation: "medium",
+};
+
+const EVIDENCE_UNCERTAINTY_ACTION: Record<BlockerCategory, string> = {
+  clinical_stability:
+    "Resolve conflicting stability evidence with repeat bedside assessment and explicit clinician documentation before discharge.",
+  pending_diagnostics:
+    "Resolve contradictory diagnostic status documentation and record one reconciled interpretation for discharge-critical results.",
+  medication_reconciliation:
+    "Resolve uncertain or conflicting medication evidence and document one finalized discharge medication plan.",
+  follow_up_and_referrals:
+    "Reconcile conflicting referral/follow-up documentation and publish a single closed-loop follow-up plan.",
+  patient_education:
+    "Resolve uncertainty in education evidence with repeat teach-back and final documented understanding.",
+  home_support_and_services:
+    "Resolve contradictory home-support evidence and confirm caregiver/services with named contacts and timing.",
+  equipment_and_transport:
+    "Resolve conflicting logistics documentation and confirm final transport/equipment timing before departure.",
+  administrative_and_documentation:
+    "Resolve conflicting administrative documentation and capture a finalized signed discharge packet status.",
+};
+
+const REQUIRED_INPUT_SECTIONS = [
+  "clinical_stability",
+  "pending_diagnostics",
+  "medication_reconciliation",
+  "follow_up_and_referrals",
+  "patient_education",
+  "home_support_and_services",
+  "equipment_and_transport",
+  "administrative_and_documentation",
+] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const assertValidReadinessInput: (input: unknown) => asserts input is ReadinessInput = (
+  input: unknown,
+) => {
+  if (!isRecord(input)) {
+    throw new Error("Missing patient context: readiness input payload is required.");
+  }
+
+  const candidate = input as Partial<ReadinessInput>;
+
+  if (
+    typeof candidate.scenario_id !== "string" ||
+    candidate.scenario_id.trim().length === 0
+  ) {
+    throw new Error("Missing patient context: scenario_id is required.");
+  }
+
+  for (const section of REQUIRED_INPUT_SECTIONS) {
+    if (!isRecord(candidate[section])) {
+      throw new Error(`Malformed readiness input: missing required section '${section}'.`);
+    }
+  }
+
+  if (!Array.isArray(candidate.evidence_catalog) || candidate.evidence_catalog.length === 0) {
+    throw new Error(
+      "Insufficient evidence: no evidence_catalog entries were provided for readiness assessment.",
+    );
+  }
+
+  const contradictions = candidate.source_consistency?.contradictory_evidence ?? [];
+  if (contradictions.length > 0) {
+    throw new Error(
+      `Contradictory evidence across sources: ${contradictions.join(" | ")}`,
+    );
+  }
+};
+
 const sortedByPriority = (blockers: DischargeBlocker[]): DischargeBlocker[] => {
   return [...blockers].sort((a, b) => {
     const priorityDelta = PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority];
@@ -80,7 +176,7 @@ const determineVerdict = (blockers: DischargeBlocker[]): ReadinessVerdict => {
 
 const buildEvidenceTrace = (
   blockers: DischargeBlocker[],
-  input: ReadinessInput,
+  evidenceCatalog: ReadinessInput["evidence_catalog"],
 ): EvidenceTrace[] => {
   const evidenceToBlockers = new Map<string, string[]>();
   const blockerOrder = new Map<string, number>();
@@ -96,12 +192,17 @@ const buildEvidenceTrace = (
     }
   }
 
+  const evidenceById = new Map(evidenceCatalog.map((evidence) => [evidence.id, evidence]));
   const trace: EvidenceTrace[] = [];
-  for (const evidence of input.evidence_catalog) {
-    const supports = evidenceToBlockers.get(evidence.id);
-    if (!supports?.length) {
-      continue;
-    }
+
+  for (const [evidenceId, supports] of evidenceToBlockers.entries()) {
+    const evidence = evidenceById.get(evidenceId) ?? {
+      id: evidenceId,
+      source_type: "structured" as const,
+      source_label: "Evidence/normalization-gap",
+      detail:
+        "Evidence ID was referenced by readiness logic but not found in the normalized evidence catalog.",
+    };
 
     const uniqueSupports = [...new Set(supports)].sort((a, b) => {
       return (blockerOrder.get(a) ?? Number.MAX_SAFE_INTEGER) -
@@ -173,9 +274,80 @@ const formatGaps = (issues: string[], fallback: string): string => {
   return issues.length > 0 ? issues.join(" ") : fallback;
 };
 
+const hasEvidenceConflict = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): boolean => {
+  return normalizedEvidence.contradictions.some(
+    (contradiction) => contradiction.category === category,
+  );
+};
+
+const hasEvidenceAmbiguity = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): boolean => {
+  return normalizedEvidence.ambiguities.some((ambiguity) => ambiguity.category === category);
+};
+
+const buildEvidenceUncertaintyPhrase = (
+  category: BlockerCategory,
+  normalizedEvidence: ReturnType<typeof buildNormalizedEvidenceBundle>,
+): string | null => {
+  const conflict = hasEvidenceConflict(category, normalizedEvidence);
+  const ambiguity = hasEvidenceAmbiguity(category, normalizedEvidence);
+
+  if (!conflict && !ambiguity) {
+    return null;
+  }
+
+  if (conflict && ambiguity) {
+    return "Evidence conflict and evidence uncertainty remain unresolved across sources.";
+  }
+
+  if (conflict) {
+    return "Evidence conflict remains unresolved across sources.";
+  }
+
+  return "Evidence uncertainty remains unresolved across sources.";
+};
+
+const assertEvidenceCoverage = (
+  blockers: DischargeBlocker[],
+  evidenceCatalog: ReadinessInput["evidence_catalog"],
+): void => {
+  const availableEvidenceIds = new Set(evidenceCatalog.map((record) => record.id));
+  const missingEvidenceIds = new Set<string>();
+
+  for (const blocker of blockers) {
+    for (const evidenceId of blocker.evidence) {
+      if (!availableEvidenceIds.has(evidenceId)) {
+        missingEvidenceIds.add(evidenceId);
+      }
+    }
+  }
+
+  if (missingEvidenceIds.size > 0) {
+    throw new Error(
+      `Insufficient evidence: blocker-linked evidence is missing from evidence_catalog (${[...missingEvidenceIds].join(", ")}).`,
+    );
+  }
+};
+
 export const assessDischargeReadinessV1 = (
   input: ReadinessInput,
 ): AssessDischargeReadinessResponse => {
+  assertValidReadinessInput(input);
+  const normalizedEvidence = buildNormalizedEvidenceBundle(input);
+  const evidenceForCategory = (category: BlockerCategory): string[] => {
+    const evidenceIds = getEvidenceIdsForCategory(normalizedEvidence, category);
+    if (evidenceIds.length > 0) {
+      return evidenceIds;
+    }
+
+    return [`missing-evidence-${category}`];
+  };
+
   const blockers: DischargeBlocker[] = [];
 
   const oxygenAboveBaseline =
@@ -200,7 +372,7 @@ export const assessDischargeReadinessV1 = (
       priority: "high",
       description:
         `Clinical stability is not yet cleared for home discharge. ${reasons.join(" ")}`,
-      evidence: ["obs-oxygen-2lpm"],
+      evidence: evidenceForCategory("clinical_stability"),
       actionability:
         "Reassess oxygen and overall stability, then explicitly document whether home transition criteria are met. Complete only after unresolved stability findings are reviewed by the primary team.",
     });
@@ -218,7 +390,7 @@ export const assessDischargeReadinessV1 = (
         input.pending_diagnostics.pending_items,
         "Pending diagnostic items require review before discharge.",
       )}`,
-      evidence: ["note-pending-diagnostics"],
+      evidence: evidenceForCategory("pending_diagnostics"),
       actionability:
         "Review pending diagnostics, document interpretation, and close any results that could alter discharge safety.",
     });
@@ -236,7 +408,7 @@ export const assessDischargeReadinessV1 = (
         input.medication_reconciliation.unresolved_issues,
         "Medication discrepancies are unresolved.",
       )}`,
-      evidence: ["note-med-rec-gap"],
+      evidence: evidenceForCategory("medication_reconciliation"),
       actionability:
         "Resolve medication discrepancies and publish one finalized discharge medication list. Complete when all active inpatient-only orders are reconciled and restart timing/instructions are explicit.",
     });
@@ -254,7 +426,7 @@ export const assessDischargeReadinessV1 = (
         input.follow_up_and_referrals.missing_referrals,
         "Required appointments or referrals are not fully confirmed.",
       )}`,
-      evidence: ["note-followup-missing"],
+      evidence: evidenceForCategory("follow_up_and_referrals"),
       actionability:
         "Schedule required follow-up/referrals and include date, location, and contact details in the transition packet before discharge.",
     });
@@ -272,7 +444,7 @@ export const assessDischargeReadinessV1 = (
         input.patient_education.documented_gaps,
         "Teach-back and escalation instructions are not yet documented as complete.",
       )}`,
-      evidence: ["note-teachback-incomplete"],
+      evidence: evidenceForCategory("patient_education"),
       actionability:
         "Complete teach-back for warning signs, medication use, and escalation pathways, then document patient understanding in the discharge note.",
     });
@@ -291,7 +463,7 @@ export const assessDischargeReadinessV1 = (
         input.home_support_and_services.documented_gaps,
         "Caregiver coverage and home services remain unverified.",
       )}`,
-      evidence: ["note-caregiver-unconfirmed"],
+      evidence: evidenceForCategory("home_support_and_services"),
       actionability:
         "Confirm caregiver availability and required home services with named contacts and start timing documented in the discharge plan.",
     });
@@ -314,7 +486,7 @@ export const assessDischargeReadinessV1 = (
         input.equipment_and_transport.documented_gaps,
         "Transport and required equipment status are not fully confirmed.",
       )}`,
-      evidence: ["note-oxygen-delivery-pending"],
+      evidence: evidenceForCategory("equipment_and_transport"),
       actionability:
         "Confirm equipment delivery and transportation timing with an explicit handoff timestamp before patient departure.",
     });
@@ -332,15 +504,45 @@ export const assessDischargeReadinessV1 = (
         input.administrative_and_documentation.documented_gaps,
         "Required discharge forms and sign-offs are not fully completed.",
       )}`,
-      evidence: ["note-admin-documentation-gap"],
+      evidence: evidenceForCategory("administrative_and_documentation"),
       actionability:
         "Complete required discharge documents, finalize sign-offs, and verify the transition packet is complete before patient departure.",
     });
   }
 
+  const seenCategories = new Set(blockers.map((blocker) => blocker.category));
+  const allCategories = Object.keys(CATEGORY_ORDER) as BlockerCategory[];
+  for (const category of allCategories) {
+    const uncertaintyPhrase = buildEvidenceUncertaintyPhrase(category, normalizedEvidence);
+    if (!uncertaintyPhrase) {
+      continue;
+    }
+
+    if (!seenCategories.has(category)) {
+      blockers.push({
+        id: BLOCKER_ID_BY_CATEGORY[category],
+        category,
+        priority: EVIDENCE_UNCERTAINTY_PRIORITY[category],
+        description:
+          `Readiness evidence remains unresolved for ${CATEGORY_LABEL[category]}. ${uncertaintyPhrase}`,
+        evidence: evidenceForCategory(category),
+        actionability: EVIDENCE_UNCERTAINTY_ACTION[category],
+      });
+      seenCategories.add(category);
+      continue;
+    }
+
+    const existing = blockers.find((blocker) => blocker.category === category);
+    if (existing && !existing.description.includes("Evidence conflict") &&
+      !existing.description.includes("Evidence uncertainty")) {
+      existing.description = `${existing.description} ${uncertaintyPhrase}`;
+    }
+  }
+
   const orderedBlockers = sortedByPriority(blockers);
+  assertEvidenceCoverage(orderedBlockers, normalizedEvidence.evidence_catalog);
   const verdict = determineVerdict(orderedBlockers);
-  const evidence = buildEvidenceTrace(orderedBlockers, input);
+  const evidence = buildEvidenceTrace(orderedBlockers, normalizedEvidence.evidence_catalog);
   const nextSteps = buildNextSteps(orderedBlockers);
   const summary = buildSummary(verdict, orderedBlockers);
 

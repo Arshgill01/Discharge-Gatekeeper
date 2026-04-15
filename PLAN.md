@@ -76,6 +76,10 @@ Current focus (2026-04-15, Agent 1 - taxonomy/contract lane):
 - unify discharge blocker taxonomy and response-contract terminology across readiness code, evals, and demo docs
 - align `assess_discharge_readiness` v1 outputs with canonical blocker labels while preserving stable top-level response keys
 - remove cross-file vocabulary drift to keep judge-path behavior and expectations consistent
+Current focus (2026-04-15, Agent 1 - evidence layer lane):
+- add a normalized internal evidence bundle that merges structured context and note/document signals for readiness assessment
+- make contradiction, ambiguity, and missing-evidence states explicit for downstream readiness logic and traceability
+- add smoke checks for evidence normalization behavior without changing frozen public tool contract keys/verdict labels
 Current focus (2026-04-15, Agent 2):
 - polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
 - tighten smoke assertions for demo-facing output consistency and evidence linkage quality
@@ -86,6 +90,10 @@ Current focus (2026-04-15, Agent 3):
 Current focus (2026-04-15, Agent 2):
 - remediate known npm audit vulnerabilities in the TypeScript MCP runtime without changing product behavior
 - validate post-fix stability with typecheck, smoke test, and refreshed audit output
+Current focus (2026-04-15, Agent 2 - readiness engine deepening):
+- refactor `assess_discharge_readiness` to be evidence-driven and less scenario-shape brittle while preserving canonical verdicts/categories and top-level response keys
+- add explicit handling for contradictory/insufficient evidence so unresolved ambiguity is visible and actionable
+- add multi-scenario and ambiguity smoke coverage to protect verdict separation (`ready`, `ready_with_caveats`, `not_ready`) and output contract stability
 
 ### 5) Evals
 Owner: open
@@ -95,6 +103,10 @@ Deliverables:
 - fail cases
 - output quality rubric
 - regression checklist
+Current focus (2026-04-15, Agent 3 - scenario regression lane):
+- add a second synthetic readiness scenario with distinct expected verdict (`ready_with_caveats`) while preserving the primary v1 demo scenario as default
+- add truth fixtures and failure fixtures (missing context, insufficient evidence, contradictory evidence, malformed input) for repeatable regression checks
+- add a runnable regression smoke path to guard contract/taxonomy/demo behavior from silent drift
 Current focus (2026-04-15, Agent 3):
 - add prompt-based smoke evals and expected outputs for the first readiness scenario
 - define explicit pass/fail checks for evidence-backed blocker output
