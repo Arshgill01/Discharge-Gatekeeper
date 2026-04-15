@@ -75,3 +75,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: Protect the judge demo path from silent logic drift while preserving the primary `first_synthetic_discharge_slice_v1` scenario as the default on-camera flow.
 - Affected files or lanes: data, evals, implementation, demo/submission
 - Follow-up: Keep truth fixtures and failure expectations aligned with canonical response keys, verdict states, and blocker taxonomy whenever readiness logic changes.
+
+- Date: 2026-04-15
+- Decision: Refactor readiness derivation to combine structured gap signals with explicit evidence assertions (`supports_blocker`, `supports_readiness`, `uncertain`) and treat unresolved conflict/uncertainty as visible blockers instead of silently guessing closure.
+- Why: The first-pass engine was brittle and overfit to one fixture shape; evidence-driven rule evaluation improves verdict separation (`ready`, `ready_with_caveats`, `not_ready`) across primary, alternate, and contradictory/insufficient-evidence scenarios while preserving the frozen top-level response keys.
+- Affected files or lanes: implementation, evals, demo reliability
+- Follow-up: Keep canonical blocker categories stable and maintain scenario-based smoke coverage for primary outcome, alternate caveat outcome, and ambiguity handling.

@@ -90,6 +90,10 @@ Current focus (2026-04-15, Agent 3):
 Current focus (2026-04-15, Agent 2):
 - remediate known npm audit vulnerabilities in the TypeScript MCP runtime without changing product behavior
 - validate post-fix stability with typecheck, smoke test, and refreshed audit output
+Current focus (2026-04-15, Agent 2 - readiness engine deepening):
+- refactor `assess_discharge_readiness` to be evidence-driven and less scenario-shape brittle while preserving canonical verdicts/categories and top-level response keys
+- add explicit handling for contradictory/insufficient evidence so unresolved ambiguity is visible and actionable
+- add multi-scenario and ambiguity smoke coverage to protect verdict separation (`ready`, `ready_with_caveats`, `not_ready`) and output contract stability
 
 ### 5) Evals
 Owner: open
