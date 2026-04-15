@@ -41,18 +41,17 @@ The community MCP starter demonstrates this pattern:
 ## Core tool responsibilities
 ### 1) `assess_discharge_readiness`
 Purpose:
-- return verdict, confidence, top blockers, and summary reasoning
+- return an inspectable v1 readiness contract for one synthetic scenario
 
 Likely inputs:
-- optional patient ID
-- optional encounter ID
-- optional discharge intent metadata
+- optional `scenario_id` (default: first synthetic scenario)
 
 Likely outputs:
 - verdict
-- confidence band
-- blocker summaries
-- top evidence
+- blockers (category, priority, evidence, actionability)
+- evidence trace entries linked to blockers
+- prioritized next steps
+- summary
 
 ### 2) `extract_discharge_blockers`
 Purpose:
