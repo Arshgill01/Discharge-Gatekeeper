@@ -1,0 +1,135 @@
+# Architecture
+
+## System shape
+The project should begin as an MCP-first system designed to plug into Prompt Opinion with patient-context-aware tools.
+
+Recommended shape:
+1. Prompt Opinion Launchpad receives the clinician prompt.
+2. An internal agent or direct tool path invokes our MCP server.
+3. The MCP server reads Prompt Opinion patient/FHIR context.
+4. Tools collect structured context, synthesize blockers, and return bounded outputs.
+5. Prompt Opinion displays the result and, optionally, follow-up artifacts.
+
+## Why MCP first
+MCP is the best fit for the initial wedge because the differentiator is not a free-form external agent runtime. The differentiator is:
+- discharge-specific tool design
+- structured/unstructured context synthesis
+- clear output contracts
+- inspectable tool calls
+
+## Proposed code layout
+Suggested starter layout once implementation begins:
+- `src/` or `app/`
+- `tools/`
+- `schemas/`
+- `prompts/`
+- `tests/` or `smoke/`
+
+Do not overdesign this before the first tool works.
+
+## Context assumptions
+The MCP server should assume Prompt Opinion may provide:
+- FHIR server URL
+- FHIR access token
+- patient identifier via token claims or headers
+
+The community MCP starter demonstrates this pattern:
+- read the FHIR URL and token from request headers
+- recover patient context from the token or fallback header
+- register tools through a simple FastMCP surface
+
+## Core tool responsibilities
+### 1) `assess_discharge_readiness`
+Purpose:
+- return verdict, confidence, top blockers, and summary reasoning
+
+Likely inputs:
+- optional patient ID
+- optional encounter ID
+- optional discharge intent metadata
+
+Likely outputs:
+- verdict
+- confidence band
+- blocker summaries
+- top evidence
+
+### 2) `extract_discharge_blockers`
+Purpose:
+- return a structured blocker list with categories, severity, and supporting evidence
+
+Likely outputs:
+- blocker objects
+- category
+- severity
+- rationale
+- evidence source references
+
+### 3) `generate_transition_plan`
+Purpose:
+- convert blockers and context into an ordered “what must happen next” plan
+
+Likely outputs:
+- prioritized tasks
+- suggested owners
+- timing hints
+- required follow-ups
+
+### 4) `draft_patient_discharge_instructions`
+Purpose:
+- produce patient-facing instructions based on the approved transition plan
+
+Likely outputs:
+- simplified instructions
+- medication reminders
+- follow-up reminders
+- escalation advice boundaries
+
+## Output-contract preference
+Start with a structured response plus concise narrative.
+Avoid pure free text in the first slice.
+Judges should be able to see:
+- a verdict
+- a blocker list
+- evidence anchors
+without digging through prose.
+
+## Evidence design
+Every major blocker should reference one or more evidence sources such as:
+- note type plus excerpt summary
+- medication discrepancy source
+- observation or lab marker
+- missing referral or order
+
+The first slice can use lightweight source labels instead of perfect provenance objects.
+
+## Notes and documents
+The product should not rely on structured FHIR alone.
+Use uploaded note content for:
+- hidden social/logistical blockers
+- home support constraints
+- education gaps
+- unresolved narrative concerns
+
+## Safety boundaries
+The system should:
+- support readiness assessment
+- synthesize evidence
+- assist transition planning
+
+The system should not:
+- claim discharge authority
+- make unsupported medical judgments
+- present risk predictions as certainty
+
+## Error handling
+Useful failures are better than vague failures.
+Tools should fail with messages that make next actions obvious, such as:
+- no patient context found
+- FHIR context unavailable
+- required note source missing
+- evidence insufficient for a confident verdict
+
+## First build target
+The first thin slice should only prove this:
+Given one patient and a small set of structured plus note inputs, the system can correctly return `not_ready` or `ready_with_caveats` with a small blocker list and one transition artifact.
