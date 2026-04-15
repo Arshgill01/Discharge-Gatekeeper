@@ -7,7 +7,8 @@ Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and 
 ## Locked scenario
 - `scenario_id`: `first_synthetic_discharge_slice_v1`
 - Expected verdict: `not_ready`
-- Expected categories: `clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`
+- Expected scenario-triggered categories: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
+- Canonical taxonomy reference (full set): `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`, `administrative_and_documentation`
 
 ## Off-camera prep (30 to 45 seconds)
 1. Run smoke check from `po-community-mcp-main/typescript`:

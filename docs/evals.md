@@ -25,12 +25,14 @@ Allowed verdicts:
 - `not_ready`
 
 Allowed blocker categories:
-- `clinical`
-- `medications`
-- `follow_up`
-- `education`
-- `home_support`
-- `logistics`
+- `clinical_stability`
+- `pending_diagnostics`
+- `medication_reconciliation`
+- `follow_up_and_referrals`
+- `patient_education`
+- `home_support_and_services`
+- `equipment_and_transport`
+- `administrative_and_documentation`
 
 ### Command smoke check
 Run from `po-community-mcp-main/typescript`:
@@ -56,7 +58,8 @@ Expected:
 Expected:
 - six blockers are present
 - each blocker includes category + priority + actionability + evidence ID(s)
-- categories cover all six canonical v1 labels
+- categories cover these scenario-triggered canonical labels: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
+- no blocker uses deprecated labels (`clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`)
 
 ### Prompt 3
 `What must happen before this patient leaves?`

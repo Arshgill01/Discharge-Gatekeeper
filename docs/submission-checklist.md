@@ -47,7 +47,7 @@ Use this one-liner in the video and listing:
 
 Expected first-slice result shape:
 - verdict: `not_ready`
-- blockers: six categories (`clinical`, `medications`, `follow_up`, `education`, `home_support`, `logistics`)
+- blockers: six scenario-triggered canonical categories (`clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`)
 - evidence: source-linked trace entries
 - next steps: ordered, owner-tagged actions
 

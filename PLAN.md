@@ -68,6 +68,10 @@ Current focus (2026-04-15, Agent 1):
 - harden Prompt Opinion integration runtime path for the TypeScript MCP server
 - document local run, dev tunnel, Prompt Opinion connection, and end-to-end smoke steps
 - reduce integration demo risk with lightweight observability and failure-mode guidance
+Current focus (2026-04-15, Agent 1 - taxonomy/contract lane):
+- unify discharge blocker taxonomy and response-contract terminology across readiness code, evals, and demo docs
+- align `assess_discharge_readiness` v1 outputs with canonical blocker labels while preserving stable top-level response keys
+- remove cross-file vocabulary drift to keep judge-path behavior and expectations consistent
 Current focus (2026-04-15, Agent 2):
 - polish `assess_discharge_readiness` output readability (blocker clarity, evidence inspectability, next-step actionability, concise summary wording) without changing frozen v1 keys/categories/verdict labels
 - tighten smoke assertions for demo-facing output consistency and evidence linkage quality
