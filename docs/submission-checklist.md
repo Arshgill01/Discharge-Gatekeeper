@@ -18,6 +18,7 @@ Make the project easy for judges to find, invoke, understand, and trust.
 - public endpoint plan exists
 - integration smoke test exists
 - fallback plan exists if the public URL changes
+- integration runbook is current (`docs/prompt-opinion-integration-runbook.md`)
 
 ## Prompt Opinion checklist
 - server is added correctly

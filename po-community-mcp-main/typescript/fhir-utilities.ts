@@ -20,9 +20,13 @@ export const FhirUtilities = {
       req.headers[McpConstants.FhirAccessTokenHeaderName]?.toString();
 
     if (fhirToken) {
-      const claims = jose.decodeJwt(fhirToken);
-      if (claims["patient"]) {
-        return claims["patient"]?.toString();
+      try {
+        const claims = jose.decodeJwt(fhirToken);
+        if (claims["patient"]) {
+          return claims["patient"]?.toString();
+        }
+      } catch (error) {
+        console.warn("Unable to decode FHIR access token; falling back to x-patient-id header.", error);
       }
     }
 
