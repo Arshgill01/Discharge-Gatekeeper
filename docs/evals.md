@@ -24,6 +24,13 @@ Expected:
   - `generate_transition_plan`: `verdict`, `blockers`, `evidence`, `next_steps`, `summary`
 - outputs stay consistent with `assess_discharge_readiness` for the same scenario input
 
+## Live-context ingest checks
+Expected:
+- request-scoped resolution can derive a `ReadinessInput` from realistic FHIR-derived context
+- structured evidence and note/document evidence coexist in one evidence bundle
+- partial live context surfaces explicit gaps instead of fabricating closure
+- absent live context falls back to the synthetic default scenario path
+
 ## Scenario matrix (success)
 
 ### Case: `first_synthetic_discharge_slice_v1` (primary demo)
@@ -86,6 +93,7 @@ All success cases must continue to satisfy:
 Run from `po-community-mcp-main/typescript`:
 - `npm run smoke:runtime`
 - `npm run smoke:readiness`
+- `npm run smoke:live-context`
 - `npm run smoke:readiness:regression`
 - `npm run smoke:workflow-suite-core`
 - `npm run smoke:artifacts`
@@ -95,6 +103,7 @@ Run from `po-community-mcp-main/typescript`:
 Pass signal:
 - runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - primary smoke prints `SMOKE PASS: assess_discharge_readiness v1`
+- live-context smoke prints `SMOKE PASS: live context evidence ingest`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
 - core-suite smoke prints `SMOKE PASS: workflow suite core`
 - artifact smoke prints `SMOKE PASS: workflow artifacts suite`

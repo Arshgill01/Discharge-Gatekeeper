@@ -106,6 +106,10 @@ Current focus (2026-04-18, Agent 2 - artifact suite expansion):
 - implement `build_clinician_handoff_brief` and `draft_patient_discharge_instructions` as downstream workflow artifacts
 - keep assistive/non-autonomous safety framing explicit in both artifact outputs
 - extend smoke/release-gate coverage so artifact-tool regressions and expanded demo-path breakage are caught pre-demo
+Current focus (2026-04-18, Agent 1 - live-context ingest lane):
+- add a request-scoped resolver that prefers Prompt Opinion patient/FHIR context and realistic note/document ingestion before synthetic scenario fallback
+- derive the shared readiness evidence spine from a minimal high-value structured resource set plus normalized note/document inputs
+- add smoke coverage for live-context ingest, partial-context handling, and synthetic fallback preservation across the workflow suite
 
 ### 5) Evals
 Owner: open

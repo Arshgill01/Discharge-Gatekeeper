@@ -10,11 +10,11 @@ import {
 } from "../discharge-readiness/contract";
 import {
   isSupportedScenarioId,
-  resolveScenarioInput,
 } from "../discharge-readiness/scenario-selection";
+import { resolveWorkflowInputForRequest } from "../discharge-readiness/live-context";
 
 class DraftPatientDischargeInstructionsTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request) {
+  registerTool(server: McpServer, req: Request) {
     server.registerTool(
       V1_PATIENT_INSTRUCTIONS_TOOL_NAME,
       {
@@ -37,8 +37,10 @@ class DraftPatientDischargeInstructionsTool implements IMcpTool {
           );
         }
 
-        const selectedScenario = resolveScenarioInput(scenario_id);
-        const response = draftPatientDischargeInstructionsV1(selectedScenario);
+        const { input } = await resolveWorkflowInputForRequest(req, {
+          scenarioId: scenario_id,
+        });
+        const response = draftPatientDischargeInstructionsV1(input);
         return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
       },
     );
