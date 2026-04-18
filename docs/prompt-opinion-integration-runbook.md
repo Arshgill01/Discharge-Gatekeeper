@@ -136,13 +136,18 @@ Run from `po-community-mcp-main/typescript`:
 
 ```bash
 npm run typecheck
+npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
+npm run smoke:demo-path
 ```
 
-Expected signals:
-- `SMOKE PASS: assess_discharge_readiness v1`
-- `REGRESSION PASS: assess_discharge_readiness matrix`
+Expected:
+- typecheck exits `0`
+- runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
+- smoke prints `SMOKE PASS: assess_discharge_readiness v1`
+- regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
+- demo smoke prints `SMOKE PASS: demo path (3 prompts)`
 
 ## 10) Troubleshooting
 
@@ -226,8 +231,12 @@ Recovery steps:
 
 This runbook supports repeatable verification of:
 
-1. server boots locally
-2. server reachable via public endpoint/tunnel
-3. Prompt Opinion connects to MCP endpoint
-4. `assess_discharge_readiness` appears and is callable
-5. primary 3-prompt scenario runs in Launchpad
+1. `npm run typecheck` passes
+2. `npm run smoke:runtime` passes
+3. `npm run smoke:readiness` passes
+4. `npm run smoke:readiness:regression` passes
+5. `npm run smoke:demo-path` passes
+6. `/healthz` is reachable through the public URL
+7. server boots locally and is reachable via public endpoint/tunnel
+8. Prompt Opinion connection test succeeds and `assess_discharge_readiness` is discovered
+9. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)

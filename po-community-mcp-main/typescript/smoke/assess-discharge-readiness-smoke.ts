@@ -7,10 +7,15 @@ import {
   V1_BLOCKER_CATEGORIES,
 } from "../discharge-readiness/contract";
 import {
-  SECOND_SYNTHETIC_SCENARIO_READY_WITH_CAVEATS_V1,
   THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1,
 } from "../discharge-readiness/scenario-fixtures";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
+import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
+import {
+  SCENARIO_V1_TRUTH,
+  SCENARIO_V2_TRUTH,
+  ScenarioTruth,
+} from "../discharge-readiness/scenario-truth";
 
 const priorityWeight: Record<BlockerPriority, number> = {
   high: 3,
@@ -129,14 +134,50 @@ const assertSharedContractInvariants = (
   );
 };
 
+const assertScenarioTruth = (
+  label: string,
+  response: AssessDischargeReadinessResponse,
+  truth: ScenarioTruth,
+) => {
+  assert.equal(response.verdict, truth.verdict, `${label}: verdict drifted from scenario truth.`);
+  assert.ok(
+    response.summary.includes(truth.summary_phrase),
+    `${label}: summary should include '${truth.summary_phrase}'.`,
+  );
+
+  const categories = new Set(response.blockers.map((blocker) => blocker.category));
+  for (const requiredCategory of truth.required_categories) {
+    assert.ok(categories.has(requiredCategory), `${label}: missing category ${requiredCategory}.`);
+  }
+  for (const forbiddenCategory of truth.forbidden_categories) {
+    assert.ok(
+      !categories.has(forbiddenCategory),
+      `${label}: forbidden category ${forbiddenCategory} should not be present.`,
+    );
+  }
+
+  const priorities: Record<BlockerPriority, number> = {
+    high: 0,
+    medium: 0,
+    low: 0,
+  };
+  for (const blocker of response.blockers) {
+    priorities[blocker.priority] += 1;
+  }
+
+  for (const [priority, expectedCount] of Object.entries(truth.priority_counts)) {
+    const typedPriority = priority as BlockerPriority;
+    assert.equal(
+      priorities[typedPriority],
+      expectedCount,
+      `${label}: unexpected ${typedPriority} blocker count.`,
+    );
+  }
+};
+
 const primary = assessDischargeReadinessV1(FIRST_SYNTHETIC_SCENARIO_V1);
 assertSharedContractInvariants("primary", primary);
-assert.equal(primary.verdict, "not_ready", "primary: expected verdict not_ready.");
-assert.match(
-  primary.summary,
-  /Verdict: NOT READY/,
-  "primary: summary should mirror not_ready verdict.",
-);
+assertScenarioTruth("primary", primary, SCENARIO_V1_TRUTH);
 assert.equal(primary.blockers.length, 6, "primary: expected six blockers.");
 
 const primaryCategorySet = new Set(primary.blockers.map((blocker) => blocker.category));
@@ -159,29 +200,20 @@ const primaryMediumCount = primary.blockers.filter(
 assert.equal(primaryHighCount, 4, "primary: expected four high-priority blockers.");
 assert.equal(primaryMediumCount, 2, "primary: expected two medium-priority blockers.");
 
-const second = assessDischargeReadinessV1(SECOND_SYNTHETIC_SCENARIO_READY_WITH_CAVEATS_V1);
+const second = assessDischargeReadinessV1(SECOND_SYNTHETIC_SCENARIO_V1);
 assertSharedContractInvariants("second", second);
-assert.equal(
-  second.verdict,
-  "ready_with_caveats",
-  "second: expected verdict ready_with_caveats.",
-);
-assert.match(
-  second.summary,
-  /Verdict: READY WITH CAVEATS/,
-  "second: summary should mirror ready_with_caveats verdict.",
-);
-assert.equal(second.blockers.length, 2, "second: expected two caveat blockers.");
-assert.equal(
-  second.blockers.filter((blocker) => blocker.priority === "high").length,
-  0,
-  "second: expected no high-priority blockers.",
-);
+assertScenarioTruth("second", second, SCENARIO_V2_TRUTH);
+assert.equal(second.blockers.length, 4, "second: expected four caveat blockers.");
 const secondCategories = new Set(second.blockers.map((blocker) => blocker.category));
 assert.deepEqual(
   [...secondCategories].sort(),
-  ["follow_up_and_referrals", "patient_education"],
-  "second: expected caveat categories follow_up_and_referrals and patient_education.",
+  [
+    "administrative_and_documentation",
+    "equipment_and_transport",
+    "follow_up_and_referrals",
+    "patient_education",
+  ],
+  "second: expected canonical caveat categories from scenario truth.",
 );
 
 const ambiguity = assessDischargeReadinessV1(THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1);

@@ -99,3 +99,8 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: On macOS, Control Center may occupy `5000`, causing first-run failures and avoidable setup friction during Prompt Opinion demos.
 - Affected files or lanes: implementation, Prompt Opinion integration, local operator runbook
 - Follow-up: Keep docs and compose defaults aligned with `5055` unless a future hosted baseline requires a different standard.
+
+- Decision: Add a pre-demo validation gate that explicitly checks MCP runtime boot (`/healthz`), active tool registration surface (`assess_discharge_readiness` only), canonical contract/taxonomy constants, matrix regression fixtures, and the 3-prompt demo path.
+- Why: Existing smoke checks covered core readiness behavior but left runtime and demo-sequence regressions easier to miss before merge or judge recording.
+- Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
+- Follow-up: Keep `smoke:release-gate` as the default pre-demo command bundle and update fixture/truth checks whenever scenario expectations intentionally change.

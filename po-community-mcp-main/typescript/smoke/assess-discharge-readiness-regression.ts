@@ -6,6 +6,8 @@ import {
   BlockerPriority,
   ReadinessInput,
   V1_BLOCKER_CATEGORIES,
+  V1_TOOL_NAME,
+  V1_VERDICTS,
 } from "../discharge-readiness/contract";
 import {
   READINESS_REGRESSION_FAILURE_CASES,
@@ -20,10 +22,41 @@ const REQUIRED_RESPONSE_KEYS = [
   "summary",
 ] as const;
 
+const EXPECTED_TOOL_NAME = "assess_discharge_readiness";
+const EXPECTED_VERDICTS = ["ready", "ready_with_caveats", "not_ready"] as const;
+const EXPECTED_BLOCKER_CATEGORIES = [
+  "clinical_stability",
+  "pending_diagnostics",
+  "medication_reconciliation",
+  "follow_up_and_referrals",
+  "patient_education",
+  "home_support_and_services",
+  "equipment_and_transport",
+  "administrative_and_documentation",
+] as const;
+
 const PRIORITY_WEIGHT: Record<BlockerPriority, number> = {
   high: 3,
   medium: 2,
   low: 1,
+};
+
+const assertFrozenContractConstants = (): void => {
+  assert.equal(
+    V1_TOOL_NAME,
+    EXPECTED_TOOL_NAME,
+    "Tool name drift detected; canonical MCP tool must remain assess_discharge_readiness.",
+  );
+  assert.deepEqual(
+    [...V1_VERDICTS],
+    [...EXPECTED_VERDICTS],
+    "Verdict taxonomy drift detected against frozen canonical verdict states.",
+  );
+  assert.deepEqual(
+    [...V1_BLOCKER_CATEGORIES],
+    [...EXPECTED_BLOCKER_CATEGORIES],
+    "Blocker taxonomy drift detected against frozen canonical category set.",
+  );
 };
 
 const countPriorities = (response: AssessDischargeReadinessResponse): Record<BlockerPriority, number> => {
@@ -49,6 +82,10 @@ const assertCanonicalResponseShape = (
     responseKeys,
     [...REQUIRED_RESPONSE_KEYS].sort(),
     `${caseId}: response keys must match frozen v1 contract`,
+  );
+  assert.ok(
+    V1_VERDICTS.includes(response.verdict),
+    `${caseId}: verdict '${response.verdict}' is outside canonical verdict taxonomy.`,
   );
 
   const allowedCategories = new Set(V1_BLOCKER_CATEGORIES);
@@ -80,6 +117,22 @@ const assertCanonicalResponseShape = (
 
   const blockerIds = new Set(response.blockers.map((blocker) => blocker.id));
   const evidenceIds = new Set(response.evidence.map((trace) => trace.id));
+  assert.equal(
+    blockerIds.size,
+    response.blockers.length,
+    `${caseId}: blocker IDs must remain unique.`,
+  );
+  assert.equal(
+    evidenceIds.size,
+    response.evidence.length,
+    `${caseId}: evidence IDs must remain unique.`,
+  );
+  const nextStepIds = new Set(response.next_steps.map((step) => step.id));
+  assert.equal(
+    nextStepIds.size,
+    response.next_steps.length,
+    `${caseId}: next step IDs must remain unique.`,
+  );
 
   for (const blocker of response.blockers) {
     assert.ok(blocker.evidence.length > 0, `${caseId}: blocker ${blocker.id} must include evidence`);
@@ -131,6 +184,8 @@ const assertCanonicalResponseShape = (
       linkedBlocker.priority,
       `${caseId}: next step ${step.id} priority must match blocker ${linkedBlockerId}`,
     );
+    assert.ok(step.owner.trim().length > 0, `${caseId}: next step ${step.id} owner is required`);
+    assert.ok(step.action.trim().length > 0, `${caseId}: next step ${step.id} action is required`);
   }
 };
 
@@ -199,6 +254,7 @@ const assertFailureCase = (): void => {
   }
 };
 
+assertFrozenContractConstants();
 assertSuccessCase();
 assertFailureCase();
 

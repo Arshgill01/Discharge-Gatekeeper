@@ -114,6 +114,10 @@ Current focus (2026-04-15, Agent 3 - scenario regression lane):
 Current focus (2026-04-15, Agent 3):
 - add prompt-based smoke evals and expected outputs for the first readiness scenario
 - define explicit pass/fail checks for evidence-backed blocker output
+Current focus (2026-04-18, Agent 2 - validation net hardening):
+- add runtime boot + tool-registration smoke checks so breakage in MCP startup surface is caught before demo/judging
+- strengthen regression assertions for frozen contract keys, canonical verdict/category taxonomy, and scenario-truth separation
+- add a repeatable 3-prompt demo-path smoke check and wire a pre-demo validation bundle command
 
 ### 6) Demo and submission
 Owner: open
