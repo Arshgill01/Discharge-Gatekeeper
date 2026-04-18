@@ -1,208 +1,185 @@
 # AGENTS.md
+
 ## Mission
 Build a judge-winning Prompt Opinion submission for Agents Assemble.
-The product is **Discharge Gatekeeper**: an MCP-first healthcare agent that determines whether a patient is safe for discharge, identifies blockers with evidence, and assembles the next-step transition plan.
-Everything in this repo should improve the odds of a clean Prompt Opinion demo, a reliable Marketplace publish flow, and a strong sub-3-minute judging story.
+The system identity is **Care Transitions Command**.
 
-## Why this repo exists
-This repository is the operating system for parallel Codex work.
-Optimize for rapid understanding, low coordination overhead, thin vertical slices, reliable Prompt Opinion integration, demo-first execution, and judge-proof packaging.
+Care Transitions Command is composed of:
+- **Discharge Gatekeeper MCP**
+- **Clinical Intelligence MCP**
+- **external A2A orchestrator**
 
-## Priorities
-Primary goal:
-1. Deliver an MCP server that works inside Prompt Opinion.
-2. Support patient-context-aware discharge-readiness assessment.
-3. Surface clear blockers, evidence, and next-step outputs.
-4. Make the demo and submission path reliable.
-Secondary goal: keep the architecture clean enough to extend after the hackathon.
-Do not trade the primary goal for speculative architecture purity.
+Everything in this repo should improve the odds of a clean 3-prompt demo, a reliable Prompt Opinion path, and a credible Marketplace submission.
 
-## System of record
-Treat this file as the map, not the encyclopedia.
-The deeper source of truth lives in `docs/`.
-Read these first:
-1. `docs/product-brief.md`
-2. `docs/architecture.md`
-3. `docs/demo-script.md`
-4. `docs/evals.md`
-5. `docs/submission-checklist.md`
-Read these for specialized work:
-- `docs/mcp-reference-analysis.md`
-- `docs/data-plan.md`
-- `docs/parallel-workplay.md`
-- `docs/decisions.md`
+## North star
+The product is not a generic discharge copilot.
+It is a care-transitions control system that catches a hidden discharge risk when the contradiction lives in narrative evidence, not in the clean structured snapshot.
 
-## Product thesis
-Discharge Gatekeeper is not a generic hospital copilot.
-It is a discharge control-tower agent.
-Core job: decide whether a patient is safe for discharge now.
-Support jobs: identify blockers, cite evidence from notes and structured context, produce a prioritized next-step plan, and generate clinician and patient transition outputs.
-The product should answer:
-- Is this patient safe to discharge today?
-- If not, what exactly is blocking discharge?
-- What must happen before the patient leaves?
-- What transition outputs should the team send now?
+The core demo moment is:
+1. the patient looks discharge-ready on the deterministic structured spine
+2. a note-level contradiction surfaces a hidden risk
+3. the system escalates to `not_ready`, cites the evidence, and tells the team what must happen next
 
-## Submission lane
-Default lane: **MCP-first**.
-Use Prompt Opinion internal A2A only as a thin wrapper if it improves integration or demo flow.
-Do not start with an external A2A architecture unless the repo owner explicitly changes the plan.
+If a change weakens that moment, question it.
 
-## Non-goals
-Do not drift into diagnosis generation, differential generation, treatment recommendation beyond transition support, general-purpose care navigation, broad hospital operations platforms, external-agent-first complexity, pretty dashboards with weak workflow value, or complex infra that does not improve the judging path.
+## Locked system identity
+Freeze these unless an explicit decision changes them:
+- top-level system identity: `Care Transitions Command`
+- existing MCP identity: `Discharge Gatekeeper MCP`
+- new MCP identity: `Clinical Intelligence MCP`
+- new agent identity: `external A2A orchestrator`
+
+## Locked architecture
+Freeze these unless an explicit decision changes them:
+- `2 MCPs + 1 external A2A`
+- no custom frontend
+- no third MCP
+- no A2A streaming
+- Prompt Opinion is the demo surface
+- deterministic structured discharge spine remains foundational
+- hidden-risk contradiction is the core spec
+
+## Component responsibilities
+### Discharge Gatekeeper MCP
+Owns the deterministic discharge spine:
+- structured patient-context normalization
+- discharge-readiness posture from bounded structured evidence
+- canonical blocker taxonomy
+- next-step spine and transition scaffolding
+
+### Clinical Intelligence MCP
+Owns bounded narrative intelligence:
+- note and document contradiction detection
+- hidden-risk discovery
+- evidence-backed escalation or de-escalation against the structured posture
+- concise contradiction summaries for judge-visible outputs
+
+### external A2A orchestrator
+Owns prompt-level coordination:
+- receives the Prompt Opinion prompt
+- calls the right MCPs in the right order
+- fuses deterministic and narrative evidence into one answer
+- keeps the user-visible response aligned to the 3-prompt demo
+
+## Phase sequence
+1. Phase 0: vision lock, trap-patient lock, repo scaffold reset
+2. Phase 1: Clinical Intelligence MCP hidden-risk contract and contradiction detection
+3. Phase 2: two-MCP integrated story on top of the existing Discharge Gatekeeper MCP structured spine
+4. Phase 3: external A2A orchestrator integration
+5. Phase 4: 3-prompt demo collapse and Prompt Opinion operator hardening
+6. Phase 5: Marketplace and judging packaging
 
 ## Canonical demo shape
-Primary demo path:
-1. User asks in Prompt Opinion Launchpad: “Is this patient safe to discharge today?”
-2. The orchestrating agent/toolchain reads patient context, pulls structured FHIR data, uses uploaded notes/documents, runs discharge-readiness tools, and returns a verdict plus blockers and evidence.
-3. Follow-up prompts:
-   - “What exactly must happen before discharge?”
-   - “Prepare the transition package.”
-Any change that weakens this flow is suspect.
+The final demo is 3 prompts:
+1. `Is this patient safe to discharge today?`
+2. `What hidden risk changed that answer? Show me the contradiction and the evidence.`
+3. `What exactly must happen before discharge, and prepare the transition package.`
 
 ## Canonical verdict states
-Use these exact states unless an ADR changes them:
+Use these exact states unless a logged decision changes them:
 - `ready`
 - `ready_with_caveats`
 - `not_ready`
-Avoid inventing alternate labels in different files.
 
 ## Canonical blocker categories
-Use these canonical top-level blocker categories:
-- clinical_stability
-- pending_diagnostics
-- medication_reconciliation
-- follow_up_and_referrals
-- patient_education
-- home_support_and_services
-- equipment_and_transport
-- administrative_and_documentation
-You may add subcategories, but do not casually rename these.
+Use these exact top-level categories unless a logged decision changes them:
+- `clinical_stability`
+- `pending_diagnostics`
+- `medication_reconciliation`
+- `follow_up_and_referrals`
+- `patient_education`
+- `home_support_and_services`
+- `equipment_and_transport`
+- `administrative_and_documentation`
 
 ## Canonical outputs
-The repo should converge on these outputs:
+The repo should converge on these visible outputs:
 1. discharge readiness verdict
 2. blocker list with severity
 3. evidence trace by source
 4. prioritized next-step checklist
 5. clinician handoff brief
 6. patient-friendly discharge instructions
-Keep contracts stable once adopted.
+
+## System of record
+Treat this file as the map, not the encyclopedia.
+Read these first:
+1. `PLAN.md`
+2. `docs/phase0-vision-lock.md`
+3. `docs/product-brief.md`
+4. `docs/architecture.md`
+5. `docs/demo-script.md`
+6. `docs/phase0-trap-patient-spec.md`
+
+Read these next when relevant:
+- `docs/data-plan.md`
+- `docs/evals.md`
+- `docs/submission-checklist.md`
+- `docs/prompt-opinion-integration-runbook.md`
+- `docs/parallel-workplay.md`
+- `docs/decisions.md`
 
 ## Working norms
 When making changes:
-1. Read the relevant docs first.
-2. Update the narrowest thing that solves the problem.
-3. Preserve existing contracts unless there is a documented reason to change them.
-4. Write down important decisions in `docs/decisions.md`.
-5. Prefer incremental vertical slices over large speculative rewrites.
-
-## Parallel work
-This repo is designed for many simultaneous agents.
-To reduce collisions: claim one workstream at a time, stay inside that workstream’s scope, update the plan if you change priorities, and leave crisp handoff notes in the docs or commit summary.
-Main workstreams:
-- product
-- architecture
-- data
-- implementation
-- evals
-- demo/submission
-Use `docs/parallel-workplay.md` before starting large changes.
+1. Preserve the locked system identity.
+2. Preserve the `2 MCPs + 1 external A2A` architecture.
+3. Prefer the narrowest change that sharpens the core 3-prompt demo.
+4. Update `PLAN.md` when priorities or phases change.
+5. Record cross-workstream decisions in `docs/decisions.md`.
+6. Do not touch runtime code unless your task explicitly owns implementation work.
 
 ## File routing
 Use this routing:
+- system and repo front door -> `README.md`
+- agent operating rules -> `AGENTS.md`
+- live priorities and sequencing -> `PLAN.md`
 - product framing -> `docs/product-brief.md`
-- architecture and tool contracts -> `docs/architecture.md`
-- MCP starter analysis -> `docs/mcp-reference-analysis.md`
+- architecture and component boundaries -> `docs/architecture.md`
 - demo flow -> `docs/demo-script.md`
-- evaluation prompts and expected behavior -> `docs/evals.md`
-- synthetic patient and note design -> `docs/data-plan.md`
-- publish/judging tasks -> `docs/submission-checklist.md`
-- project state and next tasks -> `PLAN.md`
+- canonical synthetic patient -> `docs/phase0-trap-patient-spec.md`
+- data strategy -> `docs/data-plan.md`
+- parallel work coordination -> `docs/parallel-workplay.md`
+- logged decisions -> `docs/decisions.md`
 
-## Coding guidance
-Prefer explicit names, small modules, thin orchestration layers, stable typed contracts, and boring reliability over clever abstractions.
-For MCP and integration code:
-- keep tool boundaries sharp
-- keep prompts short and intentional
-- keep response schemas easy to inspect
-- make failures legible
+## Tool and prompt guidance
+Prefer sharp boundaries over broad tools.
+Each MCP should do a specific job.
+The orchestrator should compose, not impersonate both MCPs with one vague prompt.
 
-## Tool-design guidance
-Every tool should justify its existence.
-A tool should do one of these:
-- fetch or normalize high-value context
-- assess a concrete discharge question
-- extract or structure blockers
-- produce a bounded transition artifact
-Avoid vague “do everything” tools.
-Each tool should have a narrow purpose, a clear input contract, a stable output shape, and a useful error path.
-
-## Prompt-design guidance
-Prompt Opinion judging will reward clarity and reliability.
-Do not write fluffy prompts.
-Prompts should state the job, state the boundary, state the output contract, and prefer evidence over confident prose.
-Avoid overclaiming clinical certainty.
-The system assists human review; it does not replace it.
+Prompts and outputs should:
+- state the job clearly
+- stay evidence-backed
+- avoid autonomous medical language
+- keep reasoning bounded and inspectable
 
 ## Demo-first rule
-A change is more valuable if it improves at least one of:
-- correctness of the readiness verdict
-- clarity of blocker evidence
-- quality of transition outputs
-- reliability of the Prompt Opinion call path
-- sharpness of the 3-minute demo
-If a change does not improve any of those, question it.
+A change is valuable if it improves at least one of:
+- correctness of the final discharge verdict
+- clarity of the contradiction moment
+- quality of blocker evidence
+- actionability of the transition package
+- reliability of the Prompt Opinion path
 
-## Documentation rules
-Keep AGENTS short enough to be skimmable.
-Put detail in `docs/`.
-When you discover something important, add it to the right doc rather than as random prompt lore.
-Avoid duplicating long instructions across many files.
-Prefer one canonical source plus cross-references.
+If it improves none of these, question it.
 
-## PLAN and decisions
-`PLAN.md` is live.
-Update it when priorities change, a workstream is blocked, a milestone is completed, a new immediate task becomes top priority, or a significant risk appears.
-Use `docs/decisions.md` for contract changes, lane changes, naming changes, blocker taxonomy changes, major architecture changes, and demo-scope cuts.
-Keep entries short, dated, and explicit.
+## Non-goals
+Do not drift into:
+- a custom frontend
+- a third MCP
+- streaming A2A orchestration
+- diagnosis generation
+- generic hospital operations dashboards
+- open-ended care-management scope
+- flashy UX work that bypasses Prompt Opinion
 
 ## Safety and quality bar
 This is a healthcare workflow project.
 Be conservative in claims.
-Do not imply autonomous discharge authority, guaranteed safety, readmission prediction certainty, or medical advice beyond workflow support.
-Outputs should be framed as readiness support, blocker detection, evidence synthesis, and transition coordination.
-
-## Reference implementation guidance
-The Prompt Opinion community MCP repo is a pattern source, not a blueprint to copy blindly.
-Borrow integration shape, FHIR-context handling patterns, simple tool registration style, and boring starter structure.
-Do not inherit toy naming, template-level assumptions, or overly generic tool semantics.
-
-## Change hygiene
-Make narrowly scoped commits.
-Avoid giant mixed-purpose diffs.
-If touching docs and code together, keep the rationale obvious.
-If a change alters the demo path, say so clearly in the summary.
-
-## When unsure
-Choose the option that:
-1. keeps the discharge wedge sharper
-2. keeps the Prompt Opinion path more reliable
-3. keeps the demo more legible
-4. keeps the repo easier for parallel agents to navigate
-
-## First-response checklist
-Before changing files:
-1. Read `PLAN.md`.
-2. Read the two most relevant docs in `docs/`.
-3. Restate the exact subtask to yourself.
-4. Identify the narrowest useful change.
-5. Confirm that the change helps the core demo path.
-6. Then start.
+Do not imply autonomous discharge authority or guaranteed safety.
+The system assists human review by surfacing readiness posture, contradictions, blockers, evidence, and next actions.
 
 ## Final reminder
-This repo is not trying to be the final form of healthcare agents.
-It is trying to win this hackathon with a product that is specific, credible, inspectable, demoable, and publishable.
-Keep the wedge sharp.
-Keep the workflow real.
-Keep the demo sacred.
+This repo is trying to win a hackathon with a system that is specific, credible, inspectable, and demoable.
+Keep the system definition locked.
+Keep the hidden-risk contradiction sharp.
+Keep the 3-prompt demo sacred.

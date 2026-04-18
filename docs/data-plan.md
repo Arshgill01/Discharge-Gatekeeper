@@ -1,88 +1,92 @@
 # Data Plan
 
 ## Goal
-Create one synthetic patient scenario that makes the discharge-readiness story obvious, realistic, and demo-friendly.
+Create one canonical synthetic patient that makes the Care Transitions Command architecture necessary, credible, and demoable.
 
-## Design principles
-- One patient is enough for the first demo.
-- Use 3 to 4 meaningful blockers.
-- Make at least one blocker visible only in notes, not just structured data.
-- Keep the case easy to explain in a sentence.
+The canonical patient for phase 0 is locked in:
+- `docs/phase0-trap-patient-spec.md`
 
-## Recommended first patient
-A medically improving patient who looks close to discharge, but still has hidden transition blockers.
+## Data-design law
+The patient must support this exact sequence:
+1. structured data alone suggests discharge is acceptable
+2. narrative evidence reveals a contradiction
+3. the final system answer changes because of that contradiction
 
-### Suggested shape
-- adult patient
-- recent hospitalization for a condition that plausibly requires follow-up and medication changes
-- one unresolved clinical/logistical issue
-- one medication or education issue
-- one follow-up/referral issue
-- one home support or equipment issue
+If the data does not force that sequence, it is the wrong patient.
 
-## Example blocker mix
-- home oxygen need not fully coordinated
-- medication reconciliation mismatch between active meds and note plan
-- follow-up referral not yet scheduled
-- patient education or home support gap documented in case-management note
+## What the canonical patient must prove
+- Discharge Gatekeeper MCP can build a deterministic structured posture
+- Clinical Intelligence MCP has real work to do
+- the external A2A orchestrator has a meaningful fusion job
+- the 3-prompt demo stays legible
 
-## Minimum structured data
-Start with a minimal but credible set:
-- Patient
-- Encounter
-- Condition
-- Observation
-- MedicationRequest or MedicationStatement
-- AllergyIntolerance if useful
-- ServiceRequest or Appointment if available
+## Structured data requirements
+The structured layer should be intentionally clean enough to support a provisional `ready` posture.
 
-Do not try to model the entire hospitalization.
+Minimum structured resources:
+- `Patient`
+- `Encounter`
+- `Condition`
+- `Observation`
+- `MedicationRequest`
+- `Appointment`
+- optional `ServiceRequest`
 
-## Minimum note set
-At minimum:
-1. progress note
-2. case-management or discharge-planning note
-3. medication or discharge instruction note
+Structured design rules:
+- stable resting vitals
+- no obvious pending diagnostics blocker
+- medications appear discharge-ready
+- follow-up appears scheduled
+- no structured field should trivially expose the hidden risk
 
-Optional:
-- consult note
-- nursing note
-- referral note
+## Note and document requirements
+The note bundle is where the trap lives.
 
-## Evidence strategy
-Each blocker should be discoverable from one or more sources:
-- structured FHIR signal
-- note/document evidence
+Minimum note set:
+1. hospitalist or discharge progress note that supports discharge
+2. therapy or respiratory note that is incomplete or reassuring in a narrow way
+3. one hidden-risk note that clearly contradicts the structured posture
+4. optional case-management addendum that reinforces the contradiction
 
-This is important because the demo should clearly show that the agent is synthesizing across data types.
+Narrative design rules:
+- the contradiction must be explicit
+- at least one note must materially change the verdict
+- the hidden-risk note must be explainable aloud in one sentence
+- the notes should not read like an eval answer key
 
-## Artifact strategy
-Prepare at least:
-- one clinician-facing handoff summary
-- one patient-facing discharge instruction draft
+## Canonical contradiction pattern
+Use this pattern for the phase-0 patient:
+- resting structured picture says discharge looks acceptable
+- hidden note says exertional instability appears in real movement
+- hidden note also exposes a home oxygen or home-support failure the structured view does not show
 
-Both should be grounded in the same patient scenario.
+This creates a believable multi-source blocker cluster without making the case melodramatic.
 
-## Data realism rules
-- keep language believable
-- avoid overdramatic pathology
-- avoid obscure conditions that require too much explanation
-- avoid unrealistic all-in-one notes that make the task too easy
+## Expected blocker outcome
+The canonical trap patient should end with these active blocker categories:
+- `clinical_stability`
+- `equipment_and_transport`
+- `home_support_and_services`
 
-## First-slice target
-The first data pack is done when a tool can confidently produce:
-- one verdict
-- three to four blockers
-- one next-step plan
-- one patient-facing artifact
+The structured-only posture before narrative escalation should remain:
+- `ready`
 
-## Regression expansion (v2/v3)
-Keep the primary demo scenario as the default.
-Add a small canonical scenario pack that covers all verdict states without turning into a large fixture zoo:
-- `second_synthetic_discharge_slice_ready_with_caveats_v1`: `ready_with_caveats`; proves caveat handling without high-priority blockers; expected triggered categories are `follow_up_and_referrals`, `patient_education`, `equipment_and_transport`, `administrative_and_documentation`
-- `third_synthetic_discharge_slice_ready_v1`: `ready`; proves the workflow can clear all blockers in a believable discharge-ready case; expected triggered categories are none
+The final fused posture after contradiction review should be:
+- `not_ready`
 
-Evidence-mix rule for the expanded pack:
-- across the three canonical scenarios, structured data, notes, and documents should all matter
-- at least one non-primary scenario should use document evidence, not only note text
-- ambiguity, contradiction, and insufficient-evidence fixtures stay in the robustness lane and do not replace the three success scenarios
+## Artifact requirements
+The same patient must support:
+- a contradiction summary
+- a prioritized next-step checklist
+- a clinician handoff brief
+- patient-facing hold/discharge instructions
+
+## Out of scope for phase 0
+- a large scenario zoo
+- custom FHIR breadth beyond the high-value resources
+- obscure clinical edge cases
+- synthetic data that requires long bedside explanation
+
+## Later-phase expansion rule
+Additional scenarios can come later for eval breadth.
+They must not replace the canonical trap patient as the primary demo anchor.

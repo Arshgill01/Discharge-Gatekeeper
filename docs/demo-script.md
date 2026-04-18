@@ -1,115 +1,102 @@
 # Demo Script
 
 ## Goal
-Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and one tool call path:
-`assess_discharge_readiness`.
+Deliver a 3-prompt Prompt Opinion demo that proves Care Transitions Command can stop an unsafe discharge when the hidden risk only becomes visible after note contradiction review.
 
-## Locked scenario
-- `scenario_id`: `first_synthetic_discharge_slice_v1`
-- Expected verdict: `not_ready`
-- Expected scenario-triggered categories: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
-- Canonical taxonomy reference (full set): `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`, `administrative_and_documentation`
-- Regression companions (off-camera): `second_synthetic_discharge_slice_ready_with_caveats_v1` -> `ready_with_caveats`; `third_synthetic_discharge_slice_ready_v1` -> `ready`
-- These protect verdict breadth without replacing the primary demo path.
+## Demo thesis
+The patient looks discharge-ready on the deterministic structured spine.
+The notes contradict that posture.
+The system catches the contradiction, flips the answer, and tells the team what happens next.
 
-## Off-camera prep (30 to 45 seconds)
-1. Run smoke check from `po-community-mcp-main/typescript`:
-   - `npm run smoke:release-gate`
-   - this now covers typecheck plus all three canonical success scenarios and the ambiguity/failure robustness lane
-2. Confirm runtime/tool surface explicitly:
-   - `npm run smoke:runtime`
-   - `/healthz` shows the workflow-suite tools: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`
-3. Open Prompt Opinion workspace and select the synthetic patient context.
-4. Keep one view ready where verdict, blockers, and evidence IDs are visible together.
+## Locked demo architecture
+The demo story assumes:
+- Discharge Gatekeeper MCP produces the structured posture
+- Clinical Intelligence MCP surfaces the hidden contradiction
+- the external A2A orchestrator fuses both into one answer
+- Prompt Opinion is the only user-facing surface
 
-## On-camera 3-prompt flow
+## Canonical patient
+Use the patient defined in `docs/phase0-trap-patient-spec.md`.
 
-### Prompt 1
+Structured posture before note escalation:
+- `ready`
+
+Final system posture after contradiction review:
+- `not_ready`
+
+## Prompt 1
 User prompt:
 `Is this patient safe to discharge today?`
 
 Show on screen:
-- explicit verdict (`not_ready`)
-- one-sentence summary with blocker count and priority mix
+- final verdict: `not_ready`
+- one-line explanation that the structured discharge spine looked ready, but narrative evidence forced escalation
+- blocker count and top blocker categories
 
-Expected value:
-- proves this is a decision-support control point, not a generic summary bot
+What this proves:
+- the system is not doing generic summarization
+- the answer can change when evidence outside the structured snapshot matters
 
-### Prompt 2
+## Prompt 2
 User prompt:
-`What exactly is blocking discharge right now?`
+`What hidden risk changed that answer? Show me the contradiction and the evidence.`
 
 Show on screen:
-- six blockers with category + priority + actionability
-- evidence linkage per blocker
-- one concise provenance/trust line per blocker so source labels and conflict/uncertainty markers are visible without dumping raw reasoning
+- the structured posture before escalation: `ready`
+- the contradiction summary
+- the exact note-backed hidden risk
+- impacted blocker categories:
+  - `clinical_stability`
+  - `equipment_and_transport`
+  - `home_support_and_services`
 
-Expected value:
-- shows structured, inspectable blockers grounded in chart/note evidence
+What this proves:
+- the AI factor is contradiction detection, not vague prose
+- the system can point to the evidence that changed the decision
 
-### Prompt 3
+This is the holy-shit moment.
+
+## Prompt 3
 User prompt:
-`What must happen before this patient leaves?`
+`What exactly must happen before discharge, and prepare the transition package.`
 
 Show on screen:
-- ordered `next_steps` list
-- owner + linked blocker for each step
-- linked evidence and short trace summary for at least one step
+- prioritized next steps with owner and timing
+- clinician handoff brief
+- patient-facing hold/discharge guidance aligned to the blockers
+- evidence-linked rationale for the top actions
 
-Expected value:
-- converts blockers into an execution-ready transition checklist for the care team
+What this proves:
+- the system moves from detection to execution
+- the contradiction is operationalized into a usable transition package
 
-## Optional 2-prompt expansion (show bigger suite)
-
-### Prompt 4
-User prompt:
-`Build the clinician handoff brief.`
-
-Show on screen:
-- unresolved risks tied to blocker IDs and evidence IDs
-- unresolved risk trust state / trace summary carried forward from blocker provenance
-- explicit clinician-review/sign-off boundary text
-
-### Prompt 5
-User prompt:
-`Draft patient discharge instructions.`
-
-Show on screen:
-- plain-language instructions mapped one-to-one to blocker IDs
-- explicit clinician-finalization boundary text
-
-## Expected output snapshot (first slice)
-- Verdict: `not_ready`
-- Blockers: 6 total (4 `high`, 2 `medium`)
-- Evidence trace entries: 6 total, each linked to blocker IDs
-- Next steps: 6 total, one mapped to each blocker
-- Summary anchor: discharge deferred until high-priority blockers are resolved and clinically reviewed
-
-## Narration lines (keep these short)
-- Prompt 1: "We ask one question first: is discharge safe today?"
-- Prompt 2: "Now we inspect exactly what is blocking discharge, with source-linked evidence."
-- Prompt 3: "Then we move from analysis to execution with owner-assigned next steps."
+## Narration lines
+- Prompt 1: "The structured chart looked ready, but the system did not stop there."
+- Prompt 2: "This note contradiction is why discharge becomes unsafe."
+- Prompt 3: "Now the team gets the exact actions and handoff package needed to hold discharge safely."
 
 ## Show vs skip
 Show:
-- verdict field
-- blocker categories and priorities
-- evidence IDs/source labels tied to blockers
-- blocker provenance summaries or trust-state indicators
+- final verdict
+- structured posture before escalation
+- exact contradiction summary
+- source-linked blockers
 - next-step owners
 
 Skip:
-- long setup explanation of MCP internals
-- raw note wall-of-text
+- generic architecture explanation
+- raw note walls
 - extra patients
-- speculative roadmap features
+- custom UI mockups
+- roadmap features outside the 3-prompt story
 
-## Fallback if output is partially degraded
-If a richer view fails, keep the story intact in this order:
-1. verdict
-2. blocker list with at least one evidence link
-3. top 3 next steps with owners
+## Fallback rule
+If the richer display degrades, preserve the story in this order:
+1. final verdict
+2. structured posture before escalation
+3. exact contradiction
+4. top next steps
 
 ## Done check
-A teammate can run this script and explain the value in 15 seconds:
-"It decides readiness, shows why with evidence, and tells the team what to do next."
+A judge should be able to explain the product in one sentence:
+"It caught the hidden note contradiction that turned a discharge-ready chart into an unsafe discharge."
