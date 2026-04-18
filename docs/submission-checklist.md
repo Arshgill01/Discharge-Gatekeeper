@@ -26,6 +26,7 @@ Do not say:
 - `Clinical Intelligence MCP` as the hidden-risk and contradiction layer
 - `external A2A orchestrator` as the preferred final demo path
 - a direct-MCP fallback path that still works without the A2A layer
+- explicit proof that the direct two-MCP path already demonstrates stronger AI value than structured-only discharge logic
 
 ## Final 3-prompt demo requirements
 
@@ -83,6 +84,8 @@ Must show:
 - the A2A path is synchronous and demo-safe
 - no workflow step depends on hidden local state
 - the direct-MCP fallback path has been rehearsed
+- the trap contradiction is measurable and note-dependent in the two-MCP fallback path
+- clean control behavior stays bounded (`no_hidden_risk`, no forced escalation)
 
 ## Trust checklist
 - outputs remain assistive, not autonomous
@@ -98,11 +101,20 @@ Must show:
 - keep the narration focused on verdict, hidden risk, and next actions
 - do not spend recording time on registration mechanics
 
+## Phase 2 readiness before A2A phase
+Must be true before moving to A2A implementation as the primary quality lane:
+- `docs/phase2-two-mcp-expected-output-matrix.md` is aligned with runtime smoke behavior
+- phase-2 trap and control checks pass via:
+  - `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
+  - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+- Prompt 1/2/3 fallback story is documented in `docs/demo-script.md` and `docs/prompt-opinion-integration-runbook.md`
+- citation and parseability failure behavior remains catchable by smoke gates
+
 ## Last-minute cut order
 Protect these in order:
 1. `Discharge Gatekeeper MCP` working in Prompt Opinion
 2. `Clinical Intelligence MCP` returning bounded hidden-risk findings with citations
-3. direct-MCP fallback story
+3. direct-MCP fallback story with measurable trap/control proof
 4. `external A2A orchestrator` polish
 
 ## Submission fail conditions
