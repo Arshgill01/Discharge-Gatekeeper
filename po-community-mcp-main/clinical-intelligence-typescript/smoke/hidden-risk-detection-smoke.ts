@@ -1,9 +1,40 @@
 import assert from "node:assert/strict";
+import { HiddenRiskLlmClient } from "../llm/client";
+import { HIDDEN_RISK_SYSTEM_PROMPT } from "../clinical-intelligence/prompt-contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
 import {
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
+import {
+  CONTROL_HIDDEN_RISK_EXPECTED_MATRIX,
+  TRAP_HIDDEN_RISK_EXPECTED_MATRIX,
+} from "../clinical-intelligence/expected-output-matrix";
+
+const assertFindingCitationQuality = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
+  const payload = result.payload;
+
+  for (const finding of payload.hidden_risk_findings) {
+    assert.ok(
+      finding.citation_ids.length >= TRAP_HIDDEN_RISK_EXPECTED_MATRIX.minimum_citations_per_finding,
+      `Finding ${finding.finding_id} must include at least ${TRAP_HIDDEN_RISK_EXPECTED_MATRIX.minimum_citations_per_finding} citation(s).`,
+    );
+
+    for (const citationId of finding.citation_ids) {
+      const citation = payload.citations.find((item) => item.citation_id === citationId);
+      assert.ok(citation, `Finding ${finding.finding_id} references unknown citation ${citationId}.`);
+      assert.ok(
+        citation && citation.locator.trim().length > 0,
+        `Citation ${citationId} must include a non-empty locator.`,
+      );
+      assert.ok(
+        citation && citation.excerpt.trim().length >= 20,
+        `Citation ${citationId} must include a meaningful excerpt.`,
+      );
+    }
+  }
+};
 
 const assertTrapPatientBehavior = async (): Promise<void> => {
   const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
@@ -11,19 +42,25 @@ const assertTrapPatientBehavior = async (): Promise<void> => {
 
   assert.equal(payload.contract_version, "phase0_hidden_risk_v1");
   assert.equal(payload.status, "ok");
-  assert.equal(payload.hidden_risk_summary.result, "hidden_risk_present");
+  assert.equal(
+    payload.hidden_risk_summary.result === "hidden_risk_present",
+    TRAP_HIDDEN_RISK_EXPECTED_MATRIX.should_find_hidden_risk,
+  );
+  assert.equal(payload.hidden_risk_summary.overall_disposition_impact, "not_ready");
   assert.equal(payload.hidden_risk_findings.length > 0, true);
 
   const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
-  assert.ok(categories.has("clinical_stability"));
-  assert.ok(categories.has("equipment_and_transport"));
-  assert.ok(categories.has("home_support_and_services"));
+  for (const category of TRAP_HIDDEN_RISK_EXPECTED_MATRIX.expected_categories) {
+    assert.ok(categories.has(category), `Expected trap category '${category}' to be present.`);
+  }
 
   const citedSourceLabels = new Set(payload.citations.map((citation) => citation.source_label));
-  assert.ok(
-    [...citedSourceLabels].some((label) => label.includes("Nursing Note 2026-04-18 20:40")),
-    "Expected hidden-risk output to cite the canonical contradiction nursing note.",
-  );
+  for (const expectedSource of TRAP_HIDDEN_RISK_EXPECTED_MATRIX.required_citation_source_labels) {
+    assert.ok(
+      [...citedSourceLabels].some((label) => label.includes(expectedSource)),
+      `Expected hidden-risk output to cite or reference '${expectedSource}'.`,
+    );
+  }
 
   for (const finding of payload.hidden_risk_findings) {
     assert.ok(finding.citation_ids.length > 0, `Finding ${finding.finding_id} is missing citations.`);
@@ -42,13 +79,134 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
 
   assert.equal(payload.status, "ok");
   assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
-  assert.equal(payload.hidden_risk_summary.overall_disposition_impact, "none");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
+  assert.equal(
+    payload.hidden_risk_findings.length === 0,
+    CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.no_risk_behavior.findings_must_be_empty,
+  );
+  assert.equal(
+    payload.hidden_risk_summary.manual_review_required,
+    CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.no_risk_behavior.manual_review_required,
+  );
+  assert.ok(
+    payload.hidden_risk_summary.summary
+      .toLowerCase()
+      .includes(CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.no_risk_behavior.summary_must_contain.toLowerCase()),
+    "No-risk response must be explicit, not generic escalation.",
+  );
+};
+
+const assertInsufficientContextBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks({
+    ...NO_RISK_CONTROL_INPUT,
+    narrative_evidence_bundle: [],
+  });
+  const payload = result.payload;
+
+  assert.equal(payload.status, "insufficient_context");
+  assert.equal(payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.manual_review_required, true);
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.citations.length, 0);
+};
+
+const assertMalformedModelOutputBecomesStructuredError = async (): Promise<void> => {
+  const malformedClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: "not json",
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+    llmClientOverride: malformedClient,
+  });
+  const payload = result.payload;
+
+  assert.equal(payload.status, "error");
+  assert.equal(payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.manual_review_required, true);
   assert.equal(payload.hidden_risk_findings.length, 0);
 };
 
+const assertCitationFailuresAreSuppressed = async (): Promise<void> => {
+  const uncitedRiskClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: JSON.stringify({
+        contract_version: "phase0_hidden_risk_v1",
+        status: "ok",
+        patient_id: "phase0-test",
+        encounter_id: "enc-phase0-test",
+        baseline_verdict: "ready",
+        hidden_risk_summary: {
+          result: "hidden_risk_present",
+          overall_disposition_impact: "not_ready",
+          confidence: "medium",
+          summary: "Test payload intentionally omits valid citations.",
+          manual_review_required: false,
+          false_positive_guardrail: "test",
+        },
+        hidden_risk_findings: [
+          {
+            finding_id: "hr_001",
+            title: "Uncited finding should be suppressed",
+            category: "clinical_stability",
+            disposition_impact: "not_ready",
+            confidence: "medium",
+            is_duplicate_of_blocker_id: null,
+            rationale: "Uncited contradiction.",
+            recommended_orchestrator_action: "add_blocker",
+            citation_ids: ["cit_missing"],
+          },
+        ],
+        citations: [],
+        review_metadata: {
+          narrative_sources_reviewed: 1,
+          duplicate_findings_suppressed: 0,
+          weak_findings_suppressed: 0,
+        },
+      }),
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+    llmClientOverride: uncitedRiskClient,
+  });
+  const payload = result.payload;
+
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.review_metadata.weak_findings_suppressed > 0, true);
+};
+
+const assertPromptContractGuardrailsPresent = (): void => {
+  const requiredPhrases = [
+    "Review only the evidence provided",
+    "Suppress duplicates",
+    "uncited claims",
+    "Return only the JSON schema",
+  ];
+  for (const phrase of requiredPhrases) {
+    assert.ok(
+      HIDDEN_RISK_SYSTEM_PROMPT.includes(phrase),
+      `Prompt contract drift: missing phrase '${phrase}'.`,
+    );
+  }
+};
+
 const main = async (): Promise<void> => {
+  assertPromptContractGuardrailsPresent();
   await assertTrapPatientBehavior();
+  await assertFindingCitationQuality();
   await assertControlNoRiskBehavior();
+  await assertInsufficientContextBehavior();
+  await assertMalformedModelOutputBecomesStructuredError();
+  await assertCitationFailuresAreSuppressed();
   console.log("SMOKE PASS: hidden-risk detection");
 };
 

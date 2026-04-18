@@ -37,6 +37,15 @@ Required assertions:
 - every citation resolves to an input source
 - no final autonomous discharge decision is emitted
 
+Phase 1 expected-output matrix:
+- source of truth: [phase1-clinical-intelligence-expected-output-matrix.md](phase1-clinical-intelligence-expected-output-matrix.md)
+- enforcement asset: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/expected-output-matrix.ts`
+- trap patient gate: must cite/reference the canonical contradiction nursing note and case-management reinforcement note
+- no-risk control gate: must stay `no_hidden_risk` with explicit bounded summary and no forced escalation
+- insufficient-context gate: must return `status=insufficient_context` with no findings and no citations
+- malformed/unparseable model-output gate: must fail closed to structured `status=error` without fabricated hidden-risk findings
+- prompt drift gate: runtime checks verify required system-prompt guardrails are still present
+
 Suggested fixture lanes:
 - `trap_hidden_home_support_gap`
 - `trap_medication_contradiction_in_note`
@@ -115,6 +124,7 @@ Every Phase 1, 2, and 3 output must:
 - avoid markdown fences
 - keep stable top-level keys in the documented order for the contract under test
 - use canonical verdict labels only: `ready`, `ready_with_caveats`, `not_ready`
+- fail closed when parseability is violated (structured error state, no fabricated hidden-risk findings)
 
 ### Citation expectations
 Every surfaced blocker or hidden-risk finding must:
@@ -191,3 +201,8 @@ Future implementation should expose at least these repeatable checks:
 - `phaseX:parseability-and-citations`
 
 The exact command wiring is implementation-owned, but these gates are not optional.
+
+Current Clinical Intelligence MCP command mapping:
+- `npm run smoke:hidden-risk`
+- `npm run smoke:narrative`
+- `npm run smoke:release-gate`

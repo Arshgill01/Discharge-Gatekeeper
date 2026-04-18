@@ -6,14 +6,18 @@ import {
   hiddenRiskInputSchema,
   hiddenRiskOutputSchema,
 } from "./contract";
-import { getHiddenRiskLlmClient } from "../llm/client";
+import { getHiddenRiskLlmClient, HiddenRiskLlmClient } from "../llm/client";
 
 type SurfaceHiddenRiskResult = {
   payload: HiddenRiskOutput;
   provider: string;
 };
 
-const parseJsonObject = (text: string): unknown => {
+export type SurfaceHiddenRiskOptions = {
+  llmClientOverride?: HiddenRiskLlmClient;
+};
+
+export const parseJsonObject = (text: string): unknown => {
   const trimmed = text.trim();
   try {
     return JSON.parse(trimmed);
@@ -213,6 +217,7 @@ const applySafetyGuards = (
 
 export const surfaceHiddenRisks = async (
   rawInput: unknown,
+  options?: SurfaceHiddenRiskOptions,
 ): Promise<SurfaceHiddenRiskResult> => {
   const parsedInputResult = hiddenRiskInputSchema.safeParse(rawInput);
   if (!parsedInputResult.success) {
@@ -227,7 +232,7 @@ export const surfaceHiddenRisks = async (
     };
   }
 
-  const llmClient = getHiddenRiskLlmClient();
+  const llmClient = options?.llmClientOverride || getHiddenRiskLlmClient();
 
   try {
     const llmResult = await llmClient.generateHiddenRiskResponse(input);

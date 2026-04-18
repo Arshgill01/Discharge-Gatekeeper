@@ -4,12 +4,19 @@ import {
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
+import {
+  CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
+  TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
+} from "../clinical-intelligence/expected-output-matrix";
 
 const assertTrapNarrative = async (): Promise<void> => {
   const payload = await synthesizeTransitionNarrative(PHASE0_TRAP_PATIENT_INPUT);
   assert.equal(payload.contract_version, "phase0_transition_narrative_v1");
   assert.equal(payload.status, "ok");
-  assert.equal(payload.proposed_disposition, "not_ready");
+  assert.equal(
+    payload.proposed_disposition,
+    TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
   assert.ok(
     payload.narrative.includes("Deterministic discharge posture was ready"),
     "Narrative must preserve baseline deterministic context.",
@@ -23,15 +30,38 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative output must keep assistive non-autonomous framing.",
   );
   assert.ok(payload.recommended_actions.length > 0);
+  if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_linked_categories_for_hidden_risk) {
+    assert.ok(
+      payload.recommended_actions.every((action) => action.linked_categories.length > 0),
+      "Trap narrative actions must map to hidden-risk categories.",
+    );
+  }
+  if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_action_citations_for_hidden_risk) {
+    assert.ok(
+      payload.recommended_actions.every((action) => action.citation_ids.length > 0),
+      "Trap narrative actions must include supporting citation ids.",
+    );
+  }
 };
 
 const assertControlNarrative = async (): Promise<void> => {
   const payload = await synthesizeTransitionNarrative(NO_RISK_CONTROL_INPUT);
   assert.equal(payload.status, "ok");
-  assert.equal(payload.proposed_disposition, "ready");
+  assert.equal(
+    payload.proposed_disposition,
+    CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
   assert.ok(
     payload.narrative.includes("did not surface additional discharge-changing hidden risk"),
     "Control narrative should avoid generic escalation when there is no hidden risk.",
+  );
+  assert.ok(
+    payload.recommended_actions.length > 0,
+    "Control narrative must still provide deterministic next-step actions.",
+  );
+  assert.ok(
+    payload.recommended_actions.every((action) => action.citation_ids.length === 0),
+    "Control narrative actions should not invent citations when no hidden risk exists.",
   );
 };
 

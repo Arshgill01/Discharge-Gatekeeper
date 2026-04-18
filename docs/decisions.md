@@ -76,3 +76,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: This keeps release-gate and demo safety stable without fabricating hidden-risk escalation when LLM output is unavailable, and preserves a production-ready model integration path.
 - Affected files or lanes: Clinical Intelligence MCP runtime, smoke coverage, orchestrator integration assumptions
 - Follow-up: Orchestrator integration should treat `status=error` as `clinical_intelligence_unavailable` and preserve deterministic posture per failure-mode plan.
+
+- Date: 2026-04-19
+- Decision: Lock a trap/control expected-output matrix and quality-smoke guardrails for `Clinical Intelligence MCP` (`surface_hidden_risks` and `synthesize_transition_narrative`) as phase-1 gates.
+- Why: Phase 2 and Prompt Opinion integration need measurable enforcement for hidden-risk detection, no-risk suppression, parseability failure handling, citation quality, and narrative grounding.
+- Affected files or lanes: Clinical Intelligence MCP smoke/release gate, eval docs, demo path expectations, Prompt Opinion runbook
+- Follow-up: Treat `docs/phase1-clinical-intelligence-expected-output-matrix.md` and the clinical-intelligence smoke checks as required pre-integration gates before two-MCP reconciliation work.

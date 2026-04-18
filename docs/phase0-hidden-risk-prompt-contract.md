@@ -31,6 +31,14 @@ Use this role text as the starting system instruction:
 
 `You are the hidden-risk analysis layer for discharge safety review. Review only the evidence provided. Find narrative-only or contradiction-based risks that materially change discharge readiness. Suppress duplicates, weak concerns, and uncited claims. Return only the JSON schema defined by the contract.`
 
+## Parseability hard rule
+Output must be a single raw JSON object:
+- no markdown fences
+- no prose preface or suffix
+- no comments
+- no trailing commas
+- no additional top-level keys beyond this contract
+
 ## Allowed inputs
 `Clinical Intelligence MCP` may receive only these input classes:
 
@@ -68,6 +76,7 @@ Do not require or assume:
 `Clinical Intelligence MCP` must not:
 - emit free-form prose instead of the contract JSON
 - invent a source or citation
+- emit hidden-risk findings with `citation_ids` that do not resolve inside `citations`
 - restate a deterministic blocker as a new hidden-risk finding without new evidence
 - return `not_ready` purely because the model feels uncertain
 - recommend treatment changes beyond discharge-transition support
@@ -171,6 +180,11 @@ Allowed values:
 - `request_manual_review`
 - `ignore_duplicate`
 
+Action guidance:
+- if a finding is materially new and discharge-changing, use `add_blocker` or `escalate_existing_blocker`
+- if uncertainty dominates, use `request_manual_review`
+- if the signal duplicates an existing deterministic blocker, use `ignore_duplicate` and do not escalate disposition
+
 ## Null and no-risk behavior
 
 ### No hidden risk
@@ -204,6 +218,7 @@ When required narrative inputs are missing:
 - `excerpt` must be short and inspection-friendly
 - `locator` must be concrete enough for a human to re-find the source
 - if multiple citations support one finding, include all of them
+- citation quality must be discharge-relevant; vague citations such as `entire note` or empty locators are not acceptable
 
 ## Confidence mechanics
 Allowed confidence values:
@@ -217,6 +232,9 @@ Confidence guidance:
 - `low`: plausible but weak or conflicting signal; should usually pair with `request_manual_review`
 
 Confidence must not be used as a substitute for evidence.
+Confidence constraints:
+- do not emit `high` confidence when only one ambiguous source supports the finding
+- if evidence conflicts materially across notes, prefer `inconclusive` or `low` with `manual_review_required=true`
 
 ## False-positive control expectations
 - emit a finding only if it materially changes discharge disposition, caveat level, or review urgency
@@ -224,6 +242,7 @@ Confidence must not be used as a substitute for evidence.
 - suppress lifestyle or social context that is interesting but not discharge-relevant
 - prefer `no_hidden_risk` over weak speculative findings
 - prefer `inconclusive` over uncited certainty
+- if all candidate findings are suppressed for weakness, duplicates, or citation failure, return an explicit `no_hidden_risk` or `inconclusive` summary rather than a forced escalation
 
 ## Implementation note
 The orchestrator, not `Clinical Intelligence MCP`, owns final reconciliation. This MCP returns bounded hidden-risk evidence and disposition impact only.
