@@ -1,50 +1,45 @@
 ---
 name: eval-and-trace-designer
-description: Design prompt-based acceptance tests, regression checks, and evidence-trace expectations for this repo. Use when defining eval prompts, quality rubrics, or verifying that outputs remain grounded and inspectable.
+description: Design phase-gated evals, parseability checks, citation assertions, and judge-path regression coverage for Care Transitions Command.
 compatibility: Codex-compatible skill for evaluation and QA work.
 metadata:
-  version: "1.0"
-  owner: discharge-gatekeeper
+  version: "2.0"
+  owner: care-transitions-command
 ---
 
 # Eval and Trace Designer
 
 ## Use this skill when
 - adding or revising eval prompts
-- defining output rubrics
-- checking whether evidence remains visible
-- turning ambiguous behavior into testable expectations
+- defining failure and fallback assertions
+- checking parseability or citation rules
+- protecting hidden-risk and reconciliation behavior from drift
 
 ## First read
 1. `AGENTS.md`
 2. `PLAN.md`
 3. `docs/evals.md`
-4. `docs/demo-script.md`
-5. `docs/architecture.md`
+4. `docs/phase0-hidden-risk-prompt-contract.md`
+5. `docs/phase0-orchestrator-decision-matrix.md`
 
 ## Goal
-Protect the product from becoming a vague chatbot by making the discharge flow testable.
+Keep the two-MCP plus external-A2A system inspectable and testable.
 
-## Workflow
-1. Start from the user-visible question.
-2. Define the expected verdict or behavior.
-3. Define what evidence should be visible.
-4. Add at least one negative or failure case.
-5. Keep the eval readable by humans.
+## Required eval lenses
+1. Phase 1: `Clinical Intelligence MCP` smoke
+2. Phase 2: two-MCP integration
+3. Phase 3: external A2A orchestration
+4. parseability and citation gates
+5. failure and fallback behavior
 
-## Good eval properties
-- anchored to real prompts
-- aligned with canonical verdict states
-- easy to rerun after tool changes
-- explicit about what failure looks like
+## Always check
+- output is valid JSON without repair
+- citations map to real inputs
+- duplicate hidden-risk findings are suppressed
+- contradictory evidence does not become confident prose
+- fallback direct-MCP behavior is documented when the A2A path fails
 
 ## Do not
-- write evals that depend on hidden context
-- create rubrics that reward verbose but weak answers
-- ignore missing-context or contradictory-note cases
-
-## Final checks
-Before finishing:
-1. Would this eval catch scope drift?
-2. Would it catch evidence-free answers?
-3. Is the pass bar obvious to a human reviewer?
+- write evals that assume hidden state
+- reward verbosity over inspectability
+- ignore null-result behavior for hidden-risk review

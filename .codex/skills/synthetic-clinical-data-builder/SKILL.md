@@ -1,51 +1,39 @@
 ---
 name: synthetic-clinical-data-builder
-description: Create or refine synthetic patient data, note corpora, and evidence setups for the discharge demo. Use when building demo patients, blocker evidence, note text, or FHIR resource scaffolds.
+description: Create or refine synthetic patient data and evidence bundles that exercise both the deterministic discharge spine and the hidden-risk layer.
 compatibility: Codex-compatible skill for synthetic healthcare demo data.
 metadata:
-  version: "1.0"
-  owner: discharge-gatekeeper
+  version: "2.0"
+  owner: care-transitions-command
 ---
 
 # Synthetic Clinical Data Builder
 
 ## Use this skill when
-- creating the demo patient
-- writing note text
-- deciding what FHIR resources are needed
-- aligning blocker evidence with tool behavior
+- creating or revising a trap patient
+- writing note/document evidence for hidden-risk detection
+- aligning structured and narrative evidence across both MCPs
 
 ## First read
 1. `AGENTS.md`
-2. `PLAN.md`
-3. `docs/data-plan.md`
-4. `docs/product-brief.md`
+2. `docs/evals.md`
+3. `docs/phase0-hidden-risk-prompt-contract.md`
+4. `docs/phase0-failure-mode-plan.md`
 5. `docs/demo-script.md`
 
 ## Goal
-Create a single synthetic patient scenario that makes the discharge-readiness story obvious and believable.
+Build a patient scenario where:
+- the deterministic discharge spine has enough structure to produce a baseline verdict
+- the hidden-risk layer has something real to find
+- the result is still easy to explain in a judge demo
 
 ## Design rules
-- One patient is enough for the first slice.
-- Use 3 to 4 meaningful blockers.
-- Make at least one blocker note-only, not just structured.
-- Keep the case easy to explain aloud.
-- Avoid unrealistic all-in-one notes that make the task trivial.
-
-## Recommended evidence mix
-Each blocker should be discoverable from:
-- a structured signal
-- a note or document signal
-when possible.
+- at least one important risk must be note-only or contradiction-based
+- every hidden-risk trap must be citeable from provided evidence
+- weak or irrelevant narrative details should exist so false-positive controls are tested
+- the scenario must support the direct-MCP fallback path
 
 ## Do not
-- create overly dramatic pathology
-- overload the case with too many blockers
-- rely on obscure clinical details that require long explanation
-- make the notes so perfect that no synthesis is needed
-
-## Final checks
-Before finishing:
-1. Can the patient story be explained in one or two sentences?
-2. Are blockers distributed across multiple sources?
-3. Does the data support the 3-prompt demo cleanly?
+- make every blocker obvious from structured data alone
+- rely on one perfect note that makes synthesis trivial
+- create drama that overwhelms the discharge story

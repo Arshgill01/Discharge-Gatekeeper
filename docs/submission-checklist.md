@@ -1,118 +1,113 @@
 # Submission Checklist
 
 ## Goal
-Make the project easy for judges to find, invoke, understand, and trust.
+Package `Care Transitions Command` so judges can understand the architecture, trust the outputs, and recover gracefully if the ambitious orchestration layer is unavailable.
 
-## Judge-facing value proposition
-Use this one-liner in the video and listing:
-"Discharge Gatekeeper determines discharge readiness, shows blocker evidence, and returns the next-step plan before a risky handoff."
+Frozen submission assumptions:
+- top-level system identity: `Care Transitions Command`
+- MCP identities: `Discharge Gatekeeper MCP`, `Clinical Intelligence MCP`
+- orchestration identity: `external A2A orchestrator`
+- final architecture: `2 MCPs + 1 external A2A`
+- no custom frontend
+- final demo is 3 prompts
 
-## Core requirements to protect
-- Prompt Opinion-compatible integration path
-- patient/FHIR context behavior when needed
-- visible skill or tool metadata
-- public endpoint reliability
-- Marketplace publish readiness
-- short, sharp demo
+## Judge-facing message
+Use language that matches the pivot:
+- `Care Transitions Command coordinates a deterministic discharge spine with a hidden-risk intelligence pass so unsafe transitions are caught before the patient leaves.`
 
-## Technical checklist
-- MCP server runs reliably
-- required environment variables are documented
-- patient-context assumptions are documented
-- public endpoint plan exists
-- integration smoke test exists
-- fallback plan exists if the public URL changes
-- integration runbook is current (`docs/prompt-opinion-integration-runbook.md`)
+Do not say:
+- single-MCP workflow suite
+- autonomous discharge decision-maker
+- streaming multi-agent system
 
-## Prompt Opinion checklist
-- server is added correctly
-- transport is configured correctly
-- patient data access behavior is understood
-- tool metadata is clear
-- launchpad invocation path is tested
-- outputs are readable in the Prompt Opinion UI
+## What must be visible in the submission
+- `Care Transitions Command` as the system name in narration and deck copy
+- `Discharge Gatekeeper MCP` as the structured discharge engine
+- `Clinical Intelligence MCP` as the hidden-risk and contradiction layer
+- `external A2A orchestrator` as the preferred final demo path
+- a direct-MCP fallback path that still works without the A2A layer
 
-## Demo checklist
-- one patient story only
-- three prompts max
-- verdict visible immediately
-- blockers visible immediately
-- next-step plan visible immediately
-- narration stays under time
+## Final 3-prompt demo requirements
 
-## First-slice invocation path
-1. Launchpad prompt: `Is this patient safe to discharge today?`
-2. Follow-up prompt: `What exactly is blocking discharge right now?`
-3. Follow-up prompt: `What must happen before this patient leaves?`
+### Prompt 1
+`Is this patient safe to discharge today?`
 
-Expected first-slice result shape:
-- verdict: `not_ready`
-- blockers: six scenario-triggered canonical categories (`clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`)
-- evidence: source-linked trace entries
-- next steps: ordered, owner-tagged actions
+Must show:
+- final reconciled verdict
+- structured blockers from `Discharge Gatekeeper MCP`
+- whether hidden-risk review ran, was skipped, or was unavailable
 
-## Marketplace checklist
-- title is memorable
-- short description is crisp
-- value proposition is obvious
-- metadata does not overclaim
-- publish path is tested before final submission
+### Prompt 2
+`What hidden risks or contradictions change that answer?`
+
+Must show:
+- note/document-grounded findings from `Clinical Intelligence MCP`
+- citations
+- null-result behavior when no additional hidden risk exists
+
+### Prompt 3
+`What exactly must happen before discharge?`
+
+Must show:
+- prioritized next steps
+- deterministic blocker linkage
+- any hidden-risk escalations that changed urgency or disposition
+
+## Marketplace and publish checklist
+
+### Discharge Gatekeeper MCP
+- has a clear MCP listing name: `Discharge Gatekeeper MCP`
+- description makes the deterministic discharge role obvious
+- tool metadata is inspectable and non-hypey
+- does not imply LLM-heavy narrative reasoning
+
+### Clinical Intelligence MCP
+- has a clear MCP listing name: `Clinical Intelligence MCP`
+- description makes the hidden-risk role obvious
+- explicitly positions itself as evidence-bound and citation-required
+- does not imply it can discharge a patient independently
+
+### External A2A orchestrator
+- treat as a separate integration surface, not a hidden implementation detail
+- if Prompt Opinion or Marketplace only supports MCP publication for the event, keep the A2A layer documented and demoed but do not block submission on marketplace publication of the orchestrator
+- if an A2A listing path exists in time, preserve the identity `external A2A orchestrator` and document its two MCP dependencies explicitly
+
+## Publish implications
+- the safest publish baseline is the two MCPs
+- the A2A orchestrator improves the final story but must not be a single point of demo failure
+- if publication deadlines force a cut, keep the marketplace story centered on the two MCPs and describe the A2A path as the preferred orchestration lane
+
+## Reliability checklist
+- both MCPs have independent health checks
+- both MCPs can be registered and discovered in Prompt Opinion separately
+- the A2A path is synchronous and demo-safe
+- no workflow step depends on hidden local state
+- the direct-MCP fallback path has been rehearsed
 
 ## Trust checklist
-- claims are assistive, not autonomous
-- evidence is visible
-- failures are useful
-- no fake certainty
-- the workflow feels deployable today
+- outputs remain assistive, not autonomous
+- every hidden-risk finding is cited
+- null hidden-risk results are explicit
+- contradictions trigger review, not overconfidence
+- deterministic and narrative evidence are distinguishable on screen
 
-## Video checklist
-Suggested order:
-1. hook
-2. patient discharge question
-3. blockers with evidence
-4. next-step plan
-5. closing value statement
+## Recording checklist
+- rehearse the preferred A2A path once from a clean session
+- rehearse the fallback direct-MCP path once from a clean session
+- decide before recording which path is primary and which path is backup
+- keep the narration focused on verdict, hidden risk, and next actions
+- do not spend recording time on registration mechanics
 
-## On-screen discipline
-Show:
-- verdict + summary line
-- blocker category/priority/evidence linkage
-- next-step owner mapping
+## Last-minute cut order
+Protect these in order:
+1. `Discharge Gatekeeper MCP` working in Prompt Opinion
+2. `Clinical Intelligence MCP` returning bounded hidden-risk findings with citations
+3. direct-MCP fallback story
+4. `external A2A orchestrator` polish
 
-Skip:
-- long infrastructure setup
-- extra scenarios
-- roadmap features not in first slice
-
-## Final pre-submit smoke test
-Run this from a fresh session:
-1. open Prompt Opinion workspace
-2. invoke the main discharge-readiness flow
-3. confirm the verdict renders
-4. confirm blockers render
-5. confirm prioritized next steps render
-6. confirm nothing depends on hidden local state
-
-Repo-level command check before recording:
-1. from `po-community-mcp-main/typescript`, run `npm run typecheck`
-2. run `npm run smoke:runtime`
-3. run `npm run smoke:readiness`
-4. run `npm run smoke:readiness:regression`
-5. run `npm run smoke:workflow-suite-core`
-6. run `npm run smoke:artifacts`
-7. run `npm run smoke:demo-path`
-8. optionally run one bundled command: `npm run smoke:release-gate`
-9. confirm output includes `SMOKE PASS: runtime boot and tool registration`
-10. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
-11. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
-12. confirm output includes `SMOKE PASS: workflow suite core`
-13. confirm output includes `SMOKE PASS: workflow artifacts suite`
-14. confirm output includes `SMOKE PASS: demo path (expanded workflow)`
-15. confirm the bundled gate covers the three-scenario verdict matrix (`not_ready`, `ready_with_caveats`, `ready`) plus ambiguity/missing-context/insufficient-evidence checks
-
-## Last-minute cut rule
-If time is short, protect these in order:
-1. verdict quality
-2. blocker quality
-3. next-step plan quality
-4. polish extras
+## Submission fail conditions
+Do not submit the preferred story as complete if any of these are true:
+- the final response cannot be parsed reliably
+- hidden-risk findings do not carry citations
+- the only working path depends on the A2A layer and the A2A layer is unstable
+- Marketplace copy still describes a single-MCP final architecture
