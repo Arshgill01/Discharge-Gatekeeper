@@ -74,6 +74,12 @@ Before Prompt Opinion testing, verify:
 2. each runtime reports expected `server_name`
 3. each runtime reports expected tool list
 
+One-command readiness check:
+
+```bash
+./po-community-mcp-main/scripts/check-two-mcp-readiness.sh
+```
+
 Discharge Gatekeeper expected tools:
 - `assess_discharge_readiness`
 - `extract_discharge_blockers`
@@ -106,3 +112,17 @@ If `Clinical Intelligence MCP` is unavailable or returns `status=error`:
 2. mark hidden-risk review unavailable (`clinical_intelligence_unavailable`)
 3. do not invent hidden-risk findings
 4. continue the demo on deterministic outputs
+
+## 8. Repeatable integration smoke
+
+Run from repo root:
+
+```bash
+./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh
+```
+
+This validates:
+1. both runtimes boot and expose expected tools
+2. both runtimes can coexist without identity/config collisions
+3. the phase-2 trap flow escalates from structured `ready` to hidden-risk `not_ready`
+4. fallback behavior keeps deterministic posture when clinical intelligence is unavailable

@@ -74,6 +74,11 @@ Required assertions:
 - citations survive the handoff between both MCP outputs
 - the reconciled output is still parseable without free-text repair
 
+Current Phase 2 command mapping:
+- `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+- `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
+- `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+
 ### Phase 3: External A2A orchestration
 Purpose:
 - prove the final judge-path control flow works when Prompt Opinion talks to the `external A2A orchestrator`

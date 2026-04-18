@@ -106,7 +106,8 @@ Run this phase gate before enabling any orchestrator path.
 1. boot both MCPs using `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
 2. expose each MCP with a separate public URL
 3. register `Discharge Gatekeeper MCP` and `Clinical Intelligence MCP` in Prompt Opinion
-4. verify both are reachable and tool discovery is clean on both surfaces
+4. run `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+5. verify both are reachable and tool discovery is clean on both surfaces
 
 ### Prompt Opinion manual call sequence
 1. Prompt 1 goes to `Discharge Gatekeeper MCP` for the deterministic baseline verdict
