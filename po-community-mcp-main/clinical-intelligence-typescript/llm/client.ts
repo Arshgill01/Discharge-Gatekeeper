@@ -4,15 +4,15 @@ import {
   HIDDEN_RISK_SYSTEM_PROMPT,
 } from "../clinical-intelligence/prompt-contract";
 import { generateHiddenRiskHeuristicResponse } from "./heuristic-provider";
-import { generateOpenAiResponse } from "./openai-provider";
+import { generateGoogleResponse } from "./google-provider";
 
-type LlmProvider = "heuristic" | "openai";
+type LlmProvider = "heuristic" | "google";
 
 type ClientConfig = {
   provider: LlmProvider;
   timeoutMs: number;
-  openAiApiKey?: string;
-  openAiModel: string;
+  googleApiKey?: string;
+  googleModel: string;
 };
 
 export type HiddenRiskLlmResult = {
@@ -26,11 +26,11 @@ export interface HiddenRiskLlmClient {
 
 const parseProvider = (value: string | undefined): LlmProvider => {
   const normalized = value?.trim().toLowerCase() || "heuristic";
-  if (normalized === "heuristic" || normalized === "openai") {
+  if (normalized === "heuristic" || normalized === "google") {
     return normalized;
   }
   throw new Error(
-    `Invalid CLINICAL_INTELLIGENCE_LLM_PROVIDER '${value}'. Expected heuristic or openai.`,
+    `Invalid CLINICAL_INTELLIGENCE_LLM_PROVIDER '${value}'. Expected heuristic or google.`,
   );
 };
 
@@ -47,8 +47,8 @@ export const getLlmClientConfigFromEnv = (
   return {
     provider: parseProvider(env["CLINICAL_INTELLIGENCE_LLM_PROVIDER"]),
     timeoutMs,
-    openAiApiKey: env["OPENAI_API_KEY"],
-    openAiModel: env["CLINICAL_INTELLIGENCE_OPENAI_MODEL"] || "gpt-4.1-mini",
+    googleApiKey: env["GOOGLE_API_KEY"] || env["GEMINI_API_KEY"],
+    googleModel: env["CLINICAL_INTELLIGENCE_GOOGLE_MODEL"] || "gemini-2.5-flash",
   };
 };
 
@@ -56,22 +56,22 @@ class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
   constructor(private readonly config: ClientConfig) {}
 
   async generateHiddenRiskResponse(input: HiddenRiskInput): Promise<HiddenRiskLlmResult> {
-    if (this.config.provider === "openai") {
-      if (!this.config.openAiApiKey) {
+    if (this.config.provider === "google") {
+      if (!this.config.googleApiKey) {
         throw new Error(
-          "OPENAI_API_KEY is required when CLINICAL_INTELLIGENCE_LLM_PROVIDER=openai.",
+          "GOOGLE_API_KEY (or GEMINI_API_KEY) is required when CLINICAL_INTELLIGENCE_LLM_PROVIDER=google.",
         );
       }
 
       const userPrompt = buildHiddenRiskUserPrompt(input);
-      const rawText = await generateOpenAiResponse({
-        apiKey: this.config.openAiApiKey,
-        model: this.config.openAiModel,
+      const rawText = await generateGoogleResponse({
+        apiKey: this.config.googleApiKey,
+        model: this.config.googleModel,
         timeoutMs: this.config.timeoutMs,
         systemPrompt: HIDDEN_RISK_SYSTEM_PROMPT,
         userPrompt,
       });
-      return { rawText, provider: "openai" };
+      return { rawText, provider: "google" };
     }
 
     const rawText = await generateHiddenRiskHeuristicResponse(input);

@@ -19,6 +19,7 @@ type Signal = {
   title: string;
   rationale: string;
   pattern: RegExp;
+  excludePattern?: RegExp;
 };
 
 const SIGNALS: Signal[] = [
@@ -27,7 +28,8 @@ const SIGNALS: Signal[] = [
     title: "Exertional oxygen instability not visible in resting structured data",
     rationale:
       "Narrative evidence documents exertional desaturation and dyspnea, which materially conflicts with resting-only stability assumptions.",
-    pattern: /(dropped to|desaturat|82%|dyspneic|stair trial|stairs)/i,
+    pattern: /(dropped to|desaturat|82%|dyspneic)/i,
+    excludePattern: /(without desaturat|no desaturat|remained above|without dyspnea)/i,
   },
   {
     category: "equipment_and_transport",
@@ -53,9 +55,15 @@ export const generateHiddenRiskHeuristicResponse = async (
   let citationCounter = 0;
 
   for (const signal of SIGNALS) {
-    const matchedSources = input.narrative_evidence_bundle.filter((source) =>
-      signal.pattern.test(source.excerpt),
-    );
+    const matchedSources = input.narrative_evidence_bundle.filter((source) => {
+      if (!signal.pattern.test(source.excerpt)) {
+        return false;
+      }
+      if (signal.excludePattern && signal.excludePattern.test(source.excerpt)) {
+        return false;
+      }
+      return true;
+    });
 
     if (matchedSources.length === 0) {
       continue;

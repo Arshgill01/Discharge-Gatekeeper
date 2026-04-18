@@ -17,3 +17,13 @@ npm run start
 Endpoints:
 - `http://localhost:5056/mcp`
 - `http://localhost:5056/healthz`
+
+## Validation
+
+```bash
+npm run typecheck
+npm run smoke:runtime
+npm run smoke:hidden-risk
+npm run smoke:narrative
+npm run smoke:release-gate
+```
