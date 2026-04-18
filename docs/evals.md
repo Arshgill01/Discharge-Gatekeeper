@@ -57,6 +57,9 @@ Suggested fixture lanes:
 Purpose:
 - prove the deterministic spine and hidden-risk layer reconcile cleanly before orchestration logic is added
 
+Source-of-truth expected-output matrix:
+- [phase2-two-mcp-expected-output-matrix.md](phase2-two-mcp-expected-output-matrix.md)
+
 Required flow:
 1. invoke `Discharge Gatekeeper MCP`
 2. pass its structured output plus bounded narrative inputs to `Clinical Intelligence MCP`
@@ -73,11 +76,23 @@ Required assertions:
 - duplicate or weak hidden-risk findings are dropped before reconciliation
 - citations survive the handoff between both MCP outputs
 - the reconciled output is still parseable without free-text repair
+- trap contradiction is measurable and note-dependent (ablation of contradiction notes prevents escalation)
+- clean control case remains bounded with explicit `no_hidden_risk`
+- Prompt 1/Prompt 2 fallback story is stronger than structured-only output:
+  - Prompt 1 exposes baseline structured `ready` posture and final escalated verdict
+  - Prompt 2 exposes contradiction categories and citation-backed evidence
 
 Current Phase 2 command mapping:
 - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
 - `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
 - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+
+Current canonical Phase 2 paths (post-integration):
+- structured MCP runtime entrypoint: `po-community-mcp-main/typescript/index.ts`
+- hidden-risk MCP runtime entrypoint: `po-community-mcp-main/clinical-intelligence-typescript/index.ts`
+- trap/control fixture source: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
+- phase-2 two-MCP smoke assertions: `po-community-mcp-main/clinical-intelligence-typescript/smoke/two-mcp-integration-smoke.ts`
+- phase-2 operator fallback runbook: `docs/phase2-two-mcp-operator-runbook.md`
 
 ### Phase 3: External A2A orchestration
 Purpose:
@@ -211,3 +226,6 @@ Current Clinical Intelligence MCP command mapping:
 - `npm run smoke:hidden-risk`
 - `npm run smoke:narrative`
 - `npm run smoke:release-gate`
+
+Current Discharge Gatekeeper MCP release gate:
+- `npm --prefix po-community-mcp-main/typescript run smoke:release-gate`

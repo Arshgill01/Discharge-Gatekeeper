@@ -101,6 +101,7 @@ Do not register in Prompt Opinion until these checks are green in the current br
 ## 4.5 Phase 2 direct two-MCP path (required before A2A)
 
 Run this phase gate before enabling any orchestrator path.
+In Phase 2, this path is sufficient for demo-readiness; A2A is preferred architecture but not required to prove the hidden-risk contradiction story.
 
 ### Boot + registration sequence
 1. boot both MCPs using `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
@@ -120,6 +121,20 @@ Run this phase gate before enabling any orchestrator path.
 - trap-patient path shows baseline `ready` posture before hidden-risk review
 - hidden-risk review shows cited contradiction and disposition impact `not_ready`
 - deterministic transition plan remains callable after hidden-risk escalation
+- trap contradiction remains note-dependent (removing contradiction notes prevents escalation)
+- clean control path remains explicit `no_hidden_risk` with no fabricated escalation
+
+### Required quality checks in this phase
+Run from repo root:
+1. `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+2. `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
+3. `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+
+Quality expectations these checks enforce:
+- trap-patient contradiction is measurable end-to-end
+- no-risk control case stays bounded
+- citation traceability and parseability remain inspectable
+- deterministic fallback behavior survives Clinical Intelligence `status=error`
 
 ### Required fallback behavior in this phase
 - if `Clinical Intelligence MCP` returns `status=error`, treat it as `clinical_intelligence_unavailable`
@@ -173,6 +188,7 @@ Use this path only if all three components passed a clean-session rehearsal the 
 ## 7. Fallback direct-MCP demo path
 
 This is the required backup path.
+For Phase 2, treat this as the primary proof path for quality and judge rehearsal.
 
 ### Setup
 - keep both MCPs registered even when using the A2A path
@@ -188,6 +204,11 @@ This is the required backup path.
 - Prompt 1: deterministic readiness answer
 - Prompt 2: hidden-risk review with citations
 - Prompt 3: final next-step checklist driven by the deterministic spine, verbally noting any hidden-risk escalation if the UI does not merge them
+
+What must be shown on screen in fallback mode:
+- Prompt 1: baseline structured posture and final manual two-MCP interpretation
+- Prompt 2: contradiction summary plus citation anchors
+- Prompt 3: prioritized transition actions with blocker linkage
 
 ### Rules
 - do not improvise a fourth step
@@ -223,6 +244,10 @@ Otherwise:
 - disable the A2A layer for the live demo
 - use the fallback direct-MCP path
 - keep the architecture explanation accurate
+
+Phase 2 release note:
+- do not block phase completion on A2A readiness
+- block phase completion if two-MCP contradiction quality gates fail
 
 ## 10. Phase 2 handoff dependencies
 Phase 2 (`two-MCP integration`) should assume the following from Phase 1:
