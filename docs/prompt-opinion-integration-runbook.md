@@ -149,6 +149,7 @@ Run from `po-community-mcp-main/typescript`:
 npm run typecheck
 npm run smoke:runtime
 npm run smoke:readiness
+npm run smoke:live-context
 npm run smoke:readiness:regression
 npm run smoke:workflow-suite-core
 npm run smoke:artifacts
@@ -159,6 +160,7 @@ Expected:
 - typecheck exits `0`
 - runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - smoke prints `SMOKE PASS: assess_discharge_readiness v1`
+- live-context smoke prints `SMOKE PASS: live context evidence ingest`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
 - workflow-core smoke prints `SMOKE PASS: workflow suite core`
 - artifact smoke prints `SMOKE PASS: workflow artifacts suite`
@@ -205,8 +207,11 @@ Likely fixes:
 Symptoms:
 - context-dependent tooling reports missing context or malformed readiness input
 
-Current first-slice behavior:
-- `assess_discharge_readiness` is scenario-backed for demo reliability and does not require live FHIR calls in the happy path.
+Current workflow-input behavior:
+- if `scenario_id` is passed explicitly, the matching synthetic scenario is used
+- otherwise, if Prompt Opinion forwards FHIR context plus patient ID, the suite derives input from live `Patient`, `Observation`, `MedicationRequest`, `MedicationStatement`, `ServiceRequest`, and `DocumentReference` resources
+- if live context is missing or unavailable, the suite falls back to the default synthetic scenario for demo reliability
+- if live context is partial, the suite stays on the live path and surfaces explicit missing-context blockers/gaps
 
 Prompt Opinion context headers expected by runtime utilities:
 - `x-fhir-server-url`
@@ -254,11 +259,12 @@ This runbook supports repeatable verification of:
 1. `npm run typecheck` passes
 2. `npm run smoke:runtime` passes
 3. `npm run smoke:readiness` passes
-4. `npm run smoke:readiness:regression` passes
-5. `npm run smoke:workflow-suite-core` passes
-6. `npm run smoke:artifacts` passes
-7. `npm run smoke:demo-path` passes
-8. `/healthz` is reachable through the public URL
-9. server boots locally and is reachable via public endpoint/tunnel
-10. Prompt Opinion connection test succeeds and all five workflow tools are discovered (`assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`)
-11. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)
+4. `npm run smoke:live-context` passes
+5. `npm run smoke:readiness:regression` passes
+6. `npm run smoke:workflow-suite-core` passes
+7. `npm run smoke:artifacts` passes
+8. `npm run smoke:demo-path` passes
+9. `/healthz` is reachable through the public URL
+10. server boots locally and is reachable via public endpoint/tunnel
+11. Prompt Opinion connection test succeeds and all five workflow tools are discovered (`assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`)
+12. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)

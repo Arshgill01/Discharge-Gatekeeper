@@ -116,3 +116,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The product must show stakeholder-facing transition artifacts, not only a readiness verdict, while preserving assistive/non-autonomous framing and demo reliability.
 - Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
 - Follow-up: Keep `assess_discharge_readiness` as the canonical entrypoint name, enforce artifact-to-readiness coherence in smoke checks, and keep release-gate coverage inclusive of runtime, readiness, core suite, artifacts, and expanded demo-path checks.
+
+- Date: 2026-04-18
+- Decision: Route the workflow suite through one request-scoped live-context resolver that prefers Prompt Opinion patient/FHIR context when available, normalizes `DocumentReference` note content into the shared evidence spine, and falls back to the synthetic scenario path only when live context is absent/unavailable or an explicit `scenario_id` is provided.
+- Why: The suite needed to feel materially less fixture-driven without breaking the reliable demo path; one narrow resolver keeps live-context ingestion inspectable, preserves the frozen public tool names, and makes missing/partial context behavior explicit.
+- Affected files or lanes: implementation, Prompt Opinion integration, evals, architecture
+- Follow-up: Keep the minimal live resource set bounded to high-value discharge inputs (`Patient`, `Observation`, `MedicationRequest`, `MedicationStatement`, `ServiceRequest`, `DocumentReference`) unless a future decision proves broader retrieval materially helps the judge path.

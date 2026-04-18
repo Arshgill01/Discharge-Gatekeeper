@@ -38,6 +38,25 @@ The community MCP starter demonstrates this pattern:
 - recover patient context from the token or fallback header
 - register tools through a simple FastMCP surface
 
+## Request-scoped workflow input resolution
+The active TypeScript runtime should resolve workflow input in this order:
+1. explicit `scenario_id` -> deterministic synthetic scenario
+2. Prompt Opinion live patient/FHIR context -> request-scoped structured retrieval plus note/document normalization
+3. synthetic fallback -> only when live context is absent or unavailable
+
+This keeps the demo path reliable while making the default tool path more context-native when Prompt Opinion forwards patient context.
+
+## Minimal live resource set
+Keep live retrieval intentionally narrow:
+- `Patient`
+- `Observation`
+- `MedicationRequest`
+- `MedicationStatement`
+- `ServiceRequest`
+- `DocumentReference`
+
+These are enough to drive the current discharge-readiness spine without pretending to support full EHR breadth.
+
 ## Core tool responsibilities
 ### 1) `assess_discharge_readiness`
 Purpose:
@@ -133,6 +152,8 @@ Use uploaded note content for:
 - education gaps
 - unresolved narrative concerns
 
+In the current runtime, `DocumentReference` content is normalized into the same `note_documents` path used by synthetic scenarios so structured and note evidence stay on one inspectable spine.
+
 ## Safety boundaries
 The system should:
 - support readiness assessment
@@ -151,6 +172,8 @@ Tools should fail with messages that make next actions obvious, such as:
 - FHIR context unavailable
 - required note source missing
 - evidence insufficient for a confident verdict
+
+When live context is partial rather than fully absent, prefer explicit blocker/gap surfacing over silent optimistic assumptions.
 
 ## First build target
 The first thin slice should only prove this:

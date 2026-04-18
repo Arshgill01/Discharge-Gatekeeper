@@ -9,12 +9,12 @@ import {
 } from "../discharge-readiness/contract";
 import {
   isSupportedScenarioId,
-  resolveScenarioInput,
 } from "../discharge-readiness/scenario-selection";
 import { generateTransitionPlan } from "../discharge-readiness/generate-transition-plan";
+import { resolveWorkflowInputForRequest } from "../discharge-readiness/live-context";
 
 class GenerateTransitionPlanTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request) {
+  registerTool(server: McpServer, req: Request) {
     server.registerTool(
       GENERATE_TRANSITION_PLAN_TOOL_NAME,
       {
@@ -37,8 +37,10 @@ class GenerateTransitionPlanTool implements IMcpTool {
           );
         }
 
-        const selectedScenario = resolveScenarioInput(scenario_id);
-        const response = generateTransitionPlan(selectedScenario);
+        const { input } = await resolveWorkflowInputForRequest(req, {
+          scenarioId: scenario_id,
+        });
+        const response = generateTransitionPlan(input);
         return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
       },
     );

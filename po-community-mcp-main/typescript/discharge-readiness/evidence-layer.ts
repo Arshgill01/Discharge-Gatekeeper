@@ -107,6 +107,44 @@ const formatIssueSummary = (issues: string[], fallback: string): string => {
   return issues.length > 0 ? issues.join(" ") : fallback;
 };
 
+const getStructuredAssertionForState = (
+  state: "supports_readiness" | "blocks_readiness",
+): EvidenceAssertion => {
+  return state === "blocks_readiness" ? "supports_blocker" : "supports_readiness";
+};
+
+const structuredEvidenceMatchesSignal = (
+  evidence: EvidenceRecord,
+  signalKey: string,
+): boolean => {
+  const tokens = signalKey.toLowerCase().split("_");
+  const haystack =
+    `${evidence.id} ${evidence.source_label} ${evidence.detail}`.toLowerCase();
+  return tokens.every((token) => haystack.includes(token));
+};
+
+const pickStructuredEvidenceSource = (
+  evidenceIndex: Map<string, EvidenceRecord>,
+  category: BlockerCategory,
+  signalKey: string,
+  state: "supports_readiness" | "blocks_readiness",
+): EvidenceRecord | null => {
+  const desiredAssertion = getStructuredAssertionForState(state);
+  const candidates = [...evidenceIndex.values()].filter((evidence) => {
+    return evidence.source_type === "structured" && evidence.category === category;
+  });
+
+  const preferredCandidate = candidates.find((evidence) => {
+    return evidence.assertion === desiredAssertion &&
+      structuredEvidenceMatchesSignal(evidence, signalKey);
+  }) ??
+    candidates.find((evidence) => evidence.assertion === desiredAssertion) ??
+    candidates.find((evidence) => structuredEvidenceMatchesSignal(evidence, signalKey)) ??
+    candidates[0];
+
+  return preferredCandidate ?? null;
+};
+
 const normalizeStructuredSignals = (
   input: ReadinessInput,
   evidenceIndex: Map<string, EvidenceRecord>,
@@ -119,22 +157,29 @@ const normalizeStructuredSignals = (
     state: "supports_readiness" | "blocks_readiness",
     detail: string,
   ): void => {
-    const sourceId = `structured-${category}-${signalKey}`;
-    upsertEvidence(evidenceIndex, {
-      id: sourceId,
-      source_type: "structured",
+    const sourceRecord = pickStructuredEvidenceSource(
+      evidenceIndex,
+      category,
+      signalKey,
+      state,
+    ) ?? {
+      id: `structured-${category}-${signalKey}`,
+      source_type: "structured" as const,
       source_label: `Structured/${category}`,
       detail,
-    });
+      category,
+      assertion: getStructuredAssertionForState(state),
+    };
+    upsertEvidence(evidenceIndex, sourceRecord);
 
     signals.push({
-      id: `signal-${sourceId}`,
+      id: `signal-${sourceRecord.id}-${signalKey}`,
       category,
       signal_key: signalKey,
       state,
-      source_id: sourceId,
-      source_type: "structured",
-      source_label: `Structured/${category}`,
+      source_id: sourceRecord.id,
+      source_type: sourceRecord.source_type,
+      source_label: sourceRecord.source_label,
       detail,
     });
   };

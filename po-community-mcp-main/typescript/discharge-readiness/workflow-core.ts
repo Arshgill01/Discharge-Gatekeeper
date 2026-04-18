@@ -302,6 +302,28 @@ const hasEvidenceAmbiguity = (
   return normalizedEvidence.ambiguities.some((ambiguity) => ambiguity.category === category);
 };
 
+const hasNonStructuredBlockingEvidence = (
+  category: BlockerCategory,
+  normalizedEvidence: NormalizedEvidenceBundle,
+): boolean => {
+  return normalizedEvidence.note_document_signals.some((signal) => {
+    return signal.category === category && signal.state === "blocks_readiness";
+  });
+};
+
+const buildExternalEvidenceDetail = (
+  category: BlockerCategory,
+  normalizedEvidence: NormalizedEvidenceBundle,
+  fallback: string,
+): string => {
+  const supportingSignal = normalizedEvidence.note_document_signals.find((signal) => {
+    return signal.category === category &&
+      (signal.state === "blocks_readiness" || signal.state === "ambiguous");
+  });
+
+  return supportingSignal?.detail ?? fallback;
+};
+
 const buildEvidenceUncertaintyPhrase = (
   category: BlockerCategory,
   normalizedEvidence: NormalizedEvidenceBundle,
@@ -365,7 +387,8 @@ const buildCoreBlockers = (
     input.clinical_stability.oxygen_lpm > input.clinical_stability.baseline_oxygen_lpm;
   if (
     !input.clinical_stability.vitals_stable ||
-    oxygenAboveBaseline
+    oxygenAboveBaseline ||
+    hasNonStructuredBlockingEvidence("clinical_stability", normalizedEvidence)
   ) {
     const reasons: string[] = [];
     if (!input.clinical_stability.vitals_stable) {
@@ -374,6 +397,15 @@ const buildCoreBlockers = (
     if (oxygenAboveBaseline) {
       reasons.push(
         `Oxygen need is ${input.clinical_stability.oxygen_lpm} L/min vs baseline ${input.clinical_stability.baseline_oxygen_lpm} L/min.`,
+      );
+    }
+    if (reasons.length === 0) {
+      reasons.push(
+        buildExternalEvidenceDetail(
+          "clinical_stability",
+          normalizedEvidence,
+          "Narrative evidence indicates clinical stability remains unresolved.",
+        ),
       );
     }
 
@@ -391,7 +423,8 @@ const buildCoreBlockers = (
 
   if (
     input.pending_diagnostics.critical_results_pending ||
-    input.pending_diagnostics.pending_items.length > 0
+    input.pending_diagnostics.pending_items.length > 0 ||
+    hasNonStructuredBlockingEvidence("pending_diagnostics", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-pending-diagnostics",
@@ -399,7 +432,11 @@ const buildCoreBlockers = (
       priority: "high",
       description: `Discharge-critical diagnostics remain unresolved. ${formatGaps(
         input.pending_diagnostics.pending_items,
-        "Pending diagnostic items require review before discharge.",
+        buildExternalEvidenceDetail(
+          "pending_diagnostics",
+          normalizedEvidence,
+          "Pending diagnostic items require review before discharge.",
+        ),
       )}`,
       evidence: evidenceForCategory("pending_diagnostics"),
       actionability:
@@ -409,7 +446,8 @@ const buildCoreBlockers = (
 
   if (
     !input.medication_reconciliation.reconciliation_complete ||
-    input.medication_reconciliation.unresolved_issues.length > 0
+    input.medication_reconciliation.unresolved_issues.length > 0 ||
+    hasNonStructuredBlockingEvidence("medication_reconciliation", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-medication-reconciliation",
@@ -417,7 +455,11 @@ const buildCoreBlockers = (
       priority: "high",
       description: `Medication reconciliation remains incomplete for discharge safety. ${formatGaps(
         input.medication_reconciliation.unresolved_issues,
-        "Medication discrepancies are unresolved.",
+        buildExternalEvidenceDetail(
+          "medication_reconciliation",
+          normalizedEvidence,
+          "Medication discrepancies are unresolved.",
+        ),
       )}`,
       evidence: evidenceForCategory("medication_reconciliation"),
       actionability:
@@ -427,7 +469,8 @@ const buildCoreBlockers = (
 
   if (
     !input.follow_up_and_referrals.appointments_scheduled ||
-    input.follow_up_and_referrals.missing_referrals.length > 0
+    input.follow_up_and_referrals.missing_referrals.length > 0 ||
+    hasNonStructuredBlockingEvidence("follow_up_and_referrals", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-follow-up-and-referrals",
@@ -435,7 +478,11 @@ const buildCoreBlockers = (
       priority: "medium",
       description: `Follow-up coordination is incomplete. ${formatGaps(
         input.follow_up_and_referrals.missing_referrals,
-        "Required appointments or referrals are not fully confirmed.",
+        buildExternalEvidenceDetail(
+          "follow_up_and_referrals",
+          normalizedEvidence,
+          "Required appointments or referrals are not fully confirmed.",
+        ),
       )}`,
       evidence: evidenceForCategory("follow_up_and_referrals"),
       actionability:
@@ -445,7 +492,8 @@ const buildCoreBlockers = (
 
   if (
     !input.patient_education.teach_back_complete ||
-    input.patient_education.documented_gaps.length > 0
+    input.patient_education.documented_gaps.length > 0 ||
+    hasNonStructuredBlockingEvidence("patient_education", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-patient-education",
@@ -453,7 +501,11 @@ const buildCoreBlockers = (
       priority: "medium",
       description: `Discharge education remains incomplete. ${formatGaps(
         input.patient_education.documented_gaps,
-        "Teach-back and escalation instructions are not yet documented as complete.",
+        buildExternalEvidenceDetail(
+          "patient_education",
+          normalizedEvidence,
+          "Teach-back and escalation instructions are not yet documented as complete.",
+        ),
       )}`,
       evidence: evidenceForCategory("patient_education"),
       actionability:
@@ -464,7 +516,8 @@ const buildCoreBlockers = (
   if (
     !input.home_support_and_services.caregiver_confirmed ||
     !input.home_support_and_services.services_confirmed ||
-    input.home_support_and_services.documented_gaps.length > 0
+    input.home_support_and_services.documented_gaps.length > 0 ||
+    hasNonStructuredBlockingEvidence("home_support_and_services", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-home-support-and-services",
@@ -472,7 +525,11 @@ const buildCoreBlockers = (
       priority: "high",
       description: `Home support is not fully confirmed. ${formatGaps(
         input.home_support_and_services.documented_gaps,
-        "Caregiver coverage and home services remain unverified.",
+        buildExternalEvidenceDetail(
+          "home_support_and_services",
+          normalizedEvidence,
+          "Caregiver coverage and home services remain unverified.",
+        ),
       )}`,
       evidence: evidenceForCategory("home_support_and_services"),
       actionability:
@@ -483,7 +540,8 @@ const buildCoreBlockers = (
   if (
     !input.equipment_and_transport.transport_confirmed ||
     !input.equipment_and_transport.equipment_ready ||
-    input.equipment_and_transport.documented_gaps.length > 0
+    input.equipment_and_transport.documented_gaps.length > 0 ||
+    hasNonStructuredBlockingEvidence("equipment_and_transport", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-equipment-and-transport",
@@ -495,7 +553,11 @@ const buildCoreBlockers = (
           : "medium",
       description: `Discharge logistics are incomplete. ${formatGaps(
         input.equipment_and_transport.documented_gaps,
-        "Transport and required equipment status are not fully confirmed.",
+        buildExternalEvidenceDetail(
+          "equipment_and_transport",
+          normalizedEvidence,
+          "Transport and required equipment status are not fully confirmed.",
+        ),
       )}`,
       evidence: evidenceForCategory("equipment_and_transport"),
       actionability:
@@ -505,7 +567,8 @@ const buildCoreBlockers = (
 
   if (
     !input.administrative_and_documentation.discharge_documents_complete ||
-    input.administrative_and_documentation.documented_gaps.length > 0
+    input.administrative_and_documentation.documented_gaps.length > 0 ||
+    hasNonStructuredBlockingEvidence("administrative_and_documentation", normalizedEvidence)
   ) {
     blockers.push({
       id: "blocker-administrative-and-documentation",
@@ -513,7 +576,11 @@ const buildCoreBlockers = (
       priority: "medium",
       description: `Administrative discharge documentation is incomplete. ${formatGaps(
         input.administrative_and_documentation.documented_gaps,
-        "Required discharge forms and sign-offs are not fully completed.",
+        buildExternalEvidenceDetail(
+          "administrative_and_documentation",
+          normalizedEvidence,
+          "Required discharge forms and sign-offs are not fully completed.",
+        ),
       )}`,
       evidence: evidenceForCategory("administrative_and_documentation"),
       actionability:
