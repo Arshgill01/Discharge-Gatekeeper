@@ -98,6 +98,10 @@ Current focus (2026-04-18, Agent 1 - Prompt Opinion ops hardening):
 - consolidate to one canonical zero-to-invocation operator runbook for local -> tunnel/public endpoint -> Prompt Opinion
 - document explicit environment-variable reference and connection assumptions for reliable team handoff
 - harden runtime diagnostics and troubleshooting guidance for tool discoverability, host allowlist issues, patient-context assumptions, and tunnel URL rotation
+Current focus (2026-04-18, Agent 1 - workflow suite core lane):
+- establish one shared workflow spine that keeps readiness, blocker extraction, and transition planning on the same evidence model
+- ship `extract_discharge_blockers` and `generate_transition_plan` on the active MCP runtime surface
+- add suite-level smoke checks that lock tool-surface, blocker/evidence linkage, and blocker-to-transition-task traceability
 
 ### 5) Evals
 Owner: open

@@ -8,6 +8,7 @@ Goal: a teammate can go from zero setup to a working Prompt Opinion invocation o
 - MCP server entrypoint: `po-community-mcp-main/typescript/index.ts`
 - Runtime env/config: `po-community-mcp-main/typescript/runtime-config.ts`
 - Tool registration: `po-community-mcp-main/typescript/tools/index.ts`
+- Shared workflow core: `po-community-mcp-main/typescript/discharge-readiness/workflow-core.ts`
 - Env template: `po-community-mcp-main/typescript/.env.example`
 
 ## 2) Prerequisites
@@ -111,6 +112,7 @@ In workspace settings (`MCP Servers` or `Tools`, label varies by UI version):
 2. Set URL to tunnel endpoint ending in `/mcp`
 3. Save and run connection test
 4. Confirm discovered tool list includes `assess_discharge_readiness`
+   plus `extract_discharge_blockers` and `generate_transition_plan`
 
 ## 8) Launchpad smoke flow
 
@@ -139,6 +141,7 @@ npm run typecheck
 npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
+npm run smoke:workflow-suite-core
 npm run smoke:demo-path
 ```
 
@@ -147,6 +150,7 @@ Expected:
 - runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - smoke prints `SMOKE PASS: assess_discharge_readiness v1`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
+- workflow-core smoke prints `SMOKE PASS: workflow suite core`
 - demo smoke prints `SMOKE PASS: demo path (3 prompts)`
 
 ## 10) Troubleshooting
@@ -158,6 +162,7 @@ Symptoms:
 
 Checks:
 1. `curl -sS http://localhost:5055/healthz | jq` and confirm `tools` contains `assess_discharge_readiness`
+   plus `extract_discharge_blockers` and `generate_transition_plan`
 2. ensure Prompt Opinion endpoint URL ends with `/mcp`
 3. remove and re-add server connection in Prompt Opinion
 
@@ -235,8 +240,10 @@ This runbook supports repeatable verification of:
 2. `npm run smoke:runtime` passes
 3. `npm run smoke:readiness` passes
 4. `npm run smoke:readiness:regression` passes
-5. `npm run smoke:demo-path` passes
-6. `/healthz` is reachable through the public URL
-7. server boots locally and is reachable via public endpoint/tunnel
-8. Prompt Opinion connection test succeeds and `assess_discharge_readiness` is discovered
-9. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)
+5. `npm run smoke:workflow-suite-core` passes
+6. `npm run smoke:demo-path` passes
+7. `/healthz` is reachable through the public URL
+8. server boots locally and is reachable via public endpoint/tunnel
+9. Prompt Opinion connection test succeeds and `assess_discharge_readiness` is discovered
+   together with `extract_discharge_blockers` and `generate_transition_plan`
+10. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)

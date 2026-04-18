@@ -55,9 +55,10 @@ Likely outputs:
 
 ### 2) `extract_discharge_blockers`
 Purpose:
-- return a structured blocker list with categories, severity, and supporting evidence
+- return the structured blocker list and evidence linkage from the shared workflow spine
 
 Likely outputs:
+- verdict context
 - blocker objects
 - category
 - severity
@@ -66,9 +67,12 @@ Likely outputs:
 
 ### 3) `generate_transition_plan`
 Purpose:
-- convert blockers and context into an ordered “what must happen next” plan
+- convert blockers from the shared workflow spine into an ordered “what must happen next” plan
 
 Likely outputs:
+- verdict context
+- blocker context
+- evidence linkage
 - prioritized tasks
 - suggested owners
 - timing hints
@@ -101,6 +105,13 @@ Every major blocker should reference one or more evidence sources such as:
 - missing referral or order
 
 The first slice can use lightweight source labels instead of perfect provenance objects.
+
+## Shared workflow spine
+The core suite should run as one workflow family, not isolated tool implementations:
+- one normalized evidence layer (`structured` + `note/document` signals)
+- one blocker model reused across readiness, blocker extraction, and transition planning
+- one transition-task model (`priority`, `owner`, `linked_blockers`) reused wherever next steps are produced
+- explicit traceability path: `blocker -> evidence` and `next_step -> blocker`
 
 ## Notes and documents
 The product should not rely on structured FHIR alone.
