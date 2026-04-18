@@ -16,7 +16,7 @@ Use language that matches the pivot:
 - `Care Transitions Command coordinates a deterministic discharge spine with a hidden-risk intelligence pass so unsafe transitions are caught before the patient leaves.`
 
 Do not say:
-- single-MCP workflow suite
+- one-MCP final product
 - autonomous discharge decision-maker
 - streaming multi-agent system
 
@@ -110,4 +110,4 @@ Do not submit the preferred story as complete if any of these are true:
 - the final response cannot be parsed reliably
 - hidden-risk findings do not carry citations
 - the only working path depends on the A2A layer and the A2A layer is unstable
-- Marketplace copy still describes a single-MCP final architecture
+- Marketplace copy still describes a collapsed one-MCP final architecture

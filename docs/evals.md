@@ -28,7 +28,7 @@ Required inputs:
 - source metadata for every excerpt
 
 Required assertions:
-- returns valid JSON matching the hidden-risk contract in [phase0-hidden-risk-prompt-contract.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-hidden-risk-prompt-contract.md)
+- returns valid JSON matching the hidden-risk contract in [phase0-hidden-risk-prompt-contract.md](phase0-hidden-risk-prompt-contract.md)
 - detects at least one real hidden risk in a trap-patient fixture when the narrative source materially changes discharge safety
 - suppresses duplicate findings when the risk is already explicit in the deterministic blocker list
 - returns `no_hidden_risk` when the narrative review adds nothing material
@@ -51,7 +51,7 @@ Purpose:
 Required flow:
 1. invoke `Discharge Gatekeeper MCP`
 2. pass its structured output plus bounded narrative inputs to `Clinical Intelligence MCP`
-3. reconcile results using the matrix in [phase0-orchestrator-decision-matrix.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-orchestrator-decision-matrix.md), even if the orchestrator is still a local harness
+3. reconcile results using the matrix in [phase0-orchestrator-decision-matrix.md](phase0-orchestrator-decision-matrix.md), even if the orchestrator is still a local harness
 
 Required assertions:
 - `Discharge Gatekeeper MCP` remains source of truth for baseline structured verdict/blockers/next steps

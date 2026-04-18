@@ -88,10 +88,10 @@ Use these exact blocker categories:
 
 ## Phase sequence locked by this doc
 1. phase-0 vision lock
-2. Discharge Gatekeeper MCP structured spine
-3. Clinical Intelligence MCP contradiction layer
+2. Clinical Intelligence MCP hidden-risk layer
+3. two-MCP integrated story on top of the existing Discharge Gatekeeper MCP structured spine
 4. external A2A orchestrator
-5. Prompt Opinion demo hardening
+5. 3-prompt demo collapse and Prompt Opinion hardening
 6. submission lock
 
 ## Decision rule

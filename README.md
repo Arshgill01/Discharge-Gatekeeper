@@ -60,9 +60,15 @@ The point is that **Care Transitions Command prevents an unsafe discharge that w
 - [Data plan](docs/data-plan.md)
 - [Live plan](PLAN.md)
 
+## Execution-ready next steps
+1. Phase 1: build **Clinical Intelligence MCP** first around the hidden-risk prompt contract, citations, and false-positive controls.
+2. Phase 2: prove the two-MCP integrated story by reconciling **Clinical Intelligence MCP** with the existing **Discharge Gatekeeper MCP** structured spine.
+3. Phase 3: add the **external A2A orchestrator** as the preferred synchronous Prompt Opinion path.
+4. Phase 4: collapse the judge path into the final 3-prompt demo, while preserving the direct-MCP fallback.
+
 ## Current implementation note
-The repo currently contains an active TypeScript runtime under `po-community-mcp-main/typescript` for **Discharge Gatekeeper MCP**.
-Phase 0 locks the broader system story first so later implementation work can add **Clinical Intelligence MCP** and the **external A2A orchestrator** without narrative drift.
+The repo already contains a TypeScript runtime substrate under `po-community-mcp-main/typescript` for **Discharge Gatekeeper MCP**.
+Phase 0 now locks the broader system story so Phase 1 can start with **Clinical Intelligence MCP**, then integrate back into the existing structured spine before orchestration.
 
 ## Non-goals
 - custom frontend work

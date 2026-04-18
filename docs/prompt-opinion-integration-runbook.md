@@ -94,7 +94,7 @@ Register the A2A layer only after both MCPs are independently reachable.
 - synchronous request/response only
 - no streaming dependencies
 - knows the base URLs or registry IDs for both MCPs
-- applies the matrix in [phase0-orchestrator-decision-matrix.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-orchestrator-decision-matrix.md)
+- applies the matrix in [phase0-orchestrator-decision-matrix.md](phase0-orchestrator-decision-matrix.md)
 - returns a single final response suitable for the 3-prompt demo
 
 ### Registration checklist

@@ -1,7 +1,7 @@
 # PLAN.md
 
 ## Latest update
-- 2026-04-18, Agent 1: front-door scaffold reset in progress to lock the repo on `Care Transitions Command`, the `2 MCPs + 1 external A2A` architecture, and the canonical trap-patient contradiction demo.
+- 2026-04-18, Agent 1: integrated the Phase 0 scaffold reset, validated the pivoted doc set, and aligned the next-step sequence around Clinical Intelligence MCP first.
 
 ## Objective
 Win the Agents Assemble hackathon with **Care Transitions Command**: a Prompt Opinion system that uses **Discharge Gatekeeper MCP**, **Clinical Intelligence MCP**, and an **external A2A orchestrator** to catch a hidden discharge risk, explain the contradiction, and return the next transition actions in 3 prompts.
@@ -42,17 +42,17 @@ Output:
 - repo narrative points to one locked system
 - canonical demo patient and contradiction are fixed
 
-### Phase 1: Discharge Gatekeeper MCP structured spine
+### Phase 1: Clinical Intelligence MCP
 Output:
-- deterministic structured discharge posture
-- canonical blocker taxonomy and next-step spine
-- inspectable structured evidence
+- bounded hidden-risk prompt contract
+- cited contradiction findings
+- false-positive suppression and parseable JSON output
 
-### Phase 2: Clinical Intelligence MCP
+### Phase 2: two-MCP integrated story
 Output:
-- bounded note and document reading
-- contradiction detection against the structured posture
-- hidden-risk evidence payloads with impacted blocker categories
+- preserved Discharge Gatekeeper MCP structured posture
+- reconciled hidden-risk findings against the existing structured spine
+- clear downgrade/escalation behavior using the decision matrix
 
 ### Phase 3: external A2A orchestrator
 Output:
@@ -60,7 +60,7 @@ Output:
 - one fused answer per prompt
 - no streaming and no custom UI dependency
 
-### Phase 4: Prompt Opinion hardening
+### Phase 4: 3-prompt demo collapse
 Output:
 - reliable 3-prompt operator path
 - stable Prompt Opinion integration
@@ -88,30 +88,30 @@ If a workstream does not reinforce this sequence, it is not a priority.
 Owner: Agent 1
 Goal:
 - lock the repo front door on the pivoted system
-- eliminate stale single-MCP framing in the owned docs
+- eliminate stale collapsed-architecture framing in the owned docs
 - align phase sequence and team guidance
 
-### 2) Discharge Gatekeeper MCP
-Owner: open
-Goal:
-- implement the deterministic structured discharge spine
-- own canonical discharge posture, blockers, and transition scaffolding
-
-Phase 1 focus:
-- structured patient-context normalization
-- deterministic readiness posture
-- inspectable blocker and next-step outputs
-
-### 3) Clinical Intelligence MCP
+### 2) Clinical Intelligence MCP
 Owner: open
 Goal:
 - implement bounded narrative contradiction intelligence
 - detect hidden risk in note and document evidence
 
-Phase 2 focus:
+Phase 1 focus:
 - contradiction detection
 - note-backed blocker escalation
 - concise contradiction summaries
+
+### 3) Two-MCP integration
+Owner: open
+Goal:
+- reconcile hidden-risk outputs with the existing Discharge Gatekeeper MCP structured spine
+- validate downgrade/escalation behavior and evidence carry-through
+
+Phase 2 focus:
+- preserve structured blocker and action IDs
+- apply the orchestrator decision matrix in a local harness
+- keep citations and parseability intact across both MCP outputs
 
 ### 4) external A2A orchestrator
 Owner: open
@@ -147,14 +147,14 @@ Focus:
 
 ## Immediate next tasks
 1. Finish the phase-0 document reset.
-2. Keep implementation work aligned to the locked component boundaries.
-3. Encode the trap patient into eval and implementation assets without changing the spec.
-4. Build the Discharge Gatekeeper MCP structured spine first.
-5. Add Clinical Intelligence MCP only for bounded contradiction work.
-6. Add the external A2A orchestrator after both MCP responsibilities are clear.
+2. Build Clinical Intelligence MCP first against the locked hidden-risk contract.
+3. Prove the two-MCP reconciliation path with the trap patient and decision matrix.
+4. Add the external A2A orchestrator after the two MCP outputs reconcile cleanly.
+5. Collapse the preferred path into the final 3-prompt demo while preserving the direct-MCP fallback.
+6. Encode the trap patient into eval and implementation assets without changing the spec.
 
 ## Guardrails
-- Do not collapse the plan back to a single-MCP product story.
+- Do not collapse the plan back to a one-surface product story.
 - Do not add a third MCP.
 - Do not build a custom frontend.
 - Do not add A2A streaming.
@@ -162,9 +162,9 @@ Focus:
 - Do not make the demo depend on vague free-form agent behavior.
 
 ## Open risks
-- protected docs outside this ownership lane still describe the current single-MCP runtime and may need later alignment
+- runtime code still reflects only the existing Discharge Gatekeeper MCP substrate, so implementation work must preserve the pivoted component boundaries as Clinical Intelligence MCP is introduced
 - exact implementation boundary between orchestrator prompt logic and MCP prompt logic still needs runtime-level discipline
-- Prompt Opinion integration materials currently reflect the existing runtime surface, not the full phase-3 target architecture
+- Prompt Opinion registration and publish constraints for the external A2A surface may still force the direct-MCP fallback on demo day
 
 ## Definition of done for phase 0
 Phase 0 is done when:

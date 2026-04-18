@@ -63,10 +63,10 @@ Owns prompt-level coordination:
 
 ## Phase sequence
 1. Phase 0: vision lock, trap-patient lock, repo scaffold reset
-2. Phase 1: Discharge Gatekeeper MCP structured discharge spine
-3. Phase 2: Clinical Intelligence MCP contradiction detection
+2. Phase 1: Clinical Intelligence MCP hidden-risk contract and contradiction detection
+3. Phase 2: two-MCP integrated story on top of the existing Discharge Gatekeeper MCP structured spine
 4. Phase 3: external A2A orchestrator integration
-5. Phase 4: Prompt Opinion demo hardening and operator path
+5. Phase 4: 3-prompt demo collapse and Prompt Opinion operator hardening
 6. Phase 5: Marketplace and judging packaging
 
 ## Canonical demo shape

@@ -27,7 +27,7 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Decision: Lock the target architecture at `2 MCPs + 1 external A2A`.
 - Why: This is the smallest architecture that preserves both the deterministic discharge spine and the hidden-risk contradiction story.
 - Affected files or lanes: architecture, implementation, demo/submission, evals
-- Follow-up: Reject proposals for a third MCP, single-MCP collapse, or wider multi-agent sprawl unless a later explicit decision changes the architecture.
+- Follow-up: Reject proposals for a third MCP, a collapsed one-MCP architecture, or wider multi-agent sprawl unless a later explicit decision changes the architecture.
 
 - Date: 2026-04-18
 - Decision: Keep the deterministic structured discharge spine foundational and assign it to Discharge Gatekeeper MCP.

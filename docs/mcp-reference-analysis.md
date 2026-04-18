@@ -96,7 +96,7 @@ Implementation guardrails:
 - the reference repo does not define how to package a multi-surface judge demo
 
 Those gaps are now filled by:
-- [phase0-hidden-risk-prompt-contract.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-hidden-risk-prompt-contract.md)
-- [phase0-orchestrator-decision-matrix.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-orchestrator-decision-matrix.md)
-- [phase0-failure-mode-plan.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-failure-mode-plan.md)
-- [prompt-opinion-integration-runbook.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/prompt-opinion-integration-runbook.md)
+- [phase0-hidden-risk-prompt-contract.md](phase0-hidden-risk-prompt-contract.md)
+- [phase0-orchestrator-decision-matrix.md](phase0-orchestrator-decision-matrix.md)
+- [phase0-failure-mode-plan.md](phase0-failure-mode-plan.md)
+- [prompt-opinion-integration-runbook.md](prompt-opinion-integration-runbook.md)
