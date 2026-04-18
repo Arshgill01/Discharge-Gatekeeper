@@ -1,189 +1,163 @@
 # Architecture
 
-## System shape
-The project should begin as an MCP-first system designed to plug into Prompt Opinion with patient-context-aware tools.
+## Locked system shape
+Care Transitions Command uses:
+1. **Discharge Gatekeeper MCP**
+2. **Clinical Intelligence MCP**
+3. **external A2A orchestrator**
 
-Recommended shape:
-1. Prompt Opinion Launchpad receives the clinician prompt.
-2. An internal agent or direct tool path invokes our MCP server.
-3. The MCP server reads Prompt Opinion patient/FHIR context.
-4. Tools collect structured context, synthesize blockers, and return bounded outputs.
-5. Prompt Opinion displays the result and, optionally, follow-up artifacts.
+Freeze these constraints:
+- architecture stays `2 MCPs + 1 external A2A`
+- no custom frontend
+- no third MCP
+- no A2A streaming
+- Prompt Opinion is the user-facing surface
 
-## Why MCP first
-MCP is the best fit for the initial wedge because the differentiator is not a free-form external agent runtime. The differentiator is:
-- discharge-specific tool design
-- structured/unstructured context synthesis
-- clear output contracts
-- inspectable tool calls
+## Why this architecture exists
+The system has to prove two things at once:
+1. the discharge decision is grounded in a deterministic, inspectable structure
+2. the system can still catch a hidden contradiction that only appears in notes or documents
 
-## Proposed code layout
-Suggested starter layout once implementation begins:
-- `src/` or `app/`
-- `tools/`
-- `schemas/`
-- `prompts/`
-- `tests/` or `smoke/`
+One MCP is not enough for the locked narrative.
+The repo now assumes:
+- **Discharge Gatekeeper MCP** owns the deterministic discharge spine
+- **Clinical Intelligence MCP** owns bounded narrative contradiction intelligence
+- the **external A2A orchestrator** fuses both into one answer
 
-Do not overdesign this before the first tool works.
+## Component responsibilities
 
-## Context assumptions
-The MCP server should assume Prompt Opinion may provide:
-- FHIR server URL
-- FHIR access token
-- patient identifier via token claims or headers
-
-The community MCP starter demonstrates this pattern:
-- read the FHIR URL and token from request headers
-- recover patient context from the token or fallback header
-- register tools through a simple FastMCP surface
-
-## Request-scoped workflow input resolution
-The active TypeScript runtime should resolve workflow input in this order:
-1. explicit `scenario_id` -> deterministic synthetic scenario
-2. Prompt Opinion live patient/FHIR context -> request-scoped structured retrieval plus note/document normalization
-3. synthetic fallback -> only when live context is absent or unavailable
-
-This keeps the demo path reliable while making the default tool path more context-native when Prompt Opinion forwards patient context.
-
-## Minimal live resource set
-Keep live retrieval intentionally narrow:
-- `Patient`
-- `Observation`
-- `MedicationRequest`
-- `MedicationStatement`
-- `ServiceRequest`
-- `DocumentReference`
-
-These are enough to drive the current discharge-readiness spine without pretending to support full EHR breadth.
-
-## Core tool responsibilities
-### 1) `assess_discharge_readiness`
+### 1) Discharge Gatekeeper MCP
 Purpose:
-- return an inspectable v1 readiness contract for one synthetic scenario
+- produce the deterministic structured discharge posture
+- keep canonical verdicts, blockers, and next-step scaffolding stable
 
-Likely inputs:
-- optional `scenario_id` (default: first synthetic scenario)
+Inputs:
+- structured patient context
+- high-value FHIR-like resources
+- bounded deterministic rules and mappings
 
-Likely outputs:
-- verdict
-- blockers (category, priority, evidence, actionability)
-- evidence trace entries linked to blockers
-- prioritized next steps
-- summary
-- nested trust metadata on blockers, evidence, and next steps so contradiction, ambiguity, and corroboration gaps remain inspectable without changing top-level keys
+Outputs:
+- provisional or final discharge posture from structured evidence
+- blocker objects using canonical categories
+- evidence anchors to structured sources
+- prioritized next-step scaffold
 
-### 2) `extract_discharge_blockers`
+Rules:
+- remain inspectable
+- do not depend on free-form note reasoning
+- remain foundational even after the second MCP exists
+
+### 2) Clinical Intelligence MCP
 Purpose:
-- return the structured blocker list and evidence linkage from the shared workflow spine
+- inspect narrative notes and documents for contradictions, omissions, or hidden risks that change the discharge decision
 
-Likely outputs:
-- verdict context
-- blocker objects
-- category
-- severity
-- rationale
-- evidence source references
+Inputs:
+- note and document bundle
+- structured discharge posture from Discharge Gatekeeper MCP
+- focused contradiction questions from the orchestrator
 
-### 3) `generate_transition_plan`
+Outputs:
+- contradiction findings
+- hidden-risk evidence
+- impacted blocker categories
+- concise explanation of why the structured posture should change or hold
+
+Rules:
+- use bounded reasoning
+- stay anchored to source evidence
+- do not become a generic diagnosis or treatment engine
+
+### 3) external A2A orchestrator
 Purpose:
-- convert blockers from the shared workflow spine into an ordered “what must happen next” plan
+- coordinate both MCPs per user prompt
+- decide when the narrative contradiction pass is required
+- assemble one user-visible answer in Prompt Opinion
 
-Likely outputs:
-- verdict context
-- blocker context
-- evidence linkage
-- prioritized tasks
-- suggested owners
-- timing hints
-- required follow-ups
-- task-level traceability back to blocker IDs, evidence IDs, and blocker trust state
+Inputs:
+- Prompt Opinion prompt
+- patient context
+- outputs from both MCPs
 
-### 4) `build_clinician_handoff_brief`
-Purpose:
-- build a concise clinician-facing handoff from unresolved blockers and next-step ownership
+Outputs:
+- final answer aligned to the active prompt
+- consistent verdict and blocker framing across prompts
+- transition package responses that preserve evidence lineage
 
-Likely outputs:
-- readiness verdict (mirrors readiness tool)
-- unresolved risks linked to blocker IDs and evidence IDs
-- blocker-linked required actions and owners
-- blocker trust state and source-summary carry-through for unresolved risks
-- explicit clinician-review/sign-off boundary language
-- concise unresolved-risk summary
+Rules:
+- no streaming
+- no custom frontend dependency
+- no speculative multi-agent sprawl
 
-### 5) `draft_patient_discharge_instructions`
-Purpose:
-- produce plain-language patient instructions aligned to blockers and the transition plan
+## End-to-end request flow
 
-Likely outputs:
-- verdict-aligned plain-language summary
-- one instruction item per active blocker with linked blocker ID
-- instruction-level linkage to blocker evidence and care-team verification note
-- patient-facing reminders and escalation guidance
-- care-team follow-up mapping to transition actions
-- explicit clinician-finalization boundary language
+### Prompt 1: discharge question
+1. Prompt Opinion sends the prompt and patient context to the external A2A orchestrator.
+2. The orchestrator calls Discharge Gatekeeper MCP to compute the deterministic structured posture.
+3. If the case fits the trap-patient pattern or if note review is required, the orchestrator calls Clinical Intelligence MCP.
+4. The orchestrator fuses both results into the final discharge verdict.
 
-## Output-contract preference
-Start with a structured response plus concise narrative.
-Avoid pure free text in the first slice.
-Judges should be able to see:
-- a verdict
-- a blocker list
-- evidence anchors
-without digging through prose.
+### Prompt 2: contradiction question
+1. The orchestrator asks Clinical Intelligence MCP for the specific contradiction that changed the answer.
+2. The orchestrator ties that contradiction back to the structured posture from Discharge Gatekeeper MCP.
+3. The response shows exactly why the final answer is different from the clean structured view.
 
-## Evidence design
-Every major blocker should reference one or more evidence sources such as:
-- note type plus excerpt summary
-- medication discrepancy source
-- observation or lab marker
-- missing referral or order
+### Prompt 3: transition package question
+1. The orchestrator requests next-step scaffolding from Discharge Gatekeeper MCP.
+2. The orchestrator carries forward the contradiction evidence from Clinical Intelligence MCP.
+3. The final response returns the prioritized transition package.
 
-The first slice can use lightweight source labels instead of perfect provenance objects.
-Active suite expectation:
-- each blocker carries bounded provenance: trust state, source labels/types, and any contradiction/ambiguity/missing-corroboration marker IDs
-- each evidence trace carries source summary plus backlink to blockers and downstream next steps
-- each transition task carries blocker-linked evidence IDs and a short trace summary
+## Deterministic structured discharge spine
+This is foundational and must remain visible.
 
-## Shared workflow spine
-The core suite should run as one workflow family, not isolated tool implementations:
-- one normalized evidence layer (`structured` + `note/document` signals)
-- one blocker model reused across readiness, blocker extraction, and transition planning
-- one transition-task model (`priority`, `owner`, `linked_blockers`) reused wherever next steps are produced
-- explicit traceability path: `blocker -> evidence` and `next_step -> blocker`
-- explicit trust path: `blocker provenance -> evidence conflict/ambiguity markers -> next step trace summary -> artifact carry-through`
+The structured spine should be able to explain:
+- what the chart says
+- which canonical blockers are present from structured evidence
+- what the provisional posture is before note escalation
+- what the immediate next steps would be if the structured picture were complete
 
-## Notes and documents
-The product should not rely on structured FHIR alone.
-Use uploaded note content for:
-- hidden social/logistical blockers
-- home support constraints
-- education gaps
-- unresolved narrative concerns
+The system is stronger because this foundation exists.
+The second MCP does not replace it.
+It challenges it when the notes prove it is incomplete.
 
-In the current runtime, `DocumentReference` content is normalized into the same `note_documents` path used by synthetic scenarios so structured and note evidence stay on one inspectable spine.
+## Bounded reasoning rule
+The narrative layer is intentionally narrow.
+Clinical Intelligence MCP should only do work that the deterministic spine cannot do safely on its own:
+- detect contradictions
+- surface hidden blockers
+- connect narrative evidence to canonical blocker categories
+- explain why the posture changed
 
-## Safety boundaries
-The system should:
-- support readiness assessment
-- synthesize evidence
-- assist transition planning
+It should not:
+- invent new product scope
+- generate open-ended clinical management plans
+- become a generic chart-summary engine
 
-The system should not:
-- claim discharge authority
-- make unsupported medical judgments
-- present risk predictions as certainty
+## Canonical outputs across the system
+The combined system should preserve these outputs:
+1. discharge readiness verdict
+2. blocker list with severity
+3. evidence trace by source
+4. prioritized next-step checklist
+5. clinician handoff brief
+6. patient-friendly discharge instructions
 
-## Error handling
-Useful failures are better than vague failures.
-Tools should fail with messages that make next actions obvious, such as:
-- no patient context found
-- FHIR context unavailable
-- required note source missing
-- evidence insufficient for a confident verdict
+## Canonical terms
+Verdicts:
+- `ready`
+- `ready_with_caveats`
+- `not_ready`
 
-When live context is partial rather than fully absent, prefer explicit blocker/gap surfacing over silent optimistic assumptions.
+Blocker categories:
+- `clinical_stability`
+- `pending_diagnostics`
+- `medication_reconciliation`
+- `follow_up_and_referrals`
+- `patient_education`
+- `home_support_and_services`
+- `equipment_and_transport`
+- `administrative_and_documentation`
 
-## First build target
-The first thin slice should only prove this:
-Given a small synthetic scenario pack and a small set of structured plus note/document inputs, the system can correctly separate `not_ready`, `ready_with_caveats`, and `ready`, while keeping blockers, evidence, and transition artifacts inspectable.
+## Current repo note
+The current implementation substrate still centers on Discharge Gatekeeper MCP runtime work.
+That is acceptable.
+The locked architecture in this doc defines the target system shape for all future phase work.
