@@ -1,10 +1,23 @@
 export const V1_TOOL_NAME = "assess_discharge_readiness";
 export const EXTRACT_BLOCKERS_TOOL_NAME = "extract_discharge_blockers";
 export const GENERATE_TRANSITION_PLAN_TOOL_NAME = "generate_transition_plan";
+export const V1_CLINICIAN_HANDOFF_TOOL_NAME = "build_clinician_handoff_brief";
+export const V1_PATIENT_INSTRUCTIONS_TOOL_NAME = "draft_patient_discharge_instructions";
 export const CORE_WORKFLOW_TOOL_NAMES = [
   V1_TOOL_NAME,
   EXTRACT_BLOCKERS_TOOL_NAME,
   GENERATE_TRANSITION_PLAN_TOOL_NAME,
+] as const;
+export const ARTIFACT_WORKFLOW_TOOL_NAMES = [
+  V1_CLINICIAN_HANDOFF_TOOL_NAME,
+  V1_PATIENT_INSTRUCTIONS_TOOL_NAME,
+] as const;
+export const V1_WORKFLOW_TOOL_NAMES = [
+  V1_TOOL_NAME,
+  EXTRACT_BLOCKERS_TOOL_NAME,
+  GENERATE_TRANSITION_PLAN_TOOL_NAME,
+  V1_CLINICIAN_HANDOFF_TOOL_NAME,
+  V1_PATIENT_INSTRUCTIONS_TOOL_NAME,
 ] as const;
 export const V1_PRIMARY_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
 export const V1_SCENARIO_ID = V1_PRIMARY_SCENARIO_ID;
@@ -211,5 +224,45 @@ export type GenerateTransitionPlanResponse = {
   blockers: DischargeBlocker[];
   evidence: EvidenceTrace[];
   next_steps: TransitionTask[];
+  summary: string;
+};
+
+export type ClinicianHandoffRisk = {
+  blocker_id: string;
+  category: BlockerCategory;
+  priority: BlockerPriority;
+  unresolved_risk: string;
+  evidence_ids: string[];
+  required_action: string;
+  owner: string;
+  linked_next_step_id: string | null;
+};
+
+export type ClinicianHandoffBriefResponse = {
+  scenario_id: string;
+  readiness_verdict: ReadinessVerdict;
+  review_boundary: string;
+  unresolved_risks: ClinicianHandoffRisk[];
+  prioritized_actions: NextStep[];
+  summary: string;
+};
+
+export type PatientInstructionItem = {
+  id: string;
+  linked_blockers: string[];
+  title: string;
+  instruction: string;
+  reason: string;
+  care_team_follow_up: string;
+};
+
+export type PatientDischargeInstructionsResponse = {
+  scenario_id: string;
+  readiness_verdict: ReadinessVerdict;
+  plain_language_notice: string;
+  review_boundary: string;
+  instructions: PatientInstructionItem[];
+  follow_up_reminders: string[];
+  emergency_guidance: string;
   summary: string;
 };

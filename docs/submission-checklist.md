@@ -98,13 +98,15 @@ Repo-level command check before recording:
 2. run `npm run smoke:readiness`
 3. run `npm run smoke:readiness:regression`
 4. run `npm run smoke:workflow-suite-core`
-5. run `npm run smoke:demo-path`
-6. optionally run one bundled command: `npm run smoke:release-gate`
-7. confirm output includes `SMOKE PASS: runtime boot and tool registration`
-8. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
-9. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
-10. confirm output includes `SMOKE PASS: workflow suite core`
-11. confirm output includes `SMOKE PASS: demo path (3 prompts)`
+5. run `npm run smoke:artifacts`
+6. run `npm run smoke:demo-path`
+7. optionally run one bundled command: `npm run smoke:release-gate`
+8. confirm output includes `SMOKE PASS: runtime boot and tool registration`
+9. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
+10. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
+11. confirm output includes `SMOKE PASS: workflow suite core`
+12. confirm output includes `SMOKE PASS: workflow artifacts suite`
+13. confirm output includes `SMOKE PASS: demo path (expanded workflow)`
 
 ## Last-minute cut rule
 If time is short, protect these in order:

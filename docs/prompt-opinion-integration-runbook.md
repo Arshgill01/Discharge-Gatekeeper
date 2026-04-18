@@ -111,8 +111,12 @@ In workspace settings (`MCP Servers` or `Tools`, label varies by UI version):
 1. Add server name: `Discharge Gatekeeper MCP (tunnel)`
 2. Set URL to tunnel endpoint ending in `/mcp`
 3. Save and run connection test
-4. Confirm discovered tool list includes `assess_discharge_readiness`
-   plus `extract_discharge_blockers` and `generate_transition_plan`
+4. Confirm discovered tool list includes:
+   - `assess_discharge_readiness`
+   - `extract_discharge_blockers`
+   - `generate_transition_plan`
+   - `build_clinician_handoff_brief`
+   - `draft_patient_discharge_instructions`
 
 ## 8) Launchpad smoke flow
 
@@ -142,6 +146,7 @@ npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
 npm run smoke:workflow-suite-core
+npm run smoke:artifacts
 npm run smoke:demo-path
 ```
 
@@ -151,7 +156,8 @@ Expected:
 - smoke prints `SMOKE PASS: assess_discharge_readiness v1`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
 - workflow-core smoke prints `SMOKE PASS: workflow suite core`
-- demo smoke prints `SMOKE PASS: demo path (3 prompts)`
+- artifact smoke prints `SMOKE PASS: workflow artifacts suite`
+- demo smoke prints `SMOKE PASS: demo path (expanded workflow)`
 
 ## 10) Troubleshooting
 
@@ -161,8 +167,12 @@ Symptoms:
 - connection succeeds but tool list is empty or unexpected
 
 Checks:
-1. `curl -sS http://localhost:5055/healthz | jq` and confirm `tools` contains `assess_discharge_readiness`
-   plus `extract_discharge_blockers` and `generate_transition_plan`
+1. `curl -sS http://localhost:5055/healthz | jq` and confirm `tools` contains:
+   - `assess_discharge_readiness`
+   - `extract_discharge_blockers`
+   - `generate_transition_plan`
+   - `build_clinician_handoff_brief`
+   - `draft_patient_discharge_instructions`
 2. ensure Prompt Opinion endpoint URL ends with `/mcp`
 3. remove and re-add server connection in Prompt Opinion
 

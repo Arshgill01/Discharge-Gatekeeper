@@ -16,7 +16,7 @@ Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and 
    - `npm run smoke:release-gate`
 2. Confirm runtime/tool surface explicitly:
    - `npm run smoke:runtime`
-   - `/healthz` shows the canonical core-suite tools: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`
+   - `/healthz` shows the workflow-suite tools: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`
 3. Open Prompt Opinion workspace and select the synthetic patient context.
 4. Keep one view ready where verdict, blockers, and evidence IDs are visible together.
 
@@ -54,6 +54,24 @@ Show on screen:
 
 Expected value:
 - converts blockers into an execution-ready transition checklist for the care team
+
+## Optional 2-prompt expansion (show bigger suite)
+
+### Prompt 4
+User prompt:
+`Build the clinician handoff brief.`
+
+Show on screen:
+- unresolved risks tied to blocker IDs and evidence IDs
+- explicit clinician-review/sign-off boundary text
+
+### Prompt 5
+User prompt:
+`Draft patient discharge instructions.`
+
+Show on screen:
+- plain-language instructions mapped one-to-one to blocker IDs
+- explicit clinician-finalization boundary text
 
 ## Expected output snapshot (first slice)
 - Verdict: `not_ready`

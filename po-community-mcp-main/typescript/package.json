@@ -13,7 +13,8 @@
     "smoke:readiness:regression": "npx tsx smoke/assess-discharge-readiness-regression.ts",
     "smoke:workflow-suite-core": "npx tsx smoke/workflow-suite-core-smoke.ts",
     "smoke:demo-path": "npx tsx smoke/demo-path-smoke.ts",
-    "smoke:release-gate": "npm run smoke:runtime && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:readiness:regression && npm run smoke:workflow-suite-core && npm run smoke:demo-path",
+    "smoke:artifacts": "npx tsx smoke/workflow-artifacts-smoke.ts",
+    "smoke:release-gate": "npm run smoke:runtime && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:readiness:regression && npm run smoke:workflow-suite-core && npm run smoke:artifacts && npm run smoke:demo-path",
     "test": "npm run typecheck && npm run smoke:release-gate"
   },
   "author": "Discharge Gatekeeper Team",
