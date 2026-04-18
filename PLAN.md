@@ -110,6 +110,10 @@ Current focus (2026-04-18, Agent 1 - live-context ingest lane):
 - add a request-scoped resolver that prefers Prompt Opinion patient/FHIR context and realistic note/document ingestion before synthetic scenario fallback
 - derive the shared readiness evidence spine from a minimal high-value structured resource set plus normalized note/document inputs
 - add smoke coverage for live-context ingest, partial-context handling, and synthetic fallback preservation across the workflow suite
+Current focus (2026-04-18, Agent 2 - provenance/trust lane):
+- deepen bounded provenance across readiness, blocker extraction, transition planning, and artifact outputs without changing tool membership or frozen top-level response keys
+- surface contradiction, ambiguity, and missing-corroboration states explicitly in blocker/evidence/action traceability
+- strengthen smoke/eval coverage so blocker -> evidence -> action propagation and trust visibility remain demo-readable
 
 ### 5) Evals
 Owner: open

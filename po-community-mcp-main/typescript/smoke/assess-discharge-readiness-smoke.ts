@@ -72,6 +72,18 @@ const assertEvidenceAndNextSteps = (
 
   for (const blocker of response.blockers) {
     assert.ok(blocker.evidence.length > 0, `${label}: blocker ${blocker.id} missing evidence.`);
+    assert.ok(
+      blocker.provenance.summary.trim().length > 0,
+      `${label}: blocker ${blocker.id} must expose provenance summary.`,
+    );
+    assert.ok(
+      blocker.provenance.source_labels.length > 0,
+      `${label}: blocker ${blocker.id} must expose source labels.`,
+    );
+    assert.ok(
+      blocker.provenance.source_types.length > 0,
+      `${label}: blocker ${blocker.id} must expose source types.`,
+    );
     for (const evidenceId of blocker.evidence) {
       assert.ok(
         evidenceIds.has(evidenceId),
@@ -84,6 +96,14 @@ const assertEvidenceAndNextSteps = (
     assert.ok(
       trace.supports_blockers.length > 0,
       `${label}: evidence ${trace.id} has no linked blockers.`,
+    );
+    assert.ok(
+      trace.supports_next_steps.length > 0,
+      `${label}: evidence ${trace.id} has no linked next steps.`,
+    );
+    assert.ok(
+      trace.source_summary.trim().length > 0,
+      `${label}: evidence ${trace.id} must expose a source summary.`,
     );
     for (const blockerId of trace.supports_blockers) {
       const blocker = blockerById.get(blockerId);
@@ -115,6 +135,21 @@ const assertEvidenceAndNextSteps = (
       step.priority,
       blocker.priority,
       `${label}: next step ${step.id} priority should match blocker ${linkedBlockerId}.`,
+    );
+    assert.deepEqual(
+      step.linked_evidence,
+      blocker.evidence,
+      `${label}: next step ${step.id} linked evidence should match blocker ${linkedBlockerId}.`,
+    );
+    assert.equal(
+      step.blocker_trust_state,
+      blocker.provenance.trust_state,
+      `${label}: next step ${step.id} trust state should match blocker ${linkedBlockerId}.`,
+    );
+    assert.equal(
+      step.trace_summary,
+      blocker.provenance.summary,
+      `${label}: next step ${step.id} trace summary should match blocker ${linkedBlockerId}.`,
     );
     assert.ok(step.action.length > 0, `${label}: next step ${step.id} missing action.`);
     assert.ok(step.owner.length > 0, `${label}: next step ${step.id} missing owner.`);
@@ -236,6 +271,26 @@ assert.ok(
 assert.ok(
   ambiguityCategories.has("medication_reconciliation"),
   "ambiguity: expected medication_reconciliation blocker from uncertain evidence.",
+);
+const conflictedBlocker = ambiguity.blockers.find((blocker) => blocker.category === "clinical_stability");
+assert.equal(
+  conflictedBlocker?.provenance.trust_state,
+  "conflicted",
+  "ambiguity: clinical stability blocker should expose conflicted provenance state.",
+);
+assert.ok(
+  (conflictedBlocker?.provenance.contradiction_ids.length ?? 0) > 0,
+  "ambiguity: conflicted blocker should expose contradiction IDs.",
+);
+const uncertainBlocker = ambiguity.blockers.find((blocker) => blocker.category === "medication_reconciliation");
+assert.equal(
+  uncertainBlocker?.provenance.trust_state,
+  "uncertain",
+  "ambiguity: medication reconciliation blocker should expose uncertain provenance state.",
+);
+assert.ok(
+  (uncertainBlocker?.provenance.ambiguity_ids.length ?? 0) > 0,
+  "ambiguity: uncertain blocker should expose ambiguity IDs.",
 );
 
 console.log("SMOKE PASS: assess_discharge_readiness v1");

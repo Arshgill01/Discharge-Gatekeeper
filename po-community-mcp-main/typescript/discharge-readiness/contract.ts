@@ -73,6 +73,13 @@ export const EVIDENCE_SIGNAL_STATES = [
   "ambiguous",
 ] as const;
 export type EvidenceSignalState = (typeof EVIDENCE_SIGNAL_STATES)[number];
+export const BLOCKER_TRUST_STATES = [
+  "supported",
+  "conflicted",
+  "uncertain",
+  "missing_corroboration",
+] as const;
+export type BlockerTrustState = (typeof BLOCKER_TRUST_STATES)[number];
 
 export type NoteDocumentSignalInput = {
   id: string;
@@ -181,6 +188,16 @@ export type NormalizedEvidenceBundle = {
   missing_evidence: MissingEvidenceMarker[];
 };
 
+export type BlockerProvenance = {
+  trust_state: BlockerTrustState;
+  source_labels: string[];
+  source_types: EvidenceSourceType[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  missing_evidence_ids: string[];
+  summary: string;
+};
+
 export type DischargeBlocker = {
   id: string;
   category: BlockerCategory;
@@ -188,10 +205,16 @@ export type DischargeBlocker = {
   description: string;
   evidence: string[];
   actionability: string;
+  provenance: BlockerProvenance;
 };
 
 export type EvidenceTrace = EvidenceRecord & {
   supports_blockers: string[];
+  supports_next_steps: string[];
+  signal_states: EvidenceSignalState[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  source_summary: string;
 };
 
 export type TransitionTask = {
@@ -200,6 +223,9 @@ export type TransitionTask = {
   action: string;
   owner: string;
   linked_blockers: string[];
+  linked_evidence: string[];
+  blocker_trust_state: BlockerTrustState;
+  trace_summary: string;
 };
 
 export type NextStep = TransitionTask;
@@ -233,6 +259,12 @@ export type ClinicianHandoffRisk = {
   priority: BlockerPriority;
   unresolved_risk: string;
   evidence_ids: string[];
+  trust_state: BlockerTrustState;
+  source_labels: string[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  missing_evidence_ids: string[];
+  trace_summary: string;
   required_action: string;
   owner: string;
   linked_next_step_id: string | null;
@@ -250,10 +282,13 @@ export type ClinicianHandoffBriefResponse = {
 export type PatientInstructionItem = {
   id: string;
   linked_blockers: string[];
+  linked_evidence: string[];
+  linked_next_step_id: string | null;
   title: string;
   instruction: string;
   reason: string;
   care_team_follow_up: string;
+  care_team_verification: string;
 };
 
 export type PatientDischargeInstructionsResponse = {

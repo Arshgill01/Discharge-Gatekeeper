@@ -102,6 +102,30 @@ const assertCanonicalCategories = (
   }
 };
 
+const assertBlockerTrustMetadata = (
+  blockers: DischargeBlocker[],
+  label: string,
+): void => {
+  for (const blocker of blockers) {
+    assert.ok(
+      blocker.provenance.summary.trim().length > 0,
+      `${label}: blocker ${blocker.id} must include provenance summary.`,
+    );
+    assert.ok(
+      blocker.provenance.source_labels.length > 0,
+      `${label}: blocker ${blocker.id} must expose source labels.`,
+    );
+    assert.ok(
+      blocker.provenance.source_types.length > 0,
+      `${label}: blocker ${blocker.id} must expose source types.`,
+    );
+    assert.ok(
+      blocker.provenance.summary.length <= 160,
+      `${label}: blocker ${blocker.id} provenance summary should stay bounded for demo readability.`,
+    );
+  }
+};
+
 const assertEvidenceLinkage = (
   blockers: DischargeBlocker[],
   evidence: EvidenceTrace[],
@@ -131,6 +155,10 @@ const assertEvidenceLinkage = (
         `${label}: evidence ${trace.id} links unknown blocker ${blockerId}.`,
       );
     }
+    assert.ok(
+      trace.source_summary.trim().length > 0,
+      `${label}: evidence ${trace.id} must include source summary.`,
+    );
   }
 };
 
@@ -148,6 +176,10 @@ const assertTransitionLinkage = (
   for (const step of response.next_steps) {
     assert.ok(step.owner.trim().length > 0, `${label}: step ${step.id} missing owner.`);
     assert.ok(step.action.trim().length > 0, `${label}: step ${step.id} missing action.`);
+    assert.ok(
+      step.trace_summary.trim().length > 0,
+      `${label}: step ${step.id} missing trace summary.`,
+    );
     assert.equal(
       step.linked_blockers.length,
       1,
@@ -163,6 +195,40 @@ const assertTransitionLinkage = (
       linkedBlocker.priority,
       `${label}: step ${step.id} priority must match linked blocker priority.`,
     );
+    assert.deepEqual(
+      step.linked_evidence,
+      linkedBlocker.evidence,
+      `${label}: step ${step.id} linked evidence must match linked blocker evidence.`,
+    );
+    assert.equal(
+      step.blocker_trust_state,
+      linkedBlocker.provenance.trust_state,
+      `${label}: step ${step.id} trust state must match linked blocker provenance.`,
+    );
+    assert.equal(
+      step.trace_summary,
+      linkedBlocker.provenance.summary,
+      `${label}: step ${step.id} trace summary must match linked blocker provenance summary.`,
+    );
+  }
+};
+
+const assertEvidenceToNextStepLinkage = (
+  response: GenerateTransitionPlanResponse,
+  label: string,
+): void => {
+  const nextStepIds = new Set(response.next_steps.map((step) => step.id));
+  for (const trace of response.evidence) {
+    assert.ok(
+      trace.supports_next_steps.length > 0,
+      `${label}: evidence ${trace.id} must link to at least one next step.`,
+    );
+    for (const nextStepId of trace.supports_next_steps) {
+      assert.ok(
+        nextStepIds.has(nextStepId),
+        `${label}: evidence ${trace.id} links unknown next step ${nextStepId}.`,
+      );
+    }
   }
 };
 
@@ -234,10 +300,14 @@ const runCase = (
   assertCanonicalCategories(readiness.blockers, `${label}/readiness`);
   assertCanonicalCategories(blockers.blockers, `${label}/blockers`);
   assertCanonicalCategories(transition.blockers, `${label}/transition`);
+  assertBlockerTrustMetadata(readiness.blockers, `${label}/readiness`);
+  assertBlockerTrustMetadata(blockers.blockers, `${label}/blockers`);
+  assertBlockerTrustMetadata(transition.blockers, `${label}/transition`);
 
   assertEvidenceLinkage(blockers.blockers, blockers.evidence, `${label}/blockers`);
   assertEvidenceLinkage(transition.blockers, transition.evidence, `${label}/transition`);
   assertTransitionLinkage(transition, `${label}/transition`);
+  assertEvidenceToNextStepLinkage(transition, `${label}/transition`);
 
   assertScenarioTruth(
     label,

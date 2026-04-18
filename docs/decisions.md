@@ -122,3 +122,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The suite needed to feel materially less fixture-driven without breaking the reliable demo path; one narrow resolver keeps live-context ingestion inspectable, preserves the frozen public tool names, and makes missing/partial context behavior explicit.
 - Affected files or lanes: implementation, Prompt Opinion integration, evals, architecture
 - Follow-up: Keep the minimal live resource set bounded to high-value discharge inputs (`Patient`, `Observation`, `MedicationRequest`, `MedicationStatement`, `ServiceRequest`, `DocumentReference`) unless a future decision proves broader retrieval materially helps the judge path.
+
+- Date: 2026-04-18
+- Decision: Deepen the public workflow-suite trust model with bounded nested provenance on blockers, evidence traces, transition tasks, and downstream artifacts while keeping tool membership and frozen top-level response keys unchanged.
+- Why: The normalized evidence layer already tracked contradiction, ambiguity, and missing-corroboration states internally, but judges could not reliably see how that trust information propagated into blockers, actions, and artifacts.
+- Affected files or lanes: implementation, architecture, evals, demo/submission
+- Follow-up: Keep provenance summaries concise, preserve blocker/evidence/next-step/artifact linkage in smoke checks, and avoid adding top-level response sprawl unless a future ADR explicitly changes the contract.

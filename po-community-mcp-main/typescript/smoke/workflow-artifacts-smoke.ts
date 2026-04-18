@@ -96,6 +96,36 @@ const assertClinicianArtifactConsistency = (
       blocker.evidence,
       `${label}: unresolved risk evidence must stay aligned with blocker evidence IDs.`,
     );
+    assert.equal(
+      unresolvedRisk.trust_state,
+      blocker.provenance.trust_state,
+      `${label}: unresolved risk trust state should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.source_labels,
+      blocker.provenance.source_labels,
+      `${label}: unresolved risk source labels should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.contradiction_ids,
+      blocker.provenance.contradiction_ids,
+      `${label}: unresolved risk contradiction IDs should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.ambiguity_ids,
+      blocker.provenance.ambiguity_ids,
+      `${label}: unresolved risk ambiguity IDs should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.missing_evidence_ids,
+      blocker.provenance.missing_evidence_ids,
+      `${label}: unresolved risk missing evidence IDs should match blocker provenance.`,
+    );
+    assert.equal(
+      unresolvedRisk.trace_summary,
+      blocker.provenance.summary,
+      `${label}: unresolved risk trace summary should match blocker provenance summary.`,
+    );
 
     const linkedStep = nextStepByBlockerId.get(unresolvedRisk.blocker_id);
     assert.ok(
@@ -116,6 +146,11 @@ const assertClinicianArtifactConsistency = (
       unresolvedRisk.linked_next_step_id,
       linkedStep.id,
       `${label}: linked next-step ID must match readiness next-step ID.`,
+    );
+    assert.deepEqual(
+      linkedStep.linked_evidence,
+      unresolvedRisk.evidence_ids,
+      `${label}: linked next-step evidence should match unresolved risk evidence.`,
     );
   }
 };
@@ -172,6 +207,21 @@ const assertPatientArtifactConsistency = (
       item.care_team_follow_up,
       linkedStep.action,
       `${label}: care_team_follow_up must map to readiness next-step action.`,
+    );
+    assert.deepEqual(
+      item.linked_evidence,
+      blocker.evidence,
+      `${label}: instruction ${item.id} linked evidence must match blocker evidence.`,
+    );
+    assert.equal(
+      item.linked_next_step_id,
+      linkedStep.id,
+      `${label}: instruction ${item.id} linked next step should match readiness next step.`,
+    );
+    assert.equal(
+      item.care_team_verification,
+      blocker.provenance.summary,
+      `${label}: instruction ${item.id} verification note must match blocker provenance summary.`,
     );
 
     for (const pattern of AUTONOMY_DRIFT_PATTERNS) {
