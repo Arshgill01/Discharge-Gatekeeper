@@ -3,23 +3,74 @@ import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
 import { buildAgentCard } from "./agent-card";
-
-type TaskRecord = {
-  task_id: string;
-  status: "queued" | "running" | "completed";
-  created_at: string;
-  completed_at: string | null;
-  input: unknown;
-  output: unknown;
-};
+import { A2ATaskInput, A2ATaskRecord, ReconciliationResult } from "./types";
+import { McpToolInvoker } from "./mcp/invoker";
+import { reconcileOutputs } from "./orchestrator/reconcile";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const app = express();
 const startTimeMs = Date.now();
-const tasks = new Map<string, TaskRecord>();
+const tasks = new Map<string, A2ATaskRecord>();
+const invoker = new McpToolInvoker(config);
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
+
+const log = (
+  level: "info" | "error",
+  message: string,
+  metadata: Record<string, unknown> = {},
+): void => {
+  const line = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...metadata,
+  });
+
+  if (level === "error") {
+    console.error(line);
+    return;
+  }
+
+  console.log(line);
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Timed out after ${timeoutMs} ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
+
+const parseTaskInput = (raw: unknown): A2ATaskInput => {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Task payload must be an object.");
+  }
+
+  const prompt = (raw as { prompt?: unknown }).prompt;
+  if (typeof prompt !== "string" || prompt.trim().length === 0) {
+    throw new Error("Task payload must include a non-empty 'prompt' string.");
+  }
+
+  const patientContext = (raw as { patient_context?: unknown }).patient_context;
+
+  return {
+    prompt,
+    patient_context: patientContext && typeof patientContext === "object"
+      ? (patientContext as A2ATaskInput["patient_context"])
+      : undefined,
+  };
+};
 
 const buildHealthPayload = () => ({
   status: "ok",
@@ -33,8 +84,43 @@ const buildHealthPayload = () => ({
     tasks: "/tasks",
   },
   task_count: tasks.size,
+  dependencies: {
+    discharge_gatekeeper_mcp_url: config.dischargeGatekeeperMcpUrl,
+    clinical_intelligence_mcp_url: config.clinicalIntelligenceMcpUrl,
+  },
   uptime_seconds: Math.floor((Date.now() - startTimeMs) / 1000),
 });
+
+const shouldInvokeHiddenRisk = (taskInput: A2ATaskInput): boolean => {
+  const narrativeCount = taskInput.patient_context?.narrative_evidence_bundle?.length || 0;
+  if (narrativeCount > 0) {
+    return true;
+  }
+
+  const prompt = taskInput.prompt.toLowerCase();
+  return (
+    prompt.includes("hidden risk") ||
+    prompt.includes("contradiction") ||
+    prompt.includes("discharge")
+  );
+};
+
+const runTask = async (taskInput: A2ATaskInput): Promise<ReconciliationResult> => {
+  const deterministic = await invoker.invokeDeterministicReadiness(taskInput);
+
+  if (!shouldInvokeHiddenRisk(taskInput)) {
+    const reconciled = reconcileOutputs(taskInput, deterministic, null);
+    return {
+      ...reconciled,
+      hidden_risk_run_status: "skipped",
+      contradiction_summary:
+        "Narrative review was skipped because no narrative bundle was provided and prompt did not require contradiction analysis.",
+    };
+  }
+
+  const hiddenRisk = await invoker.invokeHiddenRisk(deterministic, taskInput);
+  return reconcileOutputs(taskInput, deterministic, hiddenRisk);
+};
 
 app.get("/healthz", (_req, res) => {
   res.status(200).json(buildHealthPayload());
@@ -53,22 +139,42 @@ app.get("/agent-card", (_req, res) => {
 });
 
 app.post("/tasks", async (req, res) => {
-  const taskId = randomUUID();
-  const now = new Date().toISOString();
-  const task: TaskRecord = {
-    task_id: taskId,
-    status: "completed",
-    created_at: now,
-    completed_at: now,
-    input: req.body,
-    output: {
-      status: "not_implemented",
-      message: "Task lifecycle scaffold is active; orchestration will be wired in the next commit.",
-    },
-  };
+  const requestId = req.headers["x-request-id"]?.toString() || randomUUID();
 
-  tasks.set(taskId, task);
-  res.status(201).json(task);
+  try {
+    const input = parseTaskInput(req.body);
+    const taskId = randomUUID();
+    const now = new Date().toISOString();
+    const taskRecord: A2ATaskRecord = {
+      task_id: taskId,
+      status: "queued",
+      created_at: now,
+      completed_at: null,
+      input,
+      output: null,
+      error: null,
+    };
+    tasks.set(taskId, taskRecord);
+
+    taskRecord.status = "running";
+    const result = await withTimeout(runTask(input), config.taskTimeoutMs);
+    taskRecord.status = "completed";
+    taskRecord.output = result;
+    taskRecord.completed_at = new Date().toISOString();
+
+    res.status(201).json(taskRecord);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log("error", "Task failed", {
+      request_id: requestId,
+      error_message: message,
+    });
+
+    res.status(400).json({
+      status: "error",
+      message,
+    });
+  }
 });
 
 app.get("/tasks", (_req, res) => {
@@ -93,16 +199,15 @@ app.get("/tasks/:taskId", (req, res) => {
 });
 
 app.listen(config.port, config.host, () => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: "info",
-      message: "external A2A orchestrator listening",
-      host: config.host,
-      port: config.port,
-      health_endpoint: `http://localhost:${config.port}/healthz`,
-      agent_card_endpoint: `http://localhost:${config.port}/.well-known/agent-card.json`,
-      tasks_endpoint: `http://localhost:${config.port}/tasks`,
-    }),
-  );
+  log("info", "external A2A orchestrator listening", {
+    host: config.host,
+    port: config.port,
+    po_env: config.poEnv,
+    health_endpoint: `http://localhost:${config.port}/healthz`,
+    readyz_endpoint: `http://localhost:${config.port}/readyz`,
+    agent_card_endpoint: `http://localhost:${config.port}/.well-known/agent-card.json`,
+    tasks_endpoint: `http://localhost:${config.port}/tasks`,
+    discharge_gatekeeper_mcp_url: config.dischargeGatekeeperMcpUrl,
+    clinical_intelligence_mcp_url: config.clinicalIntelligenceMcpUrl,
+  });
 });
