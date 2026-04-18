@@ -8,7 +8,15 @@ import {
 } from "../discharge-readiness/contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
-import { SCENARIO_V1_TRUTH, SCENARIO_V2_TRUTH } from "../discharge-readiness/scenario-truth";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v3";
+import {
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
+} from "../discharge-readiness/regression-fixtures";
+import {
+  SCENARIO_V1_TRUTH,
+  SCENARIO_V2_TRUTH,
+  SCENARIO_V3_TRUTH,
+} from "../discharge-readiness/scenario-truth";
 import {
   buildClinicianHandoffBriefV1,
   draftPatientDischargeInstructionsV1,
@@ -247,6 +255,7 @@ const assertScenarioContinuity = (
   label: string,
   input: ReadinessInput,
   expectedVerdict: string,
+  expectedBlockerCount: number,
   expectedCategories: BlockerCategory[],
 ): void => {
   const readiness = assessDischargeReadinessV1(input);
@@ -259,6 +268,21 @@ const assertScenarioContinuity = (
     patientInstructions.readiness_verdict,
     expectedVerdict,
     `${label}: patient instructions verdict drifted.`,
+  );
+  assert.equal(
+    readiness.blockers.length,
+    expectedBlockerCount,
+    `${label}: readiness blocker count drifted.`,
+  );
+  assert.equal(
+    handoff.unresolved_risks.length,
+    expectedBlockerCount,
+    `${label}: unresolved risk count drifted.`,
+  );
+  assert.equal(
+    patientInstructions.instructions.length,
+    expectedBlockerCount,
+    `${label}: patient instruction count drifted.`,
   );
 
   const categorySet = new Set(readiness.blockers.map((blocker) => blocker.category));
@@ -276,6 +300,7 @@ const main = (): void => {
     "primary",
     FIRST_SYNTHETIC_SCENARIO_V1,
     SCENARIO_V1_TRUTH.verdict,
+    SCENARIO_V1_TRUTH.expected_blocker_count,
     SCENARIO_V1_TRUTH.required_categories,
   );
 
@@ -287,8 +312,36 @@ const main = (): void => {
     "second",
     SECOND_SYNTHETIC_SCENARIO_V1,
     SCENARIO_V2_TRUTH.verdict,
+    SCENARIO_V2_TRUTH.expected_blocker_count,
     SCENARIO_V2_TRUTH.required_categories,
   );
+
+  const thirdHandoff = buildClinicianHandoffBriefV1(THIRD_SYNTHETIC_SCENARIO_V1);
+  const thirdInstructions = draftPatientDischargeInstructionsV1(THIRD_SYNTHETIC_SCENARIO_V1);
+  assertClinicianArtifactConsistency("third", THIRD_SYNTHETIC_SCENARIO_V1, thirdHandoff);
+  assertPatientArtifactConsistency("third", THIRD_SYNTHETIC_SCENARIO_V1, thirdInstructions);
+  assertScenarioContinuity(
+    "third",
+    THIRD_SYNTHETIC_SCENARIO_V1,
+    SCENARIO_V3_TRUTH.verdict,
+    SCENARIO_V3_TRUTH.expected_blocker_count,
+    SCENARIO_V3_TRUTH.required_categories,
+  );
+  assert.ok(
+    /No unresolved discharge blockers/i.test(thirdHandoff.summary),
+    "third: clinician handoff should explicitly state that no unresolved blockers remain.",
+  );
+  assert.ok(
+    /No active discharge blockers/i.test(thirdInstructions.summary),
+    "third: patient instructions should keep ready-state summary language explicit.",
+  );
+
+  for (const robustnessCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+    const handoff = buildClinicianHandoffBriefV1(robustnessCase.input);
+    const instructions = draftPatientDischargeInstructionsV1(robustnessCase.input);
+    assertClinicianArtifactConsistency(robustnessCase.id, robustnessCase.input, handoff);
+    assertPatientArtifactConsistency(robustnessCase.id, robustnessCase.input, instructions);
+  }
 
   console.log("SMOKE PASS: workflow artifacts suite");
   console.log(
@@ -302,13 +355,19 @@ const main = (): void => {
         },
         second: {
           verdict: secondHandoff.readiness_verdict,
-          unresolved_risk_count: secondHandoff.unresolved_risks.length,
-          patient_instruction_count: secondInstructions.instructions.length,
-        },
+        unresolved_risk_count: secondHandoff.unresolved_risks.length,
+        patient_instruction_count: secondInstructions.instructions.length,
       },
-      null,
-      2,
-    ),
+      third: {
+        verdict: thirdHandoff.readiness_verdict,
+        unresolved_risk_count: thirdHandoff.unresolved_risks.length,
+        patient_instruction_count: thirdInstructions.instructions.length,
+      },
+      robustness_case_count: READINESS_REGRESSION_ROBUSTNESS_CASES.length,
+    },
+    null,
+    2,
+  ),
   );
 };
 

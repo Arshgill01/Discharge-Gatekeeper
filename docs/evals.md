@@ -8,7 +8,8 @@ Tool under test: `assess_discharge_readiness`
 Scenario coverage:
 - `first_synthetic_discharge_slice_v1` (primary `not_ready`)
 - `second_synthetic_discharge_slice_ready_with_caveats_v1` (distinct `ready_with_caveats`)
-- optional ambiguity/uncertainty fixture coverage in smoke checks
+- `third_synthetic_discharge_slice_ready_v1` (distinct `ready`)
+- explicit ambiguity/uncertainty fixture coverage in smoke checks
 
 ## Core suite consistency checks
 Tools under test:
@@ -48,6 +49,14 @@ Expected:
 - required categories: `follow_up_and_referrals`, `patient_education`, `equipment_and_transport`, `administrative_and_documentation`
 - forbidden categories for this scenario: `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `home_support_and_services`
 - priority mix: 0 `high`, 4 `medium`
+
+### Case: `third_synthetic_discharge_slice_ready_v1` (ready separation scenario)
+Expected:
+- verdict: `ready`
+- required categories: none
+- forbidden categories for this scenario: `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`, `administrative_and_documentation`
+- priority mix: 0 `high`, 0 `medium`, 0 `low`
+- blockers/evidence/next steps: all empty while the summary stays assistive and clinician-anchored
 
 ## Failure matrix
 
@@ -96,6 +105,7 @@ All success cases must continue to satisfy:
 
 ## Smoke and regression commands
 Run from `po-community-mcp-main/typescript`:
+- `npm run typecheck`
 - `npm run smoke:runtime`
 - `npm run smoke:readiness`
 - `npm run smoke:live-context`
@@ -106,6 +116,7 @@ Run from `po-community-mcp-main/typescript`:
 - `npm run smoke:release-gate`
 
 Pass signal:
+- typecheck exits `0`
 - runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - primary smoke prints `SMOKE PASS: assess_discharge_readiness v1`
 - live-context smoke prints `SMOKE PASS: live context evidence ingest`
@@ -168,6 +179,7 @@ Run when readiness logic changes:
 - `next_steps.length === blockers.length`
 - primary scenario still triggers canonical six-category blocker set
 - second scenario still separates to `ready_with_caveats`
+- third scenario still separates to `ready` with zero active blockers
 - contradictory/insufficient evidence remains explicit (no silent optimistic closure)
 - summary stays assistive (no autonomous discharge claim)
 - artifact outputs stay aligned to blocker/evidence/next-step linkages from readiness

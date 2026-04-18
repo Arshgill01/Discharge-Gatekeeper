@@ -63,7 +63,7 @@ const buildClinicianSummary = (
   blockers: ClinicianHandoffRisk[],
 ): string => {
   if (blockers.length === 0) {
-    return "No unresolved discharge blockers were found in this assistive review. Final discharge disposition still requires clinician confirmation.";
+    return "No unresolved discharge blockers were found in this assistive review. Final discharge disposition still requires clinician review and sign-off.";
   }
 
   const counts = countPriorities(blockers);

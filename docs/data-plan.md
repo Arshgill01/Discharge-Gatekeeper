@@ -76,10 +76,13 @@ The first data pack is done when a tool can confidently produce:
 - one next-step plan
 - one patient-facing artifact
 
-## Regression expansion (v2)
+## Regression expansion (v2/v3)
 Keep the primary demo scenario as the default.
-Add one secondary scenario for regression protection:
-- `scenario_id`: `second_synthetic_discharge_slice_ready_with_caveats_v1`
-- expected verdict: `ready_with_caveats`
-- purpose: prove caveat handling without high-priority blockers
-- expected triggered categories: `follow_up_and_referrals`, `patient_education`, `equipment_and_transport`, `administrative_and_documentation`
+Add a small canonical scenario pack that covers all verdict states without turning into a large fixture zoo:
+- `second_synthetic_discharge_slice_ready_with_caveats_v1`: `ready_with_caveats`; proves caveat handling without high-priority blockers; expected triggered categories are `follow_up_and_referrals`, `patient_education`, `equipment_and_transport`, `administrative_and_documentation`
+- `third_synthetic_discharge_slice_ready_v1`: `ready`; proves the workflow can clear all blockers in a believable discharge-ready case; expected triggered categories are none
+
+Evidence-mix rule for the expanded pack:
+- across the three canonical scenarios, structured data, notes, and documents should all matter
+- at least one non-primary scenario should use document evidence, not only note text
+- ambiguity, contradiction, and insufficient-evidence fixtures stay in the robustness lane and do not replace the three success scenarios

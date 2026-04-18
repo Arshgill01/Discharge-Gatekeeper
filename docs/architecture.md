@@ -186,4 +186,4 @@ When live context is partial rather than fully absent, prefer explicit blocker/g
 
 ## First build target
 The first thin slice should only prove this:
-Given one patient and a small set of structured plus note inputs, the system can correctly return `not_ready` or `ready_with_caveats` with a small blocker list and one transition artifact.
+Given a small synthetic scenario pack and a small set of structured plus note/document inputs, the system can correctly separate `not_ready`, `ready_with_caveats`, and `ready`, while keeping blockers, evidence, and transition artifacts inspectable.

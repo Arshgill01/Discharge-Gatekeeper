@@ -7,7 +7,15 @@ import { extractDischargeBlockers } from "../discharge-readiness/extract-dischar
 import { generateTransitionPlan } from "../discharge-readiness/generate-transition-plan";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
-import { SCENARIO_V1_TRUTH, SCENARIO_V2_TRUTH } from "../discharge-readiness/scenario-truth";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v3";
+import {
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
+} from "../discharge-readiness/regression-fixtures";
+import {
+  SCENARIO_V1_TRUTH,
+  SCENARIO_V2_TRUTH,
+  SCENARIO_V3_TRUTH,
+} from "../discharge-readiness/scenario-truth";
 import {
   AssessDischargeReadinessResponse,
   BlockerCategory,
@@ -16,6 +24,7 @@ import {
   EvidenceTrace,
   ExtractDischargeBlockersResponse,
   GenerateTransitionPlanResponse,
+  ReadinessInput,
   ReadinessVerdict,
   V1_BLOCKER_CATEGORIES,
 } from "../discharge-readiness/contract";
@@ -238,11 +247,27 @@ const assertScenarioTruth = (
   blockers: ExtractDischargeBlockersResponse,
   transition: GenerateTransitionPlanResponse,
   expectedVerdict: ReadinessVerdict,
+  expectedBlockerCount: number,
   requiredCategories: readonly BlockerCategory[],
 ): void => {
   assert.equal(readiness.verdict, expectedVerdict, `${label}: readiness verdict drifted.`);
   assert.equal(blockers.verdict, expectedVerdict, `${label}: blocker extraction verdict drifted.`);
   assert.equal(transition.verdict, expectedVerdict, `${label}: transition plan verdict drifted.`);
+  assert.equal(
+    readiness.blockers.length,
+    expectedBlockerCount,
+    `${label}: readiness blocker count drifted.`,
+  );
+  assert.equal(
+    blockers.blockers.length,
+    expectedBlockerCount,
+    `${label}: blocker extraction blocker count drifted.`,
+  );
+  assert.equal(
+    transition.next_steps.length,
+    expectedBlockerCount,
+    `${label}: transition next-step count drifted.`,
+  );
 
   const categories = new Set(readiness.blockers.map((blocker) => blocker.category));
   for (const requiredCategory of requiredCategories) {
@@ -285,8 +310,9 @@ const assertCrossToolConsistency = (
 
 const runCase = (
   label: string,
-  input: typeof FIRST_SYNTHETIC_SCENARIO_V1,
+  input: ReadinessInput,
   expectedVerdict: ReadinessVerdict,
+  expectedBlockerCount: number,
   requiredCategories: readonly BlockerCategory[],
 ): void => {
   const readiness = assessDischargeReadinessV1(input);
@@ -315,8 +341,20 @@ const runCase = (
     blockers,
     transition,
     expectedVerdict,
+    expectedBlockerCount,
     requiredCategories,
   );
+  assertCrossToolConsistency(label, readiness, blockers, transition);
+};
+
+const runRobustnessCase = (label: string, input: ReadinessInput, expectedVerdict: ReadinessVerdict): void => {
+  const readiness = assessDischargeReadinessV1(input);
+  const blockers = extractDischargeBlockers(input);
+  const transition = generateTransitionPlan(input);
+
+  assert.equal(readiness.verdict, expectedVerdict, `${label}: readiness robustness verdict drifted.`);
+  assert.equal(blockers.verdict, expectedVerdict, `${label}: blocker robustness verdict drifted.`);
+  assert.equal(transition.verdict, expectedVerdict, `${label}: transition robustness verdict drifted.`);
   assertCrossToolConsistency(label, readiness, blockers, transition);
 };
 
@@ -325,14 +363,31 @@ runCase(
   "scenario-v1",
   FIRST_SYNTHETIC_SCENARIO_V1,
   SCENARIO_V1_TRUTH.verdict,
+  SCENARIO_V1_TRUTH.expected_blocker_count,
   SCENARIO_V1_TRUTH.required_categories,
 );
 runCase(
   "scenario-v2",
   SECOND_SYNTHETIC_SCENARIO_V1,
   SCENARIO_V2_TRUTH.verdict,
+  SCENARIO_V2_TRUTH.expected_blocker_count,
   SCENARIO_V2_TRUTH.required_categories,
 );
+runCase(
+  "scenario-v3",
+  THIRD_SYNTHETIC_SCENARIO_V1,
+  SCENARIO_V3_TRUTH.verdict,
+  SCENARIO_V3_TRUTH.expected_blocker_count,
+  SCENARIO_V3_TRUTH.required_categories,
+);
+
+for (const robustnessCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+  runRobustnessCase(
+    robustnessCase.id,
+    robustnessCase.input,
+    robustnessCase.expected_verdict,
+  );
+}
 
 console.log("SMOKE PASS: workflow suite core");
 console.log(
@@ -341,6 +396,8 @@ console.log(
       tools: CORE_WORKFLOW_TOOL_NAMES,
       scenario_1_verdict: SCENARIO_V1_TRUTH.verdict,
       scenario_2_verdict: SCENARIO_V2_TRUTH.verdict,
+      scenario_3_verdict: SCENARIO_V3_TRUTH.verdict,
+      robustness_case_count: READINESS_REGRESSION_ROBUSTNESS_CASES.length,
     },
     null,
     2,

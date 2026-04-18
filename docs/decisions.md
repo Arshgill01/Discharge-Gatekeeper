@@ -128,3 +128,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The normalized evidence layer already tracked contradiction, ambiguity, and missing-corroboration states internally, but judges could not reliably see how that trust information propagated into blockers, actions, and artifacts.
 - Affected files or lanes: implementation, architecture, evals, demo/submission
 - Follow-up: Keep provenance summaries concise, preserve blocker/evidence/next-step/artifact linkage in smoke checks, and avoid adding top-level response sprawl unless a future ADR explicitly changes the contract.
+
+- Date: 2026-04-18
+- Decision: Canonicalize the regression scenario pack at three success scenarios: `first_synthetic_discharge_slice_v1` (`not_ready`), `second_synthetic_discharge_slice_ready_with_caveats_v1` (`ready_with_caveats`), and a new third scenario that explicitly exercises `ready`, while keeping ambiguity/contradiction fixtures in the robustness lane rather than the main success matrix.
+- Why: The suite needs visible verdict breadth and more credible variance without replacing the primary demo case or bloating into an unmaintainable fixture zoo.
+- Affected files or lanes: data, evals, implementation, demo/submission
+- Follow-up: Keep truth fixtures, tool scenario selectors, and release-gate smoke checks aligned to the three-scenario success matrix plus explicit ambiguity/failure coverage.

@@ -9,11 +9,13 @@ Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and 
 - Expected verdict: `not_ready`
 - Expected scenario-triggered categories: `clinical_stability`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`
 - Canonical taxonomy reference (full set): `clinical_stability`, `pending_diagnostics`, `medication_reconciliation`, `follow_up_and_referrals`, `patient_education`, `home_support_and_services`, `equipment_and_transport`, `administrative_and_documentation`
-- Regression companion (off-camera): `second_synthetic_discharge_slice_ready_with_caveats_v1` with expected verdict `ready_with_caveats` to protect caveat-vs-blocker behavior without replacing the primary demo path.
+- Regression companions (off-camera): `second_synthetic_discharge_slice_ready_with_caveats_v1` -> `ready_with_caveats`; `third_synthetic_discharge_slice_ready_v1` -> `ready`
+- These protect verdict breadth without replacing the primary demo path.
 
 ## Off-camera prep (30 to 45 seconds)
 1. Run smoke check from `po-community-mcp-main/typescript`:
    - `npm run smoke:release-gate`
+   - this now covers typecheck plus all three canonical success scenarios and the ambiguity/failure robustness lane
 2. Confirm runtime/tool surface explicitly:
    - `npm run smoke:runtime`
    - `/healthz` shows the workflow-suite tools: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`
