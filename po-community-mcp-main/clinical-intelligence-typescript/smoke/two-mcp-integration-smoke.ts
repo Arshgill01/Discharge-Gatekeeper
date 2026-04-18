@@ -7,7 +7,10 @@ import {
 } from "../../typescript/discharge-readiness/contract";
 import { HiddenRiskLlmClient } from "../llm/client";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
-import { PHASE0_TRAP_PATIENT_INPUT } from "../clinical-intelligence/fixtures";
+import {
+  NO_RISK_CONTROL_INPUT,
+  PHASE0_TRAP_PATIENT_INPUT,
+} from "../clinical-intelligence/fixtures";
 
 const PHASE2_TRAP_STRUCTURED_BASELINE: ReadinessInput = {
   scenario_id: "phase2_trap_structured_ready_v1",
@@ -58,7 +61,7 @@ const PHASE2_TRAP_STRUCTURED_BASELINE: ReadinessInput = {
   ],
 };
 
-const buildHiddenRiskInputFromStructuredOutput = () => {
+const buildTrapHiddenRiskInputFromStructuredOutput = () => {
   const deterministic = assessDischargeReadinessV1(PHASE2_TRAP_STRUCTURED_BASELINE);
   assert.equal(deterministic.verdict, "ready", "Phase 2 trap baseline must remain structured-ready.");
   assert.equal(
@@ -94,20 +97,62 @@ const buildHiddenRiskInputFromStructuredOutput = () => {
   };
 };
 
-const assertHiddenRiskEscalation = async (): Promise<void> => {
-  const { deterministic, hiddenRiskInput } = buildHiddenRiskInputFromStructuredOutput();
+const reconcileFinalVerdict = (
+  deterministicVerdict: "ready" | "ready_with_caveats" | "not_ready",
+  hiddenRiskStatus: string,
+  hiddenRiskResult: string,
+  hiddenRiskImpact: "none" | "caveat" | "not_ready" | "uncertain",
+): "ready" | "ready_with_caveats" | "not_ready" => {
+  if (hiddenRiskStatus === "error" || hiddenRiskStatus === "insufficient_context") {
+    return deterministicVerdict;
+  }
+
+  if (hiddenRiskResult === "hidden_risk_present" && hiddenRiskImpact === "not_ready") {
+    return "not_ready";
+  }
+
+  if (deterministicVerdict === "ready" && hiddenRiskResult === "inconclusive") {
+    return "ready_with_caveats";
+  }
+
+  if (deterministicVerdict === "ready" && hiddenRiskResult === "hidden_risk_present" && hiddenRiskImpact === "caveat") {
+    return "ready_with_caveats";
+  }
+
+  return deterministicVerdict;
+};
+
+const assertFindingCitationTraceability = (citationIds: string[], knownCitationIds: Set<string>, findingId: string): void => {
+  assert.ok(citationIds.length > 0, `Finding ${findingId} must include at least one citation id.`);
+  for (const citationId of citationIds) {
+    assert.ok(knownCitationIds.has(citationId), `Finding ${findingId} references unknown citation id ${citationId}.`);
+  }
+};
+
+const assertTrapHiddenRiskEscalationAndStoryStrength = async (): Promise<void> => {
+  const { deterministic, hiddenRiskInput } = buildTrapHiddenRiskInputFromStructuredOutput();
   const hiddenRisk = await surfaceHiddenRisks(hiddenRiskInput);
+  const payload = hiddenRisk.payload;
 
-  assert.equal(hiddenRisk.payload.status, "ok");
-  assert.equal(hiddenRisk.payload.hidden_risk_summary.result, "hidden_risk_present");
-  assert.equal(hiddenRisk.payload.hidden_risk_summary.overall_disposition_impact, "not_ready");
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.hidden_risk_summary.result, "hidden_risk_present");
+  assert.equal(payload.hidden_risk_summary.overall_disposition_impact, "not_ready");
 
-  const categories = new Set(hiddenRisk.payload.hidden_risk_findings.map((finding) => finding.category));
+  const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
   assert.ok(categories.has("clinical_stability"));
   assert.ok(categories.has("equipment_and_transport"));
   assert.ok(categories.has("home_support_and_services"));
 
-  const sourceLabels = hiddenRisk.payload.citations.map((citation) => citation.source_label);
+  const citationIds = new Set(payload.citations.map((citation) => citation.citation_id));
+  for (const finding of payload.hidden_risk_findings) {
+    assertFindingCitationTraceability(finding.citation_ids, citationIds, finding.finding_id);
+  }
+  for (const citation of payload.citations) {
+    assert.ok(citation.locator.trim().length > 0, `Citation ${citation.citation_id} must include a locator.`);
+    assert.ok(citation.excerpt.trim().length > 0, `Citation ${citation.citation_id} must include an excerpt.`);
+  }
+
+  const sourceLabels = payload.citations.map((citation) => citation.source_label);
   assert.ok(
     sourceLabels.some((label) => label.includes("Nursing Note 2026-04-18 20:40")),
     "Trap contradiction must cite the canonical nursing note.",
@@ -117,15 +162,82 @@ const assertHiddenRiskEscalation = async (): Promise<void> => {
     "Trap contradiction must cite the canonical case-management addendum.",
   );
 
-  const finalVerdict =
-    hiddenRisk.payload.hidden_risk_summary.overall_disposition_impact === "not_ready"
-      ? "not_ready"
-      : deterministic.verdict;
+  const finalVerdict = reconcileFinalVerdict(
+    deterministic.verdict,
+    payload.status,
+    payload.hidden_risk_summary.result,
+    payload.hidden_risk_summary.overall_disposition_impact,
+  );
   assert.equal(finalVerdict, "not_ready");
+
+  const parseable = JSON.parse(JSON.stringify(payload));
+  assert.equal(parseable.hidden_risk_summary.result, "hidden_risk_present");
+
+  const prompt1Proof = {
+    baseline_structured_verdict: deterministic.verdict,
+    final_manual_two_mcp_verdict: finalVerdict,
+    contradiction_visible: payload.hidden_risk_summary.summary.length > 0,
+  };
+  assert.equal(prompt1Proof.baseline_structured_verdict, "ready");
+  assert.equal(prompt1Proof.final_manual_two_mcp_verdict, "not_ready");
+  assert.equal(prompt1Proof.contradiction_visible, true);
+
+  const prompt2Proof = {
+    contradiction_categories: [...categories],
+    contradiction_citations: payload.citations.length,
+  };
+  assert.equal(prompt2Proof.contradiction_citations > 0, true);
+};
+
+const assertTrapEscalationIsNoteDependent = async (): Promise<void> => {
+  const { deterministic, hiddenRiskInput } = buildTrapHiddenRiskInputFromStructuredOutput();
+
+  const ablatedInput = {
+    ...hiddenRiskInput,
+    narrative_evidence_bundle: hiddenRiskInput.narrative_evidence_bundle.filter(
+      (source) =>
+        source.source_id !== "note-rn-contradiction-001" && source.source_id !== "note-cm-001",
+    ),
+  };
+
+  const hiddenRisk = await surfaceHiddenRisks(ablatedInput);
+  const finalVerdict = reconcileFinalVerdict(
+    deterministic.verdict,
+    hiddenRisk.payload.status,
+    hiddenRisk.payload.hidden_risk_summary.result,
+    hiddenRisk.payload.hidden_risk_summary.overall_disposition_impact,
+  );
+
+  assert.equal(
+    hiddenRisk.payload.hidden_risk_summary.result,
+    "no_hidden_risk",
+    "Trap escalation must depend on the contradiction notes.",
+  );
+  assert.equal(hiddenRisk.payload.hidden_risk_findings.length, 0);
+  assert.equal(finalVerdict, "ready");
+};
+
+const assertCleanControlRemainsBounded = async (): Promise<void> => {
+  const hiddenRisk = await surfaceHiddenRisks(NO_RISK_CONTROL_INPUT);
+  const payload = hiddenRisk.payload;
+
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(payload.hidden_risk_summary.overall_disposition_impact, "none");
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.hidden_risk_summary.manual_review_required, false);
+
+  const finalVerdict = reconcileFinalVerdict(
+    NO_RISK_CONTROL_INPUT.deterministic_snapshot.baseline_verdict,
+    payload.status,
+    payload.hidden_risk_summary.result,
+    payload.hidden_risk_summary.overall_disposition_impact,
+  );
+  assert.equal(finalVerdict, "ready");
 };
 
 const assertFallbackWhenClinicalIntelligenceIsUnavailable = async (): Promise<void> => {
-  const { deterministic, hiddenRiskInput } = buildHiddenRiskInputFromStructuredOutput();
+  const { deterministic, hiddenRiskInput } = buildTrapHiddenRiskInputFromStructuredOutput();
   const malformedClient: HiddenRiskLlmClient = {
     generateHiddenRiskResponse: async () => ({
       provider: "heuristic",
@@ -142,7 +254,13 @@ const assertFallbackWhenClinicalIntelligenceIsUnavailable = async (): Promise<vo
     hiddenRisk.payload.hidden_risk_summary.summary.includes("clinical_intelligence_unavailable"),
   );
 
-  const fallbackVerdict = deterministic.verdict;
+  const fallbackVerdict = reconcileFinalVerdict(
+    deterministic.verdict,
+    hiddenRisk.payload.status,
+    hiddenRisk.payload.hidden_risk_summary.result,
+    hiddenRisk.payload.hidden_risk_summary.overall_disposition_impact,
+  );
+
   assert.equal(
     fallbackVerdict,
     "ready",
@@ -151,7 +269,9 @@ const assertFallbackWhenClinicalIntelligenceIsUnavailable = async (): Promise<vo
 };
 
 const main = async (): Promise<void> => {
-  await assertHiddenRiskEscalation();
+  await assertTrapHiddenRiskEscalationAndStoryStrength();
+  await assertTrapEscalationIsNoteDependent();
+  await assertCleanControlRemainsBounded();
   await assertFallbackWhenClinicalIntelligenceIsUnavailable();
 
   console.log("SMOKE PASS: phase2 two-MCP integration");

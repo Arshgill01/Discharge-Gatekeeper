@@ -88,3 +88,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 2 must prove reliable coexistence and hidden-risk uplift before A2A, with a demo-safe fallback that does not fabricate escalation.
 - Affected files or lanes: two-MCP operator scripts, Prompt Opinion integration runbook, phase-2 smoke/release checks
 - Follow-up: keep this direct two-MCP path rehearsed and green as a required precondition before any A2A demo path.
+
+- Date: 2026-04-19
+- Decision: Lock a Phase 2 two-MCP expected-output matrix and enforce note-dependent trap escalation, clean-control bounded behavior, citation traceability, and fallback story-strength checks in the phase-2 integration smoke.
+- Why: The project needs measurable proof that the two-MCP path is already stronger than the structured-only story before A2A implementation becomes a dependency.
+- Affected files or lanes: `docs/evals.md`, `docs/phase2-two-mcp-expected-output-matrix.md`, `docs/demo-script.md`, Prompt Opinion runbook, phase-2 smoke checks
+- Follow-up: keep `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp` and `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh` green as release gates for Phase 2 quality/demo proofing.
