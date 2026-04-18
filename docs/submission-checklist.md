@@ -24,7 +24,7 @@ Do not say:
 - `Care Transitions Command` as the system name in narration and deck copy
 - `Discharge Gatekeeper MCP` as the structured discharge engine
 - `Clinical Intelligence MCP` as the hidden-risk and contradiction layer
-- `external A2A orchestrator` as the preferred final demo path
+- `external A2A orchestrator` as the primary assembled-agent path for the final demo
 - a direct-MCP fallback path that still works without the A2A layer
 - explicit proof that the direct two-MCP path already demonstrates stronger AI value than structured-only discharge logic
 
@@ -75,7 +75,7 @@ Must show:
 
 ## Publish implications
 - the safest publish baseline is the two MCPs
-- the A2A orchestrator improves the final story but must not be a single point of demo failure
+- the A2A orchestrator is the preferred assembled-agent story but must not be a single point of demo failure
 - if publication deadlines force a cut, keep the marketplace story centered on the two MCPs and describe the A2A path as the preferred orchestration lane
 
 ## Reliability checklist
@@ -100,6 +100,20 @@ Must show:
 - decide before recording which path is primary and which path is backup
 - keep the narration focused on verdict, hidden risk, and next actions
 - do not spend recording time on registration mechanics
+
+## Phase 3 readiness before final recording/publish
+Must be true before final recording/publish lock:
+- `docs/phase3-a2a-expected-output-matrix.md` is aligned with live smoke behavior
+- phase-3 A2A checks pass via:
+  - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`
+  - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:decision-matrix`
+  - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+  - `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+  - `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+- Prompt Opinion external-agent registration path is rehearsed using the live agent card discovery endpoint
+- direct two-MCP fallback remains green and rehearsal-ready:
+  - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+  - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
 
 ## Phase 2 readiness before A2A phase
 Must be true before moving to A2A implementation as the primary quality lane:
