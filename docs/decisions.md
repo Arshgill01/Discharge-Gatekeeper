@@ -94,3 +94,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: The project needs measurable proof that the two-MCP path is already stronger than the structured-only story before A2A implementation becomes a dependency.
 - Affected files or lanes: `docs/evals.md`, `docs/phase2-two-mcp-expected-output-matrix.md`, `docs/demo-script.md`, Prompt Opinion runbook, phase-2 smoke checks
 - Follow-up: keep `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp` and `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh` green as release gates for Phase 2 quality/demo proofing.
+
+- Date: 2026-04-19
+- Decision: External A2A runtime is locked to a synchronous, non-streaming agent-card plus task-lifecycle surface that explicitly applies matrix rows 1-12 in code; when Clinical Intelligence MCP invocation fails it emits `clinical_intelligence_unavailable` fallback and preserves deterministic posture.
+- Why: Phase 3 requires inspectable orchestration behavior and safe failure handling instead of prompt-only reconciliation.
+- Affected files or lanes: external A2A runtime, phase-3 smoke checks, Prompt Opinion A2A registration path
+- Follow-up: keep `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` and external A2A smoke checks green before preferring A2A in demo.
