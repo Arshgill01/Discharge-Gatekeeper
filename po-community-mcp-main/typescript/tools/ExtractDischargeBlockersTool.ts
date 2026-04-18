@@ -3,20 +3,23 @@ import { Request } from "express";
 import { z } from "zod";
 import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
-import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discharge-readiness";
-import { V1_SUPPORTED_SCENARIO_IDS, V1_TOOL_NAME } from "../discharge-readiness/contract";
+import {
+  EXTRACT_BLOCKERS_TOOL_NAME,
+  V1_SUPPORTED_SCENARIO_IDS,
+} from "../discharge-readiness/contract";
 import {
   isSupportedScenarioId,
   resolveScenarioInput,
 } from "../discharge-readiness/scenario-selection";
+import { extractDischargeBlockers } from "../discharge-readiness/extract-discharge-blockers";
 
-class AssessDischargeReadinessTool implements IMcpTool {
+class ExtractDischargeBlockersTool implements IMcpTool {
   registerTool(server: McpServer, _req: Request) {
     server.registerTool(
-      V1_TOOL_NAME,
+      EXTRACT_BLOCKERS_TOOL_NAME,
       {
         description:
-          "Assistive discharge-readiness assessment that returns verdict, blockers, evidence, next steps, and summary.",
+          "Extract canonical discharge blockers and source-linked evidence from the shared readiness workflow spine.",
         inputSchema: {
           scenario_id: z
             .string()
@@ -35,12 +38,12 @@ class AssessDischargeReadinessTool implements IMcpTool {
         }
 
         const selectedScenario = resolveScenarioInput(scenario_id);
-        const response = assessDischargeReadinessV1(selectedScenario);
+        const response = extractDischargeBlockers(selectedScenario);
         return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
       },
     );
   }
 }
 
-export const AssessDischargeReadinessToolInstance =
-  new AssessDischargeReadinessTool();
+export const ExtractDischargeBlockersToolInstance =
+  new ExtractDischargeBlockersTool();
