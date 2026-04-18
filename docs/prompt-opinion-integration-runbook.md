@@ -102,13 +102,17 @@ From `po-community-mcp-main/typescript`:
 
 ```bash
 npm run typecheck
+npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
+npm run smoke:demo-path
 ```
 
 Expected:
 - typecheck exits `0`
+- runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - smoke prints `SMOKE PASS: assess_discharge_readiness v1`
+- demo smoke prints `SMOKE PASS: demo path (3 prompts)`
 
 ## 7) Common failures and fixes
 
@@ -137,8 +141,10 @@ Expected:
 Before demo or judge review:
 
 1. `npm run typecheck` passes
-2. `npm run smoke:readiness` passes
-3. `npm run smoke:readiness:regression` passes
-4. `/healthz` is reachable through the public URL
-5. Prompt Opinion connection test succeeds
-6. `assess_discharge_readiness` returns expected structured response in Prompt Opinion
+2. `npm run smoke:runtime` passes
+3. `npm run smoke:readiness` passes
+4. `npm run smoke:readiness:regression` passes
+5. `npm run smoke:demo-path` passes
+6. `/healthz` is reachable through the public URL
+7. Prompt Opinion connection test succeeds
+8. `assess_discharge_readiness` returns expected structured response in Prompt Opinion

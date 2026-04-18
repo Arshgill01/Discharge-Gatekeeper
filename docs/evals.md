@@ -70,12 +70,18 @@ All success cases must continue to satisfy:
 
 ## Smoke and regression commands
 Run from `po-community-mcp-main/typescript`:
+- `npm run smoke:runtime`
 - `npm run smoke:readiness`
 - `npm run smoke:readiness:regression`
+- `npm run smoke:demo-path`
+- `npm run smoke:release-gate`
 
 Pass signal:
+- runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - primary smoke prints `SMOKE PASS: assess_discharge_readiness v1`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
+- demo-path smoke prints `SMOKE PASS: demo path (3 prompts)`
+- release gate exits `0` only when all smoke checks above pass in sequence
 
 ## Judge-test prompt path
 ### Prompt 1
@@ -118,6 +124,8 @@ Expected:
 
 ## Regression checklist
 Run when readiness logic changes:
+- MCP runtime still boots and `/healthz` reports `assess_discharge_readiness`
+- only `assess_discharge_readiness` is registered on the active tool surface
 - verdict labels unchanged
 - blocker category labels unchanged
 - every blocker references evidence that exists in `evidence`

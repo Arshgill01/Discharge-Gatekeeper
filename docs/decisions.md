@@ -81,3 +81,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The first-pass engine was brittle and overfit to one fixture shape; evidence-driven rule evaluation improves verdict separation (`ready`, `ready_with_caveats`, `not_ready`) across primary, alternate, and contradictory/insufficient-evidence scenarios while preserving the frozen top-level response keys.
 - Affected files or lanes: implementation, evals, demo reliability
 - Follow-up: Keep canonical blocker categories stable and maintain scenario-based smoke coverage for primary outcome, alternate caveat outcome, and ambiguity handling.
+
+- Date: 2026-04-18
+- Decision: Add a pre-demo validation gate that explicitly checks MCP runtime boot (`/healthz`), active tool registration surface (`assess_discharge_readiness` only), canonical contract/taxonomy constants, matrix regression fixtures, and the 3-prompt demo path.
+- Why: Existing smoke checks covered core readiness behavior but left runtime and demo-sequence regressions easier to miss before merge or judge recording.
+- Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
+- Follow-up: Keep `smoke:release-gate` as the default pre-demo command bundle and update fixture/truth checks whenever scenario expectations intentionally change.

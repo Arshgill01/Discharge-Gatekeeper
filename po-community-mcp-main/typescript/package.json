@@ -5,11 +5,15 @@
   "main": "index.ts",
   "scripts": {
     "start": "npx tsx index.ts",
+    "pretypecheck": "node -e \"const fs=require('node:fs'); const missing=['typescript','tsx','@modelcontextprotocol/sdk'].filter((pkg)=>!fs.existsSync('node_modules/'+pkg)); if(missing.length){console.error('Missing dependencies: '+missing.join(', ')+'. Run: npm ci'); process.exit(1);}\"",
     "typecheck": "npx tsc --noEmit",
+    "smoke:runtime": "npx tsx smoke/runtime-boot-and-registration-smoke.ts",
     "smoke:readiness": "npx tsx smoke/assess-discharge-readiness-smoke.ts",
     "smoke:evidence-layer": "npx tsx smoke/evidence-layer-smoke.ts",
     "smoke:readiness:regression": "npx tsx smoke/assess-discharge-readiness-regression.ts",
-    "test": "npm run typecheck && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:readiness:regression"
+    "smoke:demo-path": "npx tsx smoke/demo-path-smoke.ts",
+    "smoke:release-gate": "npm run smoke:runtime && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:readiness:regression && npm run smoke:demo-path",
+    "test": "npm run typecheck && npm run smoke:release-gate"
   },
   "author": "Discharge Gatekeeper Team",
   "license": "ISC",

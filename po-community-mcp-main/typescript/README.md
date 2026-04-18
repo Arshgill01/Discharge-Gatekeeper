@@ -19,10 +19,19 @@ Endpoints:
 
 ## Validation
 
+If validation fails with `Missing dependencies ... Run: npm ci`, install from lockfile first:
+
+```bash
+npm ci
+```
+
 ```bash
 npm run typecheck
+npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
+npm run smoke:demo-path
+npm run smoke:release-gate
 ```
 
 ## Prompt Opinion integration runbook
