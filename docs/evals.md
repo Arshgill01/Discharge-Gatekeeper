@@ -1,7 +1,7 @@
 # Evals
 
 ## Evaluation goal
-Build a regression net that protects demo reliability and catches contract drift in `assess_discharge_readiness`.
+Build a regression net that protects demo reliability and catches contract drift across the workflow suite (`assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`).
 
 ## First-slice smoke eval package
 Tool under test: `assess_discharge_readiness`
@@ -9,6 +9,20 @@ Scenario coverage:
 - `first_synthetic_discharge_slice_v1` (primary `not_ready`)
 - `second_synthetic_discharge_slice_ready_with_caveats_v1` (distinct `ready_with_caveats`)
 - optional ambiguity/uncertainty fixture coverage in smoke checks
+
+## Core suite consistency checks
+Tools under test:
+- `extract_discharge_blockers`
+- `generate_transition_plan`
+
+Expected:
+- both tools preserve canonical blocker categories
+- blocker/evidence linkage stays one-to-one/back-linked
+- transition tasks keep owner + priority + `linked_blockers`
+- output keys remain frozen:
+  - `extract_discharge_blockers`: `verdict`, `blockers`, `evidence`, `summary`
+  - `generate_transition_plan`: `verdict`, `blockers`, `evidence`, `next_steps`, `summary`
+- outputs stay consistent with `assess_discharge_readiness` for the same scenario input
 
 ## Scenario matrix (success)
 
@@ -73,6 +87,8 @@ Run from `po-community-mcp-main/typescript`:
 - `npm run smoke:runtime`
 - `npm run smoke:readiness`
 - `npm run smoke:readiness:regression`
+- `npm run smoke:workflow-suite-core`
+- `npm run smoke:artifacts`
 - `npm run smoke:demo-path`
 - `npm run smoke:release-gate`
 
@@ -80,7 +96,9 @@ Pass signal:
 - runtime smoke prints `SMOKE PASS: runtime boot and tool registration`
 - primary smoke prints `SMOKE PASS: assess_discharge_readiness v1`
 - regression smoke prints `REGRESSION PASS: assess_discharge_readiness matrix`
-- demo-path smoke prints `SMOKE PASS: demo path (3 prompts)`
+- core-suite smoke prints `SMOKE PASS: workflow suite core`
+- artifact smoke prints `SMOKE PASS: workflow artifacts suite`
+- demo-path smoke prints `SMOKE PASS: demo path (expanded workflow)`
 - release gate exits `0` only when all smoke checks above pass in sequence
 
 ## Judge-test prompt path
@@ -125,7 +143,7 @@ Expected:
 ## Regression checklist
 Run when readiness logic changes:
 - MCP runtime still boots and `/healthz` reports `assess_discharge_readiness`
-- only `assess_discharge_readiness` is registered on the active tool surface
+- MCP active tool surface remains exactly `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions` (no starter/example leakage)
 - verdict labels unchanged
 - blocker category labels unchanged
 - every blocker references evidence that exists in `evidence`
@@ -134,3 +152,4 @@ Run when readiness logic changes:
 - second scenario still separates to `ready_with_caveats`
 - contradictory/insufficient evidence remains explicit (no silent optimistic closure)
 - summary stays assistive (no autonomous discharge claim)
+- artifact outputs stay aligned to blocker/evidence/next-step linkages from readiness

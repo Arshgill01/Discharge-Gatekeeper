@@ -6,8 +6,8 @@ import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { REGISTERED_TOOLS } from "../tools";
-import { V1_TOOL_NAME } from "../discharge-readiness/contract";
+import { V1_WORKFLOW_TOOL_NAMES } from "../discharge-readiness/contract";
+import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
 
 const waitForServerExit = async (serverProcess: ReturnType<typeof spawn>): Promise<void> => {
   if (serverProcess.exitCode !== null) {
@@ -44,6 +44,12 @@ const reserveOpenPort = async (): Promise<number> => {
 };
 
 const assertToolRegistrationSurface = (): void => {
+  assert.deepEqual(
+    REGISTERED_TOOL_NAMES,
+    [...V1_WORKFLOW_TOOL_NAMES],
+    "Registered tool names must match the canonical workflow-suite constants.",
+  );
+
   const registeredToolNames: string[] = [];
   const fakeServer = {
     registerTool: (name: string) => {
@@ -57,8 +63,8 @@ const assertToolRegistrationSurface = (): void => {
 
   assert.deepEqual(
     registeredToolNames,
-    [V1_TOOL_NAME],
-    "Registered tool names must remain exactly ['assess_discharge_readiness'].",
+    REGISTERED_TOOL_NAMES,
+    `Registered tool names must remain exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
   );
 };
 
@@ -145,14 +151,18 @@ const runRuntimeBootCheck = async (): Promise<void> => {
     const payload = await waitForHealthPayload(endpoint, serverProcess);
 
     assert.equal(payload["status"], "ok", "Health payload status must be 'ok'.");
-    assert.equal(payload["tool_count"], 1, "Health payload tool_count must stay at 1.");
+    assert.equal(
+      payload["tool_count"],
+      REGISTERED_TOOL_NAMES.length,
+      "Health payload tool_count must match registered tool surface.",
+    );
 
     const tools = payload["tools"];
     assert.ok(Array.isArray(tools), "Health payload tools must be an array.");
     assert.deepEqual(
       tools,
-      [V1_TOOL_NAME],
-      "Health payload tools must list only 'assess_discharge_readiness'.",
+      REGISTERED_TOOL_NAMES,
+      `Health payload tools must list exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
     );
   } catch (error) {
     const stdout = stdoutLines.join("").trim();

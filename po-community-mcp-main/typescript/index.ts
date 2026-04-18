@@ -1,16 +1,13 @@
-import { REGISTERED_TOOLS } from "./tools";
+import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "./tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
 import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
-import { V1_TOOL_NAME } from "./discharge-readiness/contract";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const startTimeMs = Date.now();
-
-const REGISTERED_TOOL_NAMES = [V1_TOOL_NAME];
 
 const app = createMcpExpressApp({
   host: config.host,

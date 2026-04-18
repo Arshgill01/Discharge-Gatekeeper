@@ -2,8 +2,12 @@
 
 This is the active runtime for the Discharge Gatekeeper demo lane.
 
-First-slice tool:
+Workflow tools:
 - `assess_discharge_readiness`
+- `extract_discharge_blockers`
+- `generate_transition_plan`
+- `build_clinician_handoff_brief`
+- `draft_patient_discharge_instructions`
 
 ## Quick start
 
@@ -30,6 +34,8 @@ npm run typecheck
 npm run smoke:runtime
 npm run smoke:readiness
 npm run smoke:readiness:regression
+npm run smoke:workflow-suite-core
+npm run smoke:artifacts
 npm run smoke:demo-path
 npm run smoke:release-gate
 ```

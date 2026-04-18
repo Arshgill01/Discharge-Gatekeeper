@@ -104,3 +104,15 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: Existing smoke checks covered core readiness behavior but left runtime and demo-sequence regressions easier to miss before merge or judge recording.
 - Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
 - Follow-up: Keep `smoke:release-gate` as the default pre-demo command bundle and update fixture/truth checks whenever scenario expectations intentionally change.
+
+- Date: 2026-04-18
+- Decision: Establish one shared discharge workflow core (`workflow-core`) and expose a canonical 3-tool MCP suite surface: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`.
+- Why: Readiness, blocker extraction, and transition planning were drifting toward duplicated private logic; one shared spine keeps blocker/evidence/transition contracts coherent and easier to smoke-test for demo reliability.
+- Affected files or lanes: implementation, architecture, evals, Prompt Opinion runtime surface
+- Follow-up: Keep cross-tool smoke checks enforcing shape/linkage consistency and prevent starter/example tool leakage on the active runtime surface.
+
+- Date: 2026-04-18
+- Decision: Expand the active MCP workflow suite to include downstream artifact tools `build_clinician_handoff_brief` and `draft_patient_discharge_instructions`, both generated from the same readiness blocker/evidence/next-step spine.
+- Why: The product must show stakeholder-facing transition artifacts, not only a readiness verdict, while preserving assistive/non-autonomous framing and demo reliability.
+- Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
+- Follow-up: Keep `assess_discharge_readiness` as the canonical entrypoint name, enforce artifact-to-readiness coherence in smoke checks, and keep release-gate coverage inclusive of runtime, readiness, core suite, artifacts, and expanded demo-path checks.
