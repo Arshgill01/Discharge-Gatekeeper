@@ -9,6 +9,7 @@ import {
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
 import { THIRD_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v3";
+import { THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1 } from "../discharge-readiness/scenario-fixtures";
 import {
   READINESS_REGRESSION_ROBUSTNESS_CASES,
 } from "../discharge-readiness/regression-fixtures";
@@ -267,6 +268,11 @@ assert.ok(
   /No active discharge blockers/i.test(third.summary),
   "third: ready summary should state that no active discharge blockers were detected.",
 );
+
+const ambiguity = assessDischargeReadinessV1(THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1);
+assertSharedContractInvariants("ambiguity", ambiguity);
+assert.equal(ambiguity.verdict, "not_ready", "ambiguity: expected verdict not_ready.");
+
 const conflictedBlocker = ambiguity.blockers.find((blocker) => blocker.category === "clinical_stability");
 assert.equal(
   conflictedBlocker?.provenance.trust_state,
