@@ -42,6 +42,7 @@ Must expose:
 - one reachable public URL per component being registered
 - one trap-patient bundle available for demo fallback
 - one operator note that maps each public URL to the correct identity
+- local two-MCP boot path prepared via [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
 
 Before registration, verify for every component:
 - identity string matches the frozen name
@@ -96,6 +97,34 @@ Do not register in Prompt Opinion until these checks are green in the current br
 - if this MCP fails, the direct deterministic path must still remain available
 - log the failure as `clinical_intelligence_unavailable` for demo-day decision making
 - if the LLM provider is unavailable, timeout-bound, or unparseable, require a structured `status=error` MCP response with no hidden-risk findings and preserve the deterministic posture
+
+## 4.5 Phase 2 direct two-MCP path (required before A2A)
+
+Run this phase gate before enabling any orchestrator path.
+
+### Boot + registration sequence
+1. boot both MCPs using `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
+2. expose each MCP with a separate public URL
+3. register `Discharge Gatekeeper MCP` and `Clinical Intelligence MCP` in Prompt Opinion
+4. verify both are reachable and tool discovery is clean on both surfaces
+
+### Prompt Opinion manual call sequence
+1. Prompt 1 goes to `Discharge Gatekeeper MCP` for the deterministic baseline verdict
+2. Prompt 2 goes to `Clinical Intelligence MCP` for hidden-risk contradiction review with citations
+3. Prompt 3 goes back to `Discharge Gatekeeper MCP` for transition plan output while the operator narrates hidden-risk escalation
+
+### Pass criteria
+- both MCPs are discoverable in the same Prompt Opinion workspace
+- tool surfaces stay separated by role (deterministic vs hidden-risk)
+- trap-patient path shows baseline `ready` posture before hidden-risk review
+- hidden-risk review shows cited contradiction and disposition impact `not_ready`
+- deterministic transition plan remains callable after hidden-risk escalation
+
+### Required fallback behavior in this phase
+- if `Clinical Intelligence MCP` returns `status=error`, treat it as `clinical_intelligence_unavailable`
+- keep the deterministic verdict and next steps
+- disclose hidden-risk review as unavailable
+- do not fabricate narrative escalation
 
 ## 5. Register `external A2A orchestrator`
 
@@ -201,3 +230,6 @@ Phase 2 (`two-MCP integration`) should assume the following from Phase 1:
 - hidden-risk findings keep citation ids resolvable to `citations[]`
 - provider failure is represented as structured `status=error`, enabling deterministic fallback handling
 - Prompt 1 and Prompt 2 demo expectations are already explicit in [demo-script.md](demo-script.md)
+- operator can boot and stop both MCPs from one command surface:
+  - `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
+  - `./po-community-mcp-main/scripts/stop-two-mcp-local.sh`

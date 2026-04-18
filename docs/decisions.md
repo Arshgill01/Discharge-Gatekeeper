@@ -82,3 +82,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 2 and Prompt Opinion integration need measurable enforcement for hidden-risk detection, no-risk suppression, parseability failure handling, citation quality, and narrative grounding.
 - Affected files or lanes: Clinical Intelligence MCP smoke/release gate, eval docs, demo path expectations, Prompt Opinion runbook
 - Follow-up: Treat `docs/phase1-clinical-intelligence-expected-output-matrix.md` and the clinical-intelligence smoke checks as required pre-integration gates before two-MCP reconciliation work.
+
+- Date: 2026-04-19
+- Decision: Standardize Phase 2 operations on a two-MCP direct run path that boots both MCP runtimes together, registers them separately in Prompt Opinion, and treats Clinical Intelligence `status=error` as `clinical_intelligence_unavailable` while preserving deterministic outputs.
+- Why: Phase 2 must prove reliable coexistence and hidden-risk uplift before A2A, with a demo-safe fallback that does not fabricate escalation.
+- Affected files or lanes: two-MCP operator scripts, Prompt Opinion integration runbook, phase-2 smoke/release checks
+- Follow-up: keep this direct two-MCP path rehearsed and green as a required precondition before any A2A demo path.
