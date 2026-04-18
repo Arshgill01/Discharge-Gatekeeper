@@ -52,6 +52,7 @@ Likely outputs:
 - evidence trace entries linked to blockers
 - prioritized next steps
 - summary
+- nested trust metadata on blockers, evidence, and next steps so contradiction, ambiguity, and corroboration gaps remain inspectable without changing top-level keys
 
 ### 2) `extract_discharge_blockers`
 Purpose:
@@ -77,6 +78,7 @@ Likely outputs:
 - suggested owners
 - timing hints
 - required follow-ups
+- task-level traceability back to blocker IDs, evidence IDs, and blocker trust state
 
 ### 4) `build_clinician_handoff_brief`
 Purpose:
@@ -86,6 +88,7 @@ Likely outputs:
 - readiness verdict (mirrors readiness tool)
 - unresolved risks linked to blocker IDs and evidence IDs
 - blocker-linked required actions and owners
+- blocker trust state and source-summary carry-through for unresolved risks
 - explicit clinician-review/sign-off boundary language
 - concise unresolved-risk summary
 
@@ -96,6 +99,7 @@ Purpose:
 Likely outputs:
 - verdict-aligned plain-language summary
 - one instruction item per active blocker with linked blocker ID
+- instruction-level linkage to blocker evidence and care-team verification note
 - patient-facing reminders and escalation guidance
 - care-team follow-up mapping to transition actions
 - explicit clinician-finalization boundary language
@@ -117,6 +121,10 @@ Every major blocker should reference one or more evidence sources such as:
 - missing referral or order
 
 The first slice can use lightweight source labels instead of perfect provenance objects.
+Active suite expectation:
+- each blocker carries bounded provenance: trust state, source labels/types, and any contradiction/ambiguity/missing-corroboration marker IDs
+- each evidence trace carries source summary plus backlink to blockers and downstream next steps
+- each transition task carries blocker-linked evidence IDs and a short trace summary
 
 ## Shared workflow spine
 The core suite should run as one workflow family, not isolated tool implementations:
@@ -124,6 +132,7 @@ The core suite should run as one workflow family, not isolated tool implementati
 - one blocker model reused across readiness, blocker extraction, and transition planning
 - one transition-task model (`priority`, `owner`, `linked_blockers`) reused wherever next steps are produced
 - explicit traceability path: `blocker -> evidence` and `next_step -> blocker`
+- explicit trust path: `blocker provenance -> evidence conflict/ambiguity markers -> next step trace summary -> artifact carry-through`
 
 ## Notes and documents
 The product should not rely on structured FHIR alone.

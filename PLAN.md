@@ -106,6 +106,10 @@ Current focus (2026-04-18, Agent 2 - artifact suite expansion):
 - implement `build_clinician_handoff_brief` and `draft_patient_discharge_instructions` as downstream workflow artifacts
 - keep assistive/non-autonomous safety framing explicit in both artifact outputs
 - extend smoke/release-gate coverage so artifact-tool regressions and expanded demo-path breakage are caught pre-demo
+Current focus (2026-04-18, Agent 2 - provenance/trust lane):
+- deepen bounded provenance across readiness, blocker extraction, transition planning, and artifact outputs without changing tool membership or frozen top-level response keys
+- surface contradiction, ambiguity, and missing-corroboration states explicitly in blocker/evidence/action traceability
+- strengthen smoke/eval coverage so blocker -> evidence -> action propagation and trust visibility remain demo-readable
 
 ### 5) Evals
 Owner: open

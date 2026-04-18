@@ -136,6 +136,14 @@ const assertCanonicalResponseShape = (
 
   for (const blocker of response.blockers) {
     assert.ok(blocker.evidence.length > 0, `${caseId}: blocker ${blocker.id} must include evidence`);
+    assert.ok(
+      blocker.provenance.summary.trim().length > 0,
+      `${caseId}: blocker ${blocker.id} must expose provenance summary`,
+    );
+    assert.ok(
+      blocker.provenance.source_labels.length > 0,
+      `${caseId}: blocker ${blocker.id} must expose source labels`,
+    );
 
     for (const evidenceId of blocker.evidence) {
       assert.ok(
@@ -147,6 +155,8 @@ const assertCanonicalResponseShape = (
 
   for (const trace of response.evidence) {
     assert.ok(trace.supports_blockers.length > 0, `${caseId}: evidence ${trace.id} has no linked blockers`);
+    assert.ok(trace.supports_next_steps.length > 0, `${caseId}: evidence ${trace.id} has no linked next steps`);
+    assert.ok(trace.source_summary.trim().length > 0, `${caseId}: evidence ${trace.id} missing source summary`);
 
     for (const blockerId of trace.supports_blockers) {
       assert.ok(
@@ -183,6 +193,16 @@ const assertCanonicalResponseShape = (
       step.priority,
       linkedBlocker.priority,
       `${caseId}: next step ${step.id} priority must match blocker ${linkedBlockerId}`,
+    );
+    assert.deepEqual(
+      step.linked_evidence,
+      linkedBlocker.evidence,
+      `${caseId}: next step ${step.id} linked evidence must match blocker ${linkedBlockerId}`,
+    );
+    assert.equal(
+      step.blocker_trust_state,
+      linkedBlocker.provenance.trust_state,
+      `${caseId}: next step ${step.id} trust state must match blocker ${linkedBlockerId}`,
     );
     assert.ok(step.owner.trim().length > 0, `${caseId}: next step ${step.id} owner is required`);
     assert.ok(step.action.trim().length > 0, `${caseId}: next step ${step.id} action is required`);

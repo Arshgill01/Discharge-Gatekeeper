@@ -40,6 +40,7 @@ User prompt:
 Show on screen:
 - six blockers with category + priority + actionability
 - evidence linkage per blocker
+- one concise provenance/trust line per blocker so source labels and conflict/uncertainty markers are visible without dumping raw reasoning
 
 Expected value:
 - shows structured, inspectable blockers grounded in chart/note evidence
@@ -51,6 +52,7 @@ User prompt:
 Show on screen:
 - ordered `next_steps` list
 - owner + linked blocker for each step
+- linked evidence and short trace summary for at least one step
 
 Expected value:
 - converts blockers into an execution-ready transition checklist for the care team
@@ -63,6 +65,7 @@ User prompt:
 
 Show on screen:
 - unresolved risks tied to blocker IDs and evidence IDs
+- unresolved risk trust state / trace summary carried forward from blocker provenance
 - explicit clinician-review/sign-off boundary text
 
 ### Prompt 5
@@ -90,6 +93,7 @@ Show:
 - verdict field
 - blocker categories and priorities
 - evidence IDs/source labels tied to blockers
+- blocker provenance summaries or trust-state indicators
 - next-step owners
 
 Skip:

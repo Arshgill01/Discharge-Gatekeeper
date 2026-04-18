@@ -116,3 +116,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The product must show stakeholder-facing transition artifacts, not only a readiness verdict, while preserving assistive/non-autonomous framing and demo reliability.
 - Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
 - Follow-up: Keep `assess_discharge_readiness` as the canonical entrypoint name, enforce artifact-to-readiness coherence in smoke checks, and keep release-gate coverage inclusive of runtime, readiness, core suite, artifacts, and expanded demo-path checks.
+
+- Date: 2026-04-18
+- Decision: Deepen the public workflow-suite trust model with bounded nested provenance on blockers, evidence traces, transition tasks, and downstream artifacts while keeping tool membership and frozen top-level response keys unchanged.
+- Why: The normalized evidence layer already tracked contradiction, ambiguity, and missing-corroboration states internally, but judges could not reliably see how that trust information propagated into blockers, actions, and artifacts.
+- Affected files or lanes: implementation, architecture, evals, demo/submission
+- Follow-up: Keep provenance summaries concise, preserve blocker/evidence/next-step/artifact linkage in smoke checks, and avoid adding top-level response sprawl unless a future ADR explicitly changes the contract.

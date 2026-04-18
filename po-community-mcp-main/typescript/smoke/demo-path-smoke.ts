@@ -60,6 +60,18 @@ for (const blocker of response.blockers) {
     blocker.evidence.length > 0,
     `Prompt 2: blocker ${blocker.id} must keep at least one evidence ID.`,
   );
+  assert.ok(
+    blocker.provenance.summary.trim().length > 0,
+    `Prompt 2: blocker ${blocker.id} must expose a bounded provenance summary.`,
+  );
+  assert.ok(
+    blocker.provenance.summary.length <= 160,
+    `Prompt 2: blocker ${blocker.id} provenance summary should stay demo-readable.`,
+  );
+  assert.ok(
+    blocker.provenance.source_labels.length > 0,
+    `Prompt 2: blocker ${blocker.id} must expose source labels.`,
+  );
 }
 for (const [priority, expectedCount] of Object.entries(SCENARIO_V1_TRUTH.priority_counts)) {
   const typedPriority = priority as BlockerPriority;
@@ -78,6 +90,10 @@ assert.equal(
 const blockerIds = new Set(response.blockers.map((blocker) => blocker.id));
 for (const step of response.next_steps) {
   assert.ok(step.owner.trim().length > 0, `Prompt 3: next step ${step.id} must include an owner.`);
+  assert.ok(
+    step.trace_summary.length <= 160,
+    `Prompt 3: next step ${step.id} trace summary should stay demo-readable.`,
+  );
   assert.equal(
     step.linked_blockers.length,
     1,
@@ -87,6 +103,10 @@ for (const step of response.next_steps) {
   assert.ok(
     linkedBlockerId && blockerIds.has(linkedBlockerId),
     `Prompt 3: next step ${step.id} links unknown blocker '${linkedBlockerId}'.`,
+  );
+  assert.ok(
+    step.linked_evidence.length > 0,
+    `Prompt 3: next step ${step.id} must carry linked evidence.`,
   );
 }
 
@@ -110,6 +130,12 @@ assert.ok(
   /clinician review|sign-off/i.test(clinicianHandoff.review_boundary),
   "Prompt 4: clinician handoff must include explicit clinician-review boundaries.",
 );
+for (const risk of clinicianHandoff.unresolved_risks) {
+  assert.ok(
+    risk.trace_summary.length <= 160,
+    `Prompt 4: unresolved risk ${risk.blocker_id} trace summary should stay demo-readable.`,
+  );
+}
 
 const patientInstructions = draftPatientDischargeInstructionsV1(FIRST_SYNTHETIC_SCENARIO_V1);
 assert.equal(
@@ -130,6 +156,12 @@ assert.ok(
   /clinician must review|licensed clinician/i.test(patientInstructions.review_boundary),
   "Prompt 5: patient instructions should explicitly require clinician review.",
 );
+for (const item of patientInstructions.instructions) {
+  assert.ok(
+    item.care_team_verification.length <= 160,
+    `Prompt 5: patient instruction ${item.id} verification note should stay demo-readable.`,
+  );
+}
 
 console.log("SMOKE PASS: demo path (expanded workflow)");
 console.log(

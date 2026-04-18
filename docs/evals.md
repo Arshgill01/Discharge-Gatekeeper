@@ -18,7 +18,9 @@ Tools under test:
 Expected:
 - both tools preserve canonical blocker categories
 - blocker/evidence linkage stays one-to-one/back-linked
+- blockers expose bounded provenance (`trust_state`, source labels/types, and any contradiction/ambiguity/missing-corroboration marker IDs)
 - transition tasks keep owner + priority + `linked_blockers`
+- transition tasks carry `linked_evidence`, blocker trust state, and short trace summary
 - output keys remain frozen:
   - `extract_discharge_blockers`: `verdict`, `blockers`, `evidence`, `summary`
   - `generate_transition_plan`: `verdict`, `blockers`, `evidence`, `next_steps`, `summary`
@@ -79,8 +81,11 @@ All success cases must continue to satisfy:
   - `equipment_and_transport`
   - `administrative_and_documentation`
 - every blocker references existing evidence
+- every blocker exposes non-empty provenance summary plus source labels/types
 - every evidence trace back-links to known blockers
+- every evidence trace links to known next-step IDs
 - `next_steps.length === blockers.length`
+- every next step preserves blocker-linked evidence IDs and blocker trust state
 
 ## Smoke and regression commands
 Run from `po-community-mcp-main/typescript`:
@@ -114,6 +119,7 @@ Expected for primary demo scenario:
 
 Expected for primary demo scenario:
 - six blockers with canonical category + priority + actionability + evidence ID(s)
+- each blocker shows concise provenance summary and source labels
 - no deprecated labels
 
 ### Prompt 3
@@ -122,6 +128,7 @@ Expected for primary demo scenario:
 Expected for primary demo scenario:
 - six ordered `next_steps`
 - each step links to one blocker ID
+- each step keeps linked evidence IDs and short trace summary
 - owner field is present so execution responsibility is clear
 
 ## Negative checks (quick)
@@ -139,6 +146,7 @@ Expected:
 Expected:
 - conflict is surfaced explicitly
 - unresolved blockers remain visible
+- conflicted blockers expose contradiction-linked provenance instead of collapsing to a plain blocker description
 
 ## Regression checklist
 Run when readiness logic changes:
@@ -147,9 +155,11 @@ Run when readiness logic changes:
 - verdict labels unchanged
 - blocker category labels unchanged
 - every blocker references evidence that exists in `evidence`
+- every blocker exposes trust metadata that stays bounded/readable
 - `next_steps.length === blockers.length`
 - primary scenario still triggers canonical six-category blocker set
 - second scenario still separates to `ready_with_caveats`
 - contradictory/insufficient evidence remains explicit (no silent optimistic closure)
 - summary stays assistive (no autonomous discharge claim)
 - artifact outputs stay aligned to blocker/evidence/next-step linkages from readiness
+- demo-facing provenance summaries remain concise enough to scan quickly

@@ -1,9 +1,13 @@
 import {
   AssessDischargeReadinessResponse,
   BlockerCategory,
+  BlockerProvenance,
   BlockerPriority,
+  BlockerTrustState,
   DischargeBlocker,
   EvidenceTrace,
+  EvidenceSignalState,
+  EvidenceSourceType,
   ExtractDischargeBlockersResponse,
   GenerateTransitionPlanResponse,
   NormalizedEvidenceBundle,
@@ -20,6 +24,18 @@ const PRIORITY_WEIGHT: Record<BlockerPriority, number> = {
   high: 3,
   medium: 2,
   low: 1,
+};
+
+const EVIDENCE_SIGNAL_PRIORITY: Record<EvidenceSourceType, number> = {
+  note: 1,
+  document: 2,
+  structured: 3,
+};
+
+const EVIDENCE_SIGNAL_STATE_PRIORITY: Record<EvidenceSignalState, number> = {
+  blocks_readiness: 1,
+  ambiguous: 2,
+  supports_readiness: 3,
 };
 
 const CATEGORY_ORDER: Record<BlockerCategory, number> = {
@@ -189,12 +205,17 @@ const determineVerdict = (blockers: DischargeBlocker[]): ReadinessVerdict => {
 const buildEvidenceTrace = (
   blockers: DischargeBlocker[],
   evidenceCatalog: ReadinessInput["evidence_catalog"],
+  normalizedEvidence: NormalizedEvidenceBundle,
+  nextSteps: TransitionTask[],
 ): EvidenceTrace[] => {
   const evidenceToBlockers = new Map<string, string[]>();
   const blockerOrder = new Map<string, number>();
   blockers.forEach((blocker, index) => {
     blockerOrder.set(blocker.id, index);
   });
+  const nextStepByBlockerId = new Map(
+    nextSteps.map((step) => [step.linked_blockers[0], step]),
+  );
 
   for (const blocker of blockers) {
     for (const evidenceId of blocker.evidence) {
@@ -205,6 +226,15 @@ const buildEvidenceTrace = (
   }
 
   const evidenceById = new Map(evidenceCatalog.map((evidence) => [evidence.id, evidence]));
+  const signalStatesByEvidenceId = new Map<string, EvidenceSignalState[]>();
+  for (const signal of [
+    ...normalizedEvidence.structured_signals,
+    ...normalizedEvidence.note_document_signals,
+  ]) {
+    const current = signalStatesByEvidenceId.get(signal.source_id) ?? [];
+    current.push(signal.state);
+    signalStatesByEvidenceId.set(signal.source_id, current);
+  }
   const trace: EvidenceTrace[] = [];
 
   for (const [evidenceId, supports] of evidenceToBlockers.entries()) {
@@ -220,10 +250,34 @@ const buildEvidenceTrace = (
       return (blockerOrder.get(a) ?? Number.MAX_SAFE_INTEGER) -
         (blockerOrder.get(b) ?? Number.MAX_SAFE_INTEGER);
     });
+    const supportsNextSteps = uniqueSupports
+      .map((blockerId) => nextStepByBlockerId.get(blockerId)?.id)
+      .filter((stepId): stepId is string => typeof stepId === "string");
+    const signalStates = [...new Set(signalStatesByEvidenceId.get(evidenceId) ?? [])].sort((a, b) => {
+      return EVIDENCE_SIGNAL_STATE_PRIORITY[a] - EVIDENCE_SIGNAL_STATE_PRIORITY[b];
+    });
+    const contradictionIds = normalizedEvidence.contradictions
+      .filter((marker) => marker.source_ids.includes(evidenceId))
+      .map((marker) => marker.id)
+      .sort();
+    const ambiguityIds = normalizedEvidence.ambiguities
+      .filter((marker) => marker.source_ids.includes(evidenceId))
+      .map((marker) => marker.id)
+      .sort();
+    const sourceSummarySuffix = contradictionIds.length > 0
+      ? " Participates in conflicting source evidence."
+      : ambiguityIds.length > 0
+      ? " Participates in ambiguous source evidence."
+      : "";
 
     trace.push({
       ...evidence,
       supports_blockers: uniqueSupports,
+      supports_next_steps: supportsNextSteps,
+      signal_states: signalStates,
+      contradiction_ids: contradictionIds,
+      ambiguity_ids: ambiguityIds,
+      source_summary: `${evidence.source_type} evidence from ${evidence.source_label}.${sourceSummarySuffix}`,
     });
   }
 
@@ -248,6 +302,9 @@ const buildTransitionTasks = (blockers: DischargeBlocker[]): TransitionTask[] =>
     action: blocker.actionability,
     owner: OWNER_BY_CATEGORY[blocker.category],
     linked_blockers: [blocker.id],
+    linked_evidence: blocker.evidence,
+    blocker_trust_state: blocker.provenance.trust_state,
+    trace_summary: blocker.provenance.summary,
   }));
 };
 
@@ -286,6 +343,29 @@ const formatGaps = (issues: string[], fallback: string): string => {
   return issues.length > 0 ? issues.join(" ") : fallback;
 };
 
+const getSignalsForCategory = (
+  normalizedEvidence: NormalizedEvidenceBundle,
+  category: BlockerCategory,
+) => {
+  return [...normalizedEvidence.note_document_signals, ...normalizedEvidence.structured_signals]
+    .filter((signal) => signal.category === category)
+    .sort((a, b) => {
+      const stateDelta =
+        EVIDENCE_SIGNAL_STATE_PRIORITY[a.state] - EVIDENCE_SIGNAL_STATE_PRIORITY[b.state];
+      if (stateDelta !== 0) {
+        return stateDelta;
+      }
+
+      const sourceDelta =
+        EVIDENCE_SIGNAL_PRIORITY[a.source_type] - EVIDENCE_SIGNAL_PRIORITY[b.source_type];
+      if (sourceDelta !== 0) {
+        return sourceDelta;
+      }
+
+      return a.id.localeCompare(b.id);
+    });
+};
+
 const hasEvidenceConflict = (
   category: BlockerCategory,
   normalizedEvidence: NormalizedEvidenceBundle,
@@ -302,7 +382,14 @@ const hasEvidenceAmbiguity = (
   return normalizedEvidence.ambiguities.some((ambiguity) => ambiguity.category === category);
 };
 
-const buildEvidenceUncertaintyPhrase = (
+const hasMissingCorroboration = (
+  category: BlockerCategory,
+  normalizedEvidence: NormalizedEvidenceBundle,
+): boolean => {
+  return normalizedEvidence.missing_evidence.some((marker) => marker.category === category);
+};
+
+const buildEvidenceConflictOrUncertaintyPhrase = (
   category: BlockerCategory,
   normalizedEvidence: NormalizedEvidenceBundle,
 ): string | null => {
@@ -322,6 +409,101 @@ const buildEvidenceUncertaintyPhrase = (
   }
 
   return "Evidence uncertainty remains unresolved across sources.";
+};
+
+const determineBlockerTrustState = (
+  category: BlockerCategory,
+  normalizedEvidence: NormalizedEvidenceBundle,
+): BlockerTrustState => {
+  if (hasEvidenceConflict(category, normalizedEvidence)) {
+    return "conflicted";
+  }
+
+  if (hasEvidenceAmbiguity(category, normalizedEvidence)) {
+    return "uncertain";
+  }
+
+  if (hasMissingCorroboration(category, normalizedEvidence)) {
+    return "missing_corroboration";
+  }
+
+  return "supported";
+};
+
+const selectEvidenceIdsForCategory = (
+  normalizedEvidence: NormalizedEvidenceBundle,
+  category: BlockerCategory,
+): string[] => {
+  const trustState = determineBlockerTrustState(category, normalizedEvidence);
+  const signals = getSignalsForCategory(normalizedEvidence, category).filter((signal) => {
+    if (signal.state === "blocks_readiness" || signal.state === "ambiguous") {
+      return true;
+    }
+
+    return trustState === "conflicted" && signal.state === "supports_readiness";
+  });
+
+  return [...new Set(signals.map((signal) => signal.source_id))].slice(0, 3);
+};
+
+const buildBlockerProvenanceSummary = (
+  trustState: BlockerTrustState,
+  sourceTypes: EvidenceSourceType[],
+  missingCount: number,
+): string => {
+  const sourcePhrase = sourceTypes.length > 0 ? sourceTypes.join(" + ") : "available";
+
+  if (trustState === "conflicted") {
+    return `Conflicting ${sourcePhrase} evidence requires clinician reconciliation before discharge.`;
+  }
+
+  if (trustState === "uncertain") {
+    return `Evidence remains ambiguous across ${sourcePhrase} sources and requires clinician confirmation before discharge.`;
+  }
+
+  if (trustState === "missing_corroboration") {
+    return `Current blocker is supported, but ${missingCount} expected corroborating evidence source${missingCount === 1 ? "" : "s"} remain missing.`;
+  }
+
+  return `Grounded in ${sourcePhrase} evidence without detected contradiction.`;
+};
+
+const buildBlockerProvenance = (
+  category: BlockerCategory,
+  normalizedEvidence: NormalizedEvidenceBundle,
+): BlockerProvenance => {
+  const signals = getSignalsForCategory(normalizedEvidence, category);
+  const contradiction_ids = normalizedEvidence.contradictions
+    .filter((marker) => marker.category === category)
+    .map((marker) => marker.id)
+    .sort();
+  const ambiguity_ids = normalizedEvidence.ambiguities
+    .filter((marker) => marker.category === category)
+    .map((marker) => marker.id)
+    .sort();
+  const missing_evidence_ids = normalizedEvidence.missing_evidence
+    .filter((marker) => marker.category === category)
+    .map((marker) => marker.id)
+    .sort();
+  const source_labels = [...new Set(signals.map((signal) => signal.source_label))].sort();
+  const source_types = [...new Set(signals.map((signal) => signal.source_type))].sort(
+    (a, b) => EVIDENCE_SIGNAL_PRIORITY[a] - EVIDENCE_SIGNAL_PRIORITY[b],
+  );
+  const trust_state = determineBlockerTrustState(category, normalizedEvidence);
+
+  return {
+    trust_state,
+    source_labels,
+    source_types,
+    contradiction_ids,
+    ambiguity_ids,
+    missing_evidence_ids,
+    summary: buildBlockerProvenanceSummary(
+      trust_state,
+      source_types,
+      missing_evidence_ids.length,
+    ),
+  };
 };
 
 const assertEvidenceCoverage = (
@@ -351,12 +533,21 @@ const buildCoreBlockers = (
   normalizedEvidence: NormalizedEvidenceBundle,
 ): DischargeBlocker[] => {
   const evidenceForCategory = (category: BlockerCategory): string[] => {
-    const evidenceIds = getEvidenceIdsForCategory(normalizedEvidence, category);
+    const evidenceIds = selectEvidenceIdsForCategory(normalizedEvidence, category);
     if (evidenceIds.length > 0) {
       return evidenceIds;
     }
 
-    return [`missing-evidence-${category}`];
+    return getEvidenceIdsForCategory(normalizedEvidence, category);
+  };
+
+  const withProvenance = (
+    blocker: Omit<DischargeBlocker, "provenance">,
+  ): DischargeBlocker => {
+    return {
+      ...blocker,
+      provenance: buildBlockerProvenance(blocker.category, normalizedEvidence),
+    };
   };
 
   const blockers: DischargeBlocker[] = [];
@@ -377,7 +568,7 @@ const buildCoreBlockers = (
       );
     }
 
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-clinical-stability",
       category: "clinical_stability",
       priority: "high",
@@ -386,14 +577,14 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("clinical_stability"),
       actionability:
         "Reassess oxygen and overall stability, then explicitly document whether home transition criteria are met. Complete only after unresolved stability findings are reviewed by the primary team.",
-    });
+    }));
   }
 
   if (
     input.pending_diagnostics.critical_results_pending ||
     input.pending_diagnostics.pending_items.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-pending-diagnostics",
       category: "pending_diagnostics",
       priority: "high",
@@ -404,14 +595,14 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("pending_diagnostics"),
       actionability:
         "Review pending diagnostics, document interpretation, and close any results that could alter discharge safety.",
-    });
+    }));
   }
 
   if (
     !input.medication_reconciliation.reconciliation_complete ||
     input.medication_reconciliation.unresolved_issues.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-medication-reconciliation",
       category: "medication_reconciliation",
       priority: "high",
@@ -422,14 +613,14 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("medication_reconciliation"),
       actionability:
         "Resolve medication discrepancies and publish one finalized discharge medication list. Complete when all active inpatient-only orders are reconciled and restart timing/instructions are explicit.",
-    });
+    }));
   }
 
   if (
     !input.follow_up_and_referrals.appointments_scheduled ||
     input.follow_up_and_referrals.missing_referrals.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-follow-up-and-referrals",
       category: "follow_up_and_referrals",
       priority: "medium",
@@ -440,14 +631,14 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("follow_up_and_referrals"),
       actionability:
         "Schedule required follow-up/referrals and include date, location, and contact details in the transition packet before discharge.",
-    });
+    }));
   }
 
   if (
     !input.patient_education.teach_back_complete ||
     input.patient_education.documented_gaps.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-patient-education",
       category: "patient_education",
       priority: "medium",
@@ -458,7 +649,7 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("patient_education"),
       actionability:
         "Complete teach-back for warning signs, medication use, and escalation pathways, then document patient understanding in the discharge note.",
-    });
+    }));
   }
 
   if (
@@ -466,7 +657,7 @@ const buildCoreBlockers = (
     !input.home_support_and_services.services_confirmed ||
     input.home_support_and_services.documented_gaps.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-home-support-and-services",
       category: "home_support_and_services",
       priority: "high",
@@ -477,7 +668,7 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("home_support_and_services"),
       actionability:
         "Confirm caregiver availability and required home services with named contacts and start timing documented in the discharge plan.",
-    });
+    }));
   }
 
   if (
@@ -485,7 +676,7 @@ const buildCoreBlockers = (
     !input.equipment_and_transport.equipment_ready ||
     input.equipment_and_transport.documented_gaps.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-equipment-and-transport",
       category: "equipment_and_transport",
       priority:
@@ -500,14 +691,14 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("equipment_and_transport"),
       actionability:
         "Confirm equipment delivery and transportation timing with an explicit handoff timestamp before patient departure.",
-    });
+    }));
   }
 
   if (
     !input.administrative_and_documentation.discharge_documents_complete ||
     input.administrative_and_documentation.documented_gaps.length > 0
   ) {
-    blockers.push({
+    blockers.push(withProvenance({
       id: "blocker-administrative-and-documentation",
       category: "administrative_and_documentation",
       priority: "medium",
@@ -518,19 +709,19 @@ const buildCoreBlockers = (
       evidence: evidenceForCategory("administrative_and_documentation"),
       actionability:
         "Complete required discharge documents, finalize sign-offs, and verify the transition packet is complete before patient departure.",
-    });
+    }));
   }
 
   const seenCategories = new Set(blockers.map((blocker) => blocker.category));
   const allCategories = Object.keys(CATEGORY_ORDER) as BlockerCategory[];
   for (const category of allCategories) {
-    const uncertaintyPhrase = buildEvidenceUncertaintyPhrase(category, normalizedEvidence);
+    const uncertaintyPhrase = buildEvidenceConflictOrUncertaintyPhrase(category, normalizedEvidence);
     if (!uncertaintyPhrase) {
       continue;
     }
 
     if (!seenCategories.has(category)) {
-      blockers.push({
+      blockers.push(withProvenance({
         id: BLOCKER_ID_BY_CATEGORY[category],
         category,
         priority: EVIDENCE_UNCERTAINTY_PRIORITY[category],
@@ -538,7 +729,7 @@ const buildCoreBlockers = (
           `Readiness evidence remains unresolved for ${CATEGORY_LABEL[category]}. ${uncertaintyPhrase}`,
         evidence: evidenceForCategory(category),
         actionability: EVIDENCE_UNCERTAINTY_ACTION[category],
-      });
+      }));
       seenCategories.add(category);
       continue;
     }
@@ -560,8 +751,13 @@ export const buildDischargeWorkflowCore = (input: ReadinessInput): WorkflowCoreR
   const blockers = buildCoreBlockers(input, normalizedEvidence);
   assertEvidenceCoverage(blockers, normalizedEvidence.evidence_catalog);
 
-  const evidence = buildEvidenceTrace(blockers, normalizedEvidence.evidence_catalog);
   const next_steps = buildTransitionTasks(blockers);
+  const evidence = buildEvidenceTrace(
+    blockers,
+    normalizedEvidence.evidence_catalog,
+    normalizedEvidence,
+    next_steps,
+  );
   const verdict = determineVerdict(blockers);
   const summary = buildSummary(verdict, blockers);
 
@@ -596,7 +792,8 @@ export const buildExtractDischargeBlockersResponse = (
     verdict: core.verdict,
     blockers: core.blockers,
     evidence: core.evidence,
-    summary: `Extracted ${core.blockers.length} discharge blockers with source-linked evidence for clinician review.`,
+    summary:
+      `Extracted ${core.blockers.length} discharge blockers with source-linked evidence and trust markers for clinician review.`,
   };
 };
 
@@ -610,6 +807,6 @@ export const buildGenerateTransitionPlanResponse = (
     evidence: core.evidence,
     next_steps: core.next_steps,
     summary:
-      `Generated ${core.next_steps.length} prioritized transition tasks linked to active discharge blockers.`,
+      `Generated ${core.next_steps.length} prioritized transition tasks with blocker-to-evidence traceability.`,
   };
 };
