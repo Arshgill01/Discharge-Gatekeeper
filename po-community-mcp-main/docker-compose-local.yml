@@ -6,7 +6,7 @@ services:
     build:
       dockerfile: ./typescript/Dockerfile
     ports:
-      - "55000:5000"
+      - "55000:5055"
   dotnet:
     restart: always
     build:

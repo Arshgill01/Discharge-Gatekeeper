@@ -94,6 +94,10 @@ Current focus (2026-04-15, Agent 2 - readiness engine deepening):
 - refactor `assess_discharge_readiness` to be evidence-driven and less scenario-shape brittle while preserving canonical verdicts/categories and top-level response keys
 - add explicit handling for contradictory/insufficient evidence so unresolved ambiguity is visible and actionable
 - add multi-scenario and ambiguity smoke coverage to protect verdict separation (`ready`, `ready_with_caveats`, `not_ready`) and output contract stability
+Current focus (2026-04-18, Agent 1 - Prompt Opinion ops hardening):
+- consolidate to one canonical zero-to-invocation operator runbook for local -> tunnel/public endpoint -> Prompt Opinion
+- document explicit environment-variable reference and connection assumptions for reliable team handoff
+- harden runtime diagnostics and troubleshooting guidance for tool discoverability, host allowlist issues, patient-context assumptions, and tunnel URL rotation
 
 ### 5) Evals
 Owner: open
