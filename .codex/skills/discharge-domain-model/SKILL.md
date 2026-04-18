@@ -1,66 +1,66 @@
 ---
 name: discharge-domain-model
-description: Keep product and implementation work aligned to the discharge-readiness wedge. Use when defining blocker categories, verdict logic, safety framing, output semantics, or demo patient assumptions.
+description: Keep work aligned to the Care Transitions Command discharge-readiness wedge and the frozen two-MCP plus external-A2A architecture.
 compatibility: Codex-compatible skill for domain-shaping work.
 metadata:
-  version: "1.0"
-  owner: discharge-gatekeeper
+  version: "2.0"
+  owner: care-transitions-command
 ---
 
 # Discharge Domain Model
 
 ## Use this skill when
-- shaping discharge-readiness logic
-- refining blocker categories
-- checking whether a feature still fits the wedge
-- improving safety framing or product semantics
+- shaping discharge-readiness semantics
+- checking whether a change still fits the wedge
+- reviewing blocker categories, verdict logic, or safety framing
+- deciding whether logic belongs in the deterministic spine or the hidden-risk layer
 
 ## First read
 1. `AGENTS.md`
 2. `docs/product-brief.md`
-3. `docs/architecture.md`
-4. `docs/evals.md`
-5. `docs/data-plan.md`
+3. `docs/evals.md`
+4. `docs/phase0-hidden-risk-prompt-contract.md`
+5. `docs/phase0-orchestrator-decision-matrix.md`
 
-## Core product law
-The repo answers one central question:
-**Is this patient safe to discharge today?**
+## Frozen architecture facts
+- top-level identity: `Care Transitions Command`
+- deterministic MCP: `Discharge Gatekeeper MCP`
+- hidden-risk MCP: `Clinical Intelligence MCP`
+- orchestration layer: `external A2A orchestrator`
+- deterministic spine remains foundational
+- LLM use is allowed only in `Clinical Intelligence MCP` and the `external A2A orchestrator`
 
-Everything else is secondary support.
-
-## Canonical concepts
-Verdict labels:
+## Canonical discharge concepts
+Verdicts:
 - `ready`
 - `ready_with_caveats`
 - `not_ready`
 
 Blocker categories:
-- clinical_stability
-- pending_diagnostics
-- medication_reconciliation
-- follow_up_and_referrals
-- patient_education
-- home_support_and_services
-- equipment_and_transport
-- administrative_and_documentation
+- `clinical_stability`
+- `pending_diagnostics`
+- `medication_reconciliation`
+- `follow_up_and_referrals`
+- `patient_education`
+- `home_support_and_services`
+- `equipment_and_transport`
+- `administrative_and_documentation`
 
-## Domain rules
-- Prefer assistive workflow language over medical-autonomy language.
-- Prefer actionability over theoretical completeness.
-- Prefer a small, believable blocker set over an exhaustive one.
-- Avoid turning the product into a generic care-management agent.
+## Core laws
+- `Discharge Gatekeeper MCP` owns the baseline structured verdict and next-step spine.
+- `Clinical Intelligence MCP` only adds bounded hidden-risk or contradiction findings.
+- Hidden-risk findings must be cited and materially relevant.
+- No component claims autonomous discharge authority.
 
-## When evaluating an idea or change
+## Decision check
 Ask:
-1. Does this help the system answer the core discharge question?
-2. Does it make blockers clearer or more useful?
-3. Does it improve a real transition output?
-4. Does it stay feasible and judge-friendly?
+1. Does this improve the answer to "Is this patient safe to discharge today?"
+2. Does it sharpen blocker clarity or next-step actionability?
+3. Does it belong in the deterministic MCP, the hidden-risk MCP, or the orchestrator?
+4. Does it preserve the 3-prompt demo?
 
-If not, push back.
-
-## Final checks
-Before finishing:
-1. Did the change keep the wedge sharp?
-2. Did it preserve canonical terms?
-3. Did it avoid overclaiming clinical authority?
+## Do not
+- drift into diagnosis or treatment planning
+- widen the system into a generic hospital copilot
+- move hidden-risk prompting into the deterministic MCP
+- let narrative reasoning replace structured evidence
