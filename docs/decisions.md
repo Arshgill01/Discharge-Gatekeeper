@@ -70,3 +70,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: The A2A layer improves the final story but cannot be allowed to become the only working judge path.
 - Affected files or lanes: Prompt Opinion integration, demo/submission, failure planning
 - Follow-up: Rehearse both the preferred A2A path and the direct-MCP fallback before recording or live judging.
+
+- Date: 2026-04-19
+- Decision: `Clinical Intelligence MCP` defaults to a deterministic heuristic provider for local smoke checks, while keeping a Google Gemini API-backed provider path for real model inference; on provider timeout/unparseable output it returns structured `status=error` with no hidden-risk findings.
+- Why: This keeps release-gate and demo safety stable without fabricating hidden-risk escalation when LLM output is unavailable, and preserves a production-ready model integration path.
+- Affected files or lanes: Clinical Intelligence MCP runtime, smoke coverage, orchestrator integration assumptions
+- Follow-up: Orchestrator integration should treat `status=error` as `clinical_intelligence_unavailable` and preserve deterministic posture per failure-mode plan.
