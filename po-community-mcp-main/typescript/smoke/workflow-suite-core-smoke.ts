@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { REGISTERED_TOOLS } from "../tools";
+import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
 import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discharge-readiness";
 import { extractDischargeBlockers } from "../discharge-readiness/extract-discharge-blockers";
 import { generateTransitionPlan } from "../discharge-readiness/generate-transition-plan";
@@ -40,18 +40,23 @@ const TRANSITION_PLAN_KEYS = [
   "next_steps",
   "summary",
 ] as const;
-const EXPECTED_CORE_TOOL_NAMES = [
-  "assess_discharge_readiness",
-  "extract_discharge_blockers",
-  "generate_transition_plan",
-] as const;
-
 const assertRegisteredToolSurface = (): void => {
   assert.deepEqual(
     [...CORE_WORKFLOW_TOOL_NAMES],
-    [...EXPECTED_CORE_TOOL_NAMES],
+    [
+      "assess_discharge_readiness",
+      "extract_discharge_blockers",
+      "generate_transition_plan",
+    ],
     "Core workflow tool constants drifted from the canonical MCP tool names.",
   );
+
+  for (const toolName of CORE_WORKFLOW_TOOL_NAMES) {
+    assert.ok(
+      REGISTERED_TOOL_NAMES.includes(toolName),
+      `Registered tool names are missing core workflow tool '${toolName}'.`,
+    );
+  }
 
   const registeredToolNames: string[] = [];
   const fakeServer = {
@@ -64,11 +69,12 @@ const assertRegisteredToolSurface = (): void => {
     tool.registerTool(fakeServer, {} as Request);
   }
 
-  assert.deepEqual(
-    registeredToolNames,
-    [...EXPECTED_CORE_TOOL_NAMES],
-    "Registered tool surface drifted from the canonical workflow core suite.",
-  );
+  for (const toolName of CORE_WORKFLOW_TOOL_NAMES) {
+    assert.ok(
+      registeredToolNames.includes(toolName),
+      `Runtime registration surface is missing core workflow tool '${toolName}'.`,
+    );
+  }
 };
 
 const assertKeys = (

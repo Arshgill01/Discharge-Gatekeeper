@@ -78,15 +78,27 @@ Likely outputs:
 - timing hints
 - required follow-ups
 
-### 4) `draft_patient_discharge_instructions`
+### 4) `build_clinician_handoff_brief`
 Purpose:
-- produce patient-facing instructions based on the approved transition plan
+- build a concise clinician-facing handoff from unresolved blockers and next-step ownership
 
 Likely outputs:
-- simplified instructions
-- medication reminders
-- follow-up reminders
-- escalation advice boundaries
+- readiness verdict (mirrors readiness tool)
+- unresolved risks linked to blocker IDs and evidence IDs
+- blocker-linked required actions and owners
+- explicit clinician-review/sign-off boundary language
+- concise unresolved-risk summary
+
+### 5) `draft_patient_discharge_instructions`
+Purpose:
+- produce plain-language patient instructions aligned to blockers and the transition plan
+
+Likely outputs:
+- verdict-aligned plain-language summary
+- one instruction item per active blocker with linked blocker ID
+- patient-facing reminders and escalation guidance
+- care-team follow-up mapping to transition actions
+- explicit clinician-finalization boundary language
 
 ## Output-contract preference
 Start with a structured response plus concise narrative.

@@ -3,10 +3,16 @@ import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discha
 import type { BlockerPriority } from "../discharge-readiness/contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SCENARIO_V1_TRUTH } from "../discharge-readiness/scenario-truth";
+import {
+  buildClinicianHandoffBriefV1,
+  draftPatientDischargeInstructionsV1,
+} from "../discharge-readiness/workflow-artifacts";
 
 const PROMPT_1 = "Is this patient safe to discharge today?";
 const PROMPT_2 = "What exactly is blocking discharge right now?";
 const PROMPT_3 = "What must happen before this patient leaves?";
+const PROMPT_4 = "Build the clinician handoff brief.";
+const PROMPT_5 = "Draft patient discharge instructions.";
 
 const response = assessDischargeReadinessV1(FIRST_SYNTHETIC_SCENARIO_V1);
 
@@ -84,15 +90,58 @@ for (const step of response.next_steps) {
   );
 }
 
-console.log("SMOKE PASS: demo path (3 prompts)");
+const clinicianHandoff = buildClinicianHandoffBriefV1(FIRST_SYNTHETIC_SCENARIO_V1);
+assert.equal(
+  clinicianHandoff.readiness_verdict,
+  response.verdict,
+  "Prompt 4: clinician handoff verdict must match Prompt 1 readiness verdict.",
+);
+assert.equal(
+  clinicianHandoff.unresolved_risks.length,
+  response.blockers.length,
+  "Prompt 4: clinician handoff unresolved risks must map one-to-one with blockers.",
+);
+assert.equal(
+  clinicianHandoff.prioritized_actions.length,
+  response.next_steps.length,
+  "Prompt 4: clinician handoff prioritized actions must map one-to-one with next_steps.",
+);
+assert.ok(
+  /clinician review|sign-off/i.test(clinicianHandoff.review_boundary),
+  "Prompt 4: clinician handoff must include explicit clinician-review boundaries.",
+);
+
+const patientInstructions = draftPatientDischargeInstructionsV1(FIRST_SYNTHETIC_SCENARIO_V1);
+assert.equal(
+  patientInstructions.readiness_verdict,
+  response.verdict,
+  "Prompt 5: patient instructions verdict must match Prompt 1 readiness verdict.",
+);
+assert.equal(
+  patientInstructions.instructions.length,
+  response.blockers.length,
+  "Prompt 5: patient instructions must map one-to-one with blockers.",
+);
+assert.ok(
+  /plain language/i.test(patientInstructions.plain_language_notice),
+  "Prompt 5: patient instructions should explicitly call out plain-language intent.",
+);
+assert.ok(
+  /clinician must review|licensed clinician/i.test(patientInstructions.review_boundary),
+  "Prompt 5: patient instructions should explicitly require clinician review.",
+);
+
+console.log("SMOKE PASS: demo path (expanded workflow)");
 console.log(
   JSON.stringify(
     {
-      prompts: [PROMPT_1, PROMPT_2, PROMPT_3],
+      prompts: [PROMPT_1, PROMPT_2, PROMPT_3, PROMPT_4, PROMPT_5],
       verdict: response.verdict,
       blocker_count: response.blockers.length,
       evidence_count: response.evidence.length,
       next_step_count: response.next_steps.length,
+      clinician_handoff_risk_count: clinicianHandoff.unresolved_risks.length,
+      patient_instruction_count: patientInstructions.instructions.length,
     },
     null,
     2,

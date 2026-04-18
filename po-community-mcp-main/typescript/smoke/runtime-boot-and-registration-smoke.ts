@@ -6,14 +6,8 @@ import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { REGISTERED_TOOLS } from "../tools";
-import { CORE_WORKFLOW_TOOL_NAMES } from "../discharge-readiness/contract";
-
-const EXPECTED_TOOL_NAMES = [
-  "assess_discharge_readiness",
-  "extract_discharge_blockers",
-  "generate_transition_plan",
-] as const;
+import { V1_WORKFLOW_TOOL_NAMES } from "../discharge-readiness/contract";
+import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
 
 const waitForServerExit = async (serverProcess: ReturnType<typeof spawn>): Promise<void> => {
   if (serverProcess.exitCode !== null) {
@@ -51,9 +45,9 @@ const reserveOpenPort = async (): Promise<number> => {
 
 const assertToolRegistrationSurface = (): void => {
   assert.deepEqual(
-    [...CORE_WORKFLOW_TOOL_NAMES],
-    [...EXPECTED_TOOL_NAMES],
-    "Core workflow tool constants drifted from the canonical MCP tool names.",
+    REGISTERED_TOOL_NAMES,
+    [...V1_WORKFLOW_TOOL_NAMES],
+    "Registered tool names must match the canonical workflow-suite constants.",
   );
 
   const registeredToolNames: string[] = [];
@@ -69,8 +63,8 @@ const assertToolRegistrationSurface = (): void => {
 
   assert.deepEqual(
     registeredToolNames,
-    [...EXPECTED_TOOL_NAMES],
-    "Registered tool names must remain exactly the canonical core workflow suite.",
+    REGISTERED_TOOL_NAMES,
+    `Registered tool names must remain exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
   );
 };
 
@@ -159,16 +153,16 @@ const runRuntimeBootCheck = async (): Promise<void> => {
     assert.equal(payload["status"], "ok", "Health payload status must be 'ok'.");
     assert.equal(
       payload["tool_count"],
-      EXPECTED_TOOL_NAMES.length,
-      "Health payload tool_count must match the canonical core workflow suite.",
+      REGISTERED_TOOL_NAMES.length,
+      "Health payload tool_count must match registered tool surface.",
     );
 
     const tools = payload["tools"];
     assert.ok(Array.isArray(tools), "Health payload tools must be an array.");
     assert.deepEqual(
       tools,
-      [...EXPECTED_TOOL_NAMES],
-      "Health payload tools must match the canonical core workflow suite.",
+      REGISTERED_TOOL_NAMES,
+      `Health payload tools must list exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
     );
   } catch (error) {
     const stdout = stdoutLines.join("").trim();

@@ -1,0 +1,188 @@
+import {
+  BlockerCategory,
+  BlockerPriority,
+  ClinicianHandoffBriefResponse,
+  ClinicianHandoffRisk,
+  NextStep,
+  PatientDischargeInstructionsResponse,
+  PatientInstructionItem,
+  ReadinessInput,
+  ReadinessVerdict,
+} from "./contract";
+import { assessDischargeReadinessV1 } from "./assess-discharge-readiness";
+
+const CLINICIAN_REVIEW_BOUNDARY =
+  "Assistive handoff output for clinician review and sign-off. This does not replace clinician judgment or discharge authority.";
+const PATIENT_REVIEW_BOUNDARY =
+  "Draft instructions generated to support care-team workflow. A licensed clinician must review and finalize before patient use.";
+
+const PATIENT_TITLE_BY_CATEGORY: Record<BlockerCategory, string> = {
+  clinical_stability: "Breathing and stability check",
+  pending_diagnostics: "Pending test result check",
+  medication_reconciliation: "Medication list check",
+  follow_up_and_referrals: "Follow-up appointment check",
+  patient_education: "Teach-back and warning-sign check",
+  home_support_and_services: "Home support check",
+  equipment_and_transport: "Equipment and ride check",
+  administrative_and_documentation: "Discharge paperwork check",
+};
+
+const PATIENT_INSTRUCTION_BY_CATEGORY: Record<BlockerCategory, string> = {
+  clinical_stability:
+    "wait for your care team to confirm your breathing and vital signs are stable for home.",
+  pending_diagnostics:
+    "wait until your care team reviews any pending test results that could change your plan.",
+  medication_reconciliation:
+    "review your final medication list with your nurse or pharmacist so you know what to take, when to take it, and what changed.",
+  follow_up_and_referrals:
+    "make sure your follow-up visits and referrals are booked before you leave.",
+  patient_education:
+    "review warning signs with your nurse and explain back when to call for help.",
+  home_support_and_services:
+    "confirm who will help you at home and which home services are arranged.",
+  equipment_and_transport:
+    "confirm your equipment delivery timing and your ride plan before departure.",
+  administrative_and_documentation:
+    "wait for your care team to complete and review your discharge paperwork with you.",
+};
+
+const countPriorities = (
+  blockers: Array<{ priority: BlockerPriority }>,
+): Record<BlockerPriority, number> => {
+  return blockers.reduce<Record<BlockerPriority, number>>(
+    (counts, blocker) => {
+      counts[blocker.priority] += 1;
+      return counts;
+    },
+    { high: 0, medium: 0, low: 0 },
+  );
+};
+
+const buildClinicianSummary = (
+  verdict: ReadinessVerdict,
+  blockers: ClinicianHandoffRisk[],
+): string => {
+  if (blockers.length === 0) {
+    return "No unresolved discharge blockers were found in this assistive review. Final discharge disposition still requires clinician confirmation.";
+  }
+
+  const counts = countPriorities(blockers);
+  const unresolvedCount = blockers.length;
+  return `Assistive clinician handoff for verdict '${verdict}': ${unresolvedCount} unresolved blockers remain (${counts.high} high, ${counts.medium} medium, ${counts.low} low). Final discharge disposition requires clinician review and sign-off.`;
+};
+
+const buildPatientSummary = (
+  verdict: ReadinessVerdict,
+  instructionCount: number,
+): string => {
+  if (verdict === "not_ready") {
+    return `Discharge is not ready yet. ${instructionCount} care-plan items still need completion before you leave.`;
+  }
+
+  if (verdict === "ready_with_caveats") {
+    return `Discharge may proceed after ${instructionCount} remaining care-plan items are reviewed and completed with your care team.`;
+  }
+
+  return "No active discharge blockers were identified in this assistive review. Wait for your care team to confirm final discharge instructions.";
+};
+
+const buildFollowUpReminders = (
+  categories: Set<BlockerCategory>,
+): string[] => {
+  const reminders: string[] = [
+    "Ask your care team to review this plan with you before leaving the hospital.",
+  ];
+
+  if (categories.has("medication_reconciliation")) {
+    reminders.push("Before leaving, repeat your medication plan back to your nurse or pharmacist.");
+  }
+  if (categories.has("follow_up_and_referrals")) {
+    reminders.push("Confirm appointment dates, locations, and phone numbers for all follow-up visits.");
+  }
+  if (categories.has("patient_education")) {
+    reminders.push("Review warning signs and ask who to call during the day and at night.");
+  }
+  if (categories.has("equipment_and_transport")) {
+    reminders.push("Confirm your ride and equipment delivery timing before discharge.");
+  }
+
+  return reminders;
+};
+
+export const buildClinicianHandoffBriefV1 = (
+  input: ReadinessInput,
+): ClinicianHandoffBriefResponse => {
+  const readinessResponse = assessDischargeReadinessV1(input);
+  const nextStepByBlockerId = new Map<string, NextStep>();
+
+  for (const step of readinessResponse.next_steps) {
+    const blockerId = step.linked_blockers[0];
+    if (blockerId) {
+      nextStepByBlockerId.set(blockerId, step);
+    }
+  }
+
+  const unresolvedRisks: ClinicianHandoffRisk[] = readinessResponse.blockers.map((blocker) => {
+    const step = nextStepByBlockerId.get(blocker.id);
+    return {
+      blocker_id: blocker.id,
+      category: blocker.category,
+      priority: blocker.priority,
+      unresolved_risk: blocker.description,
+      evidence_ids: blocker.evidence,
+      required_action: step?.action ?? blocker.actionability,
+      owner: step?.owner ?? "Care team",
+      linked_next_step_id: step?.id ?? null,
+    };
+  });
+
+  return {
+    scenario_id: input.scenario_id,
+    readiness_verdict: readinessResponse.verdict,
+    review_boundary: CLINICIAN_REVIEW_BOUNDARY,
+    unresolved_risks: unresolvedRisks,
+    prioritized_actions: readinessResponse.next_steps,
+    summary: buildClinicianSummary(readinessResponse.verdict, unresolvedRisks),
+  };
+};
+
+export const draftPatientDischargeInstructionsV1 = (
+  input: ReadinessInput,
+): PatientDischargeInstructionsResponse => {
+  const readinessResponse = assessDischargeReadinessV1(input);
+  const nextStepByBlockerId = new Map<string, NextStep>();
+
+  for (const step of readinessResponse.next_steps) {
+    const blockerId = step.linked_blockers[0];
+    if (blockerId) {
+      nextStepByBlockerId.set(blockerId, step);
+    }
+  }
+
+  const instructions: PatientInstructionItem[] = readinessResponse.blockers.map((blocker, index) => {
+    const linkedStep = nextStepByBlockerId.get(blocker.id);
+    return {
+      id: `instruction-${index + 1}`,
+      linked_blockers: [blocker.id],
+      title: PATIENT_TITLE_BY_CATEGORY[blocker.category],
+      instruction: `Before you leave, ${PATIENT_INSTRUCTION_BY_CATEGORY[blocker.category]}`,
+      reason: blocker.description,
+      care_team_follow_up: linkedStep?.action ?? blocker.actionability,
+    };
+  });
+
+  const categories = new Set(readinessResponse.blockers.map((blocker) => blocker.category));
+
+  return {
+    scenario_id: input.scenario_id,
+    readiness_verdict: readinessResponse.verdict,
+    plain_language_notice:
+      "This is a draft in plain language to help your discharge conversation with your care team.",
+    review_boundary: PATIENT_REVIEW_BOUNDARY,
+    instructions,
+    follow_up_reminders: buildFollowUpReminders(categories),
+    emergency_guidance:
+      "If you have severe trouble breathing, chest pain, or sudden confusion, call emergency services right away.",
+    summary: buildPatientSummary(readinessResponse.verdict, instructions.length),
+  };
+};
