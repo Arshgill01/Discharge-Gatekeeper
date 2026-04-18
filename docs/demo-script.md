@@ -32,10 +32,12 @@ Show on screen:
 - final verdict: `not_ready`
 - one-line explanation that the structured discharge spine looked ready, but narrative evidence forced escalation
 - blocker count and top blocker categories
+- hidden-risk layer status from `Clinical Intelligence MCP` (`ok`, `inconclusive`, `insufficient_context`, or `error`)
 
 What this proves:
 - the system is not doing generic summarization
 - the answer can change when evidence outside the structured snapshot matters
+- Prompt 1 is already fused across deterministic and hidden-risk evidence, not a deterministic-only answer
 
 ## Prompt 2
 User prompt:
@@ -45,6 +47,7 @@ Show on screen:
 - the structured posture before escalation: `ready`
 - the contradiction summary
 - the exact note-backed hidden risk
+- explicit citation anchors to the contradiction source(s)
 - impacted blocker categories:
   - `clinical_stability`
   - `equipment_and_transport`
@@ -53,6 +56,7 @@ Show on screen:
 What this proves:
 - the AI factor is contradiction detection, not vague prose
 - the system can point to the evidence that changed the decision
+- if no hidden risk exists, the system can explicitly show bounded `no_hidden_risk` behavior rather than forced escalation
 
 This is the holy-shit moment.
 

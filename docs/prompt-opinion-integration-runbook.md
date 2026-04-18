@@ -81,10 +81,21 @@ Before registration, verify for every component:
 - tool metadata clearly maps to hidden-risk and contradiction review
 - discovery does not duplicate the deterministic discharge tools
 - a smoke invocation returns the hidden-risk JSON schema with citations
+- trap-patient smoke returns `hidden_risk_present` with contradiction-note citations
+- control smoke returns explicit `no_hidden_risk` with no fabricated escalation
+
+### Pre-registration local checks (required)
+Run from `po-community-mcp-main/clinical-intelligence-typescript`:
+1. `npm run smoke:hidden-risk`
+2. `npm run smoke:narrative`
+3. `npm run smoke:release-gate`
+
+Do not register in Prompt Opinion until these checks are green in the current branch/runtime.
 
 ### Failure handling
 - if this MCP fails, the direct deterministic path must still remain available
 - log the failure as `clinical_intelligence_unavailable` for demo-day decision making
+- if the LLM provider is unavailable, timeout-bound, or unparseable, require a structured `status=error` MCP response with no hidden-risk findings and preserve the deterministic posture
 
 ## 5. Register `external A2A orchestrator`
 
@@ -182,3 +193,11 @@ Otherwise:
 - disable the A2A layer for the live demo
 - use the fallback direct-MCP path
 - keep the architecture explanation accurate
+
+## 10. Phase 2 handoff dependencies
+Phase 2 (`two-MCP integration`) should assume the following from Phase 1:
+- `Clinical Intelligence MCP` returns parseable `phase0_hidden_risk_v1` payloads
+- trap patient and no-risk control behavior are enforced by smoke checks, not only by docs
+- hidden-risk findings keep citation ids resolvable to `citations[]`
+- provider failure is represented as structured `status=error`, enabling deterministic fallback handling
+- Prompt 1 and Prompt 2 demo expectations are already explicit in [demo-script.md](demo-script.md)
