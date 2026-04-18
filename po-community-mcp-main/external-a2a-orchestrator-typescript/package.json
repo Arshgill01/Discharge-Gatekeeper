@@ -1,0 +1,35 @@
+{
+  "name": "external-a2a-orchestrator-ts",
+  "version": "1.0.0",
+  "description": "Synchronous external A2A orchestrator for Care Transitions Command",
+  "main": "index.ts",
+  "scripts": {
+    "start": "npx tsx index.ts",
+    "pretypecheck": "node -e \"const fs=require('node:fs'); const missing=['typescript','tsx','@modelcontextprotocol/sdk'].filter((pkg)=>!fs.existsSync('node_modules/'+pkg)); if(missing.length){console.error('Missing dependencies: '+missing.join(', ')+'. Run: npm ci'); process.exit(1);}\"",
+    "typecheck": "npx tsc --noEmit",
+    "smoke:runtime": "npx tsx smoke/runtime-boot-and-agent-card-smoke.ts",
+    "smoke:decision-matrix": "npx tsx smoke/decision-matrix-smoke.ts",
+    "smoke:orchestrator": "npx tsx smoke/orchestrator-smoke.ts",
+    "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:decision-matrix && npm run smoke:orchestrator",
+    "test": "npm run smoke:release-gate"
+  },
+  "author": "Care Transitions Command",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.50.1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "zod": "^4.2.1"
+  }
+}
