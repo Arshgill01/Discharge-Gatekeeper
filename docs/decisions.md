@@ -104,3 +104,9 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: Existing smoke checks covered core readiness behavior but left runtime and demo-sequence regressions easier to miss before merge or judge recording.
 - Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
 - Follow-up: Keep `smoke:release-gate` as the default pre-demo command bundle and update fixture/truth checks whenever scenario expectations intentionally change.
+
+- Date: 2026-04-18
+- Decision: Establish one shared discharge workflow core (`workflow-core`) and expose a canonical 3-tool MCP suite surface: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`.
+- Why: Readiness, blocker extraction, and transition planning were drifting toward duplicated private logic; one shared spine keeps blocker/evidence/transition contracts coherent and easier to smoke-test for demo reliability.
+- Affected files or lanes: implementation, architecture, evals, Prompt Opinion runtime surface
+- Follow-up: Keep cross-tool smoke checks enforcing shape/linkage consistency and prevent starter/example tool leakage on the active runtime surface.

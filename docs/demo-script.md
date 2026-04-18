@@ -16,7 +16,7 @@ Deliver a judge-ready, first-slice demo in under 3 minutes with one patient and 
    - `npm run smoke:release-gate`
 2. Confirm runtime/tool surface explicitly:
    - `npm run smoke:runtime`
-   - `/healthz` shows tool list containing only `assess_discharge_readiness`
+   - `/healthz` shows the canonical core-suite tools: `assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`
 3. Open Prompt Opinion workspace and select the synthetic patient context.
 4. Keep one view ready where verdict, blockers, and evidence IDs are visible together.
 

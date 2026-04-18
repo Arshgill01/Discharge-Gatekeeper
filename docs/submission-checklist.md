@@ -97,12 +97,14 @@ Repo-level command check before recording:
 1. from `po-community-mcp-main/typescript`, run `npm run smoke:runtime`
 2. run `npm run smoke:readiness`
 3. run `npm run smoke:readiness:regression`
-4. run `npm run smoke:demo-path`
-5. optionally run one bundled command: `npm run smoke:release-gate`
-6. confirm output includes `SMOKE PASS: runtime boot and tool registration`
-7. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
-8. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
-9. confirm output includes `SMOKE PASS: demo path (3 prompts)`
+4. run `npm run smoke:workflow-suite-core`
+5. run `npm run smoke:demo-path`
+6. optionally run one bundled command: `npm run smoke:release-gate`
+7. confirm output includes `SMOKE PASS: runtime boot and tool registration`
+8. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
+9. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
+10. confirm output includes `SMOKE PASS: workflow suite core`
+11. confirm output includes `SMOKE PASS: demo path (3 prompts)`
 
 ## Last-minute cut rule
 If time is short, protect these in order:
