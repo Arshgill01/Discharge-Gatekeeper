@@ -76,7 +76,12 @@ curl -sS http://localhost:5055/readyz | jq
 
 Pass criteria:
 - `status` is `ok`
-- `tools` includes `assess_discharge_readiness`
+- `tools` includes all workflow-suite tools:
+  - `assess_discharge_readiness`
+  - `extract_discharge_blockers`
+  - `generate_transition_plan`
+  - `build_clinician_handoff_brief`
+  - `draft_patient_discharge_instructions`
 - `allowed_hosts` includes your expected hosts
 
 ## 6) Public endpoint via ngrok
@@ -251,9 +256,9 @@ This runbook supports repeatable verification of:
 3. `npm run smoke:readiness` passes
 4. `npm run smoke:readiness:regression` passes
 5. `npm run smoke:workflow-suite-core` passes
-6. `npm run smoke:demo-path` passes
-7. `/healthz` is reachable through the public URL
-8. server boots locally and is reachable via public endpoint/tunnel
-9. Prompt Opinion connection test succeeds and `assess_discharge_readiness` is discovered
-   together with `extract_discharge_blockers` and `generate_transition_plan`
-10. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)
+6. `npm run smoke:artifacts` passes
+7. `npm run smoke:demo-path` passes
+8. `/healthz` is reachable through the public URL
+9. server boots locally and is reachable via public endpoint/tunnel
+10. Prompt Opinion connection test succeeds and all five workflow tools are discovered (`assess_discharge_readiness`, `extract_discharge_blockers`, `generate_transition_plan`, `build_clinician_handoff_brief`, `draft_patient_discharge_instructions`)
+11. primary 3-prompt Launchpad scenario runs and returns expected structured response (`verdict`, `blockers`, `evidence`, `next_steps`, `summary`)
