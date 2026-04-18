@@ -94,19 +94,21 @@ Run this from a fresh session:
 6. confirm nothing depends on hidden local state
 
 Repo-level command check before recording:
-1. from `po-community-mcp-main/typescript`, run `npm run smoke:runtime`
-2. run `npm run smoke:readiness`
-3. run `npm run smoke:readiness:regression`
-4. run `npm run smoke:workflow-suite-core`
-5. run `npm run smoke:artifacts`
-6. run `npm run smoke:demo-path`
-7. optionally run one bundled command: `npm run smoke:release-gate`
-8. confirm output includes `SMOKE PASS: runtime boot and tool registration`
-9. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
-10. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
-11. confirm output includes `SMOKE PASS: workflow suite core`
-12. confirm output includes `SMOKE PASS: workflow artifacts suite`
-13. confirm output includes `SMOKE PASS: demo path (expanded workflow)`
+1. from `po-community-mcp-main/typescript`, run `npm run typecheck`
+2. run `npm run smoke:runtime`
+3. run `npm run smoke:readiness`
+4. run `npm run smoke:readiness:regression`
+5. run `npm run smoke:workflow-suite-core`
+6. run `npm run smoke:artifacts`
+7. run `npm run smoke:demo-path`
+8. optionally run one bundled command: `npm run smoke:release-gate`
+9. confirm output includes `SMOKE PASS: runtime boot and tool registration`
+10. confirm output includes `SMOKE PASS: assess_discharge_readiness v1`
+11. confirm output includes `REGRESSION PASS: assess_discharge_readiness matrix`
+12. confirm output includes `SMOKE PASS: workflow suite core`
+13. confirm output includes `SMOKE PASS: workflow artifacts suite`
+14. confirm output includes `SMOKE PASS: demo path (expanded workflow)`
+15. confirm the bundled gate covers the three-scenario verdict matrix (`not_ready`, `ready_with_caveats`, `ready`) plus ambiguity/missing-context/insufficient-evidence checks
 
 ## Last-minute cut rule
 If time is short, protect these in order:

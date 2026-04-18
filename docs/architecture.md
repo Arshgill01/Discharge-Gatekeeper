@@ -38,6 +38,25 @@ The community MCP starter demonstrates this pattern:
 - recover patient context from the token or fallback header
 - register tools through a simple FastMCP surface
 
+## Request-scoped workflow input resolution
+The active TypeScript runtime should resolve workflow input in this order:
+1. explicit `scenario_id` -> deterministic synthetic scenario
+2. Prompt Opinion live patient/FHIR context -> request-scoped structured retrieval plus note/document normalization
+3. synthetic fallback -> only when live context is absent or unavailable
+
+This keeps the demo path reliable while making the default tool path more context-native when Prompt Opinion forwards patient context.
+
+## Minimal live resource set
+Keep live retrieval intentionally narrow:
+- `Patient`
+- `Observation`
+- `MedicationRequest`
+- `MedicationStatement`
+- `ServiceRequest`
+- `DocumentReference`
+
+These are enough to drive the current discharge-readiness spine without pretending to support full EHR breadth.
+
 ## Core tool responsibilities
 ### 1) `assess_discharge_readiness`
 Purpose:
@@ -52,6 +71,7 @@ Likely outputs:
 - evidence trace entries linked to blockers
 - prioritized next steps
 - summary
+- nested trust metadata on blockers, evidence, and next steps so contradiction, ambiguity, and corroboration gaps remain inspectable without changing top-level keys
 
 ### 2) `extract_discharge_blockers`
 Purpose:
@@ -77,6 +97,7 @@ Likely outputs:
 - suggested owners
 - timing hints
 - required follow-ups
+- task-level traceability back to blocker IDs, evidence IDs, and blocker trust state
 
 ### 4) `build_clinician_handoff_brief`
 Purpose:
@@ -86,6 +107,7 @@ Likely outputs:
 - readiness verdict (mirrors readiness tool)
 - unresolved risks linked to blocker IDs and evidence IDs
 - blocker-linked required actions and owners
+- blocker trust state and source-summary carry-through for unresolved risks
 - explicit clinician-review/sign-off boundary language
 - concise unresolved-risk summary
 
@@ -96,6 +118,7 @@ Purpose:
 Likely outputs:
 - verdict-aligned plain-language summary
 - one instruction item per active blocker with linked blocker ID
+- instruction-level linkage to blocker evidence and care-team verification note
 - patient-facing reminders and escalation guidance
 - care-team follow-up mapping to transition actions
 - explicit clinician-finalization boundary language
@@ -117,6 +140,10 @@ Every major blocker should reference one or more evidence sources such as:
 - missing referral or order
 
 The first slice can use lightweight source labels instead of perfect provenance objects.
+Active suite expectation:
+- each blocker carries bounded provenance: trust state, source labels/types, and any contradiction/ambiguity/missing-corroboration marker IDs
+- each evidence trace carries source summary plus backlink to blockers and downstream next steps
+- each transition task carries blocker-linked evidence IDs and a short trace summary
 
 ## Shared workflow spine
 The core suite should run as one workflow family, not isolated tool implementations:
@@ -124,6 +151,7 @@ The core suite should run as one workflow family, not isolated tool implementati
 - one blocker model reused across readiness, blocker extraction, and transition planning
 - one transition-task model (`priority`, `owner`, `linked_blockers`) reused wherever next steps are produced
 - explicit traceability path: `blocker -> evidence` and `next_step -> blocker`
+- explicit trust path: `blocker provenance -> evidence conflict/ambiguity markers -> next step trace summary -> artifact carry-through`
 
 ## Notes and documents
 The product should not rely on structured FHIR alone.
@@ -132,6 +160,8 @@ Use uploaded note content for:
 - home support constraints
 - education gaps
 - unresolved narrative concerns
+
+In the current runtime, `DocumentReference` content is normalized into the same `note_documents` path used by synthetic scenarios so structured and note evidence stay on one inspectable spine.
 
 ## Safety boundaries
 The system should:
@@ -152,6 +182,8 @@ Tools should fail with messages that make next actions obvious, such as:
 - required note source missing
 - evidence insufficient for a confident verdict
 
+When live context is partial rather than fully absent, prefer explicit blocker/gap surfacing over silent optimistic assumptions.
+
 ## First build target
 The first thin slice should only prove this:
-Given one patient and a small set of structured plus note inputs, the system can correctly return `not_ready` or `ready_with_caveats` with a small blocker list and one transition artifact.
+Given a small synthetic scenario pack and a small set of structured plus note/document inputs, the system can correctly separate `not_ready`, `ready_with_caveats`, and `ready`, while keeping blockers, evidence, and transition artifacts inspectable.

@@ -11,6 +11,7 @@ import {
 } from "../discharge-readiness/contract";
 import {
   READINESS_REGRESSION_FAILURE_CASES,
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
   READINESS_REGRESSION_SUCCESS_CASES,
 } from "../discharge-readiness/regression-fixtures";
 
@@ -136,6 +137,14 @@ const assertCanonicalResponseShape = (
 
   for (const blocker of response.blockers) {
     assert.ok(blocker.evidence.length > 0, `${caseId}: blocker ${blocker.id} must include evidence`);
+    assert.ok(
+      blocker.provenance.summary.trim().length > 0,
+      `${caseId}: blocker ${blocker.id} must expose provenance summary`,
+    );
+    assert.ok(
+      blocker.provenance.source_labels.length > 0,
+      `${caseId}: blocker ${blocker.id} must expose source labels`,
+    );
 
     for (const evidenceId of blocker.evidence) {
       assert.ok(
@@ -147,6 +156,8 @@ const assertCanonicalResponseShape = (
 
   for (const trace of response.evidence) {
     assert.ok(trace.supports_blockers.length > 0, `${caseId}: evidence ${trace.id} has no linked blockers`);
+    assert.ok(trace.supports_next_steps.length > 0, `${caseId}: evidence ${trace.id} has no linked next steps`);
+    assert.ok(trace.source_summary.trim().length > 0, `${caseId}: evidence ${trace.id} missing source summary`);
 
     for (const blockerId of trace.supports_blockers) {
       assert.ok(
@@ -184,6 +195,16 @@ const assertCanonicalResponseShape = (
       linkedBlocker.priority,
       `${caseId}: next step ${step.id} priority must match blocker ${linkedBlockerId}`,
     );
+    assert.deepEqual(
+      step.linked_evidence,
+      linkedBlocker.evidence,
+      `${caseId}: next step ${step.id} linked evidence must match blocker ${linkedBlockerId}`,
+    );
+    assert.equal(
+      step.blocker_trust_state,
+      linkedBlocker.provenance.trust_state,
+      `${caseId}: next step ${step.id} trust state must match blocker ${linkedBlockerId}`,
+    );
     assert.ok(step.owner.trim().length > 0, `${caseId}: next step ${step.id} owner is required`);
     assert.ok(step.action.trim().length > 0, `${caseId}: next step ${step.id} action is required`);
   }
@@ -195,6 +216,11 @@ const assertSuccessCase = (): void => {
 
     assertCanonicalResponseShape(response, regressionCase.id);
     assert.equal(response.verdict, regressionCase.expected.verdict, `${regressionCase.id}: verdict drift`);
+    assert.equal(
+      response.blockers.length,
+      regressionCase.expected.expected_blocker_count,
+      `${regressionCase.id}: blocker count drift`,
+    );
     assert.ok(
       response.summary.includes(regressionCase.expected.summary_phrase),
       `${regressionCase.id}: summary should include '${regressionCase.expected.summary_phrase}'`,
@@ -254,8 +280,35 @@ const assertFailureCase = (): void => {
   }
 };
 
+const assertRobustnessCase = (): void => {
+  for (const regressionCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+    const response = assessDischargeReadinessV1(regressionCase.input);
+
+    assertCanonicalResponseShape(response, regressionCase.id);
+    assert.equal(
+      response.verdict,
+      regressionCase.expected_verdict,
+      `${regressionCase.id}: robustness verdict drift`,
+    );
+
+    const categories = new Set(response.blockers.map((blocker) => blocker.category));
+    for (const category of regressionCase.expected_categories) {
+      assert.ok(categories.has(category), `${regressionCase.id}: missing robustness category '${category}'`);
+    }
+
+    const descriptions = response.blockers.map((blocker) => blocker.description);
+    for (const fragment of regressionCase.required_description_fragments) {
+      assert.ok(
+        descriptions.some((description) => description.includes(fragment)),
+        `${regressionCase.id}: expected description fragment '${fragment}' not found`,
+      );
+    }
+  }
+};
+
 assertFrozenContractConstants();
 assertSuccessCase();
+assertRobustnessCase();
 assertFailureCase();
 
 console.log("REGRESSION PASS: assess_discharge_readiness matrix");
@@ -265,6 +318,10 @@ console.log(
       success_cases: READINESS_REGRESSION_SUCCESS_CASES.map((regressionCase) => ({
         id: regressionCase.id,
         verdict: regressionCase.expected.verdict,
+      })),
+      robustness_cases: READINESS_REGRESSION_ROBUSTNESS_CASES.map((regressionCase) => ({
+        id: regressionCase.id,
+        verdict: regressionCase.expected_verdict,
       })),
       failure_cases: READINESS_REGRESSION_FAILURE_CASES.map((regressionCase) => ({
         id: regressionCase.id,

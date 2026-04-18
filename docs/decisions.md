@@ -116,3 +116,21 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The product must show stakeholder-facing transition artifacts, not only a readiness verdict, while preserving assistive/non-autonomous framing and demo reliability.
 - Affected files or lanes: implementation, evals, demo/submission, Prompt Opinion integration
 - Follow-up: Keep `assess_discharge_readiness` as the canonical entrypoint name, enforce artifact-to-readiness coherence in smoke checks, and keep release-gate coverage inclusive of runtime, readiness, core suite, artifacts, and expanded demo-path checks.
+
+- Date: 2026-04-18
+- Decision: Route the workflow suite through one request-scoped live-context resolver that prefers Prompt Opinion patient/FHIR context when available, normalizes `DocumentReference` note content into the shared evidence spine, and falls back to the synthetic scenario path only when live context is absent/unavailable or an explicit `scenario_id` is provided.
+- Why: The suite needed to feel materially less fixture-driven without breaking the reliable demo path; one narrow resolver keeps live-context ingestion inspectable, preserves the frozen public tool names, and makes missing/partial context behavior explicit.
+- Affected files or lanes: implementation, Prompt Opinion integration, evals, architecture
+- Follow-up: Keep the minimal live resource set bounded to high-value discharge inputs (`Patient`, `Observation`, `MedicationRequest`, `MedicationStatement`, `ServiceRequest`, `DocumentReference`) unless a future decision proves broader retrieval materially helps the judge path.
+
+- Date: 2026-04-18
+- Decision: Deepen the public workflow-suite trust model with bounded nested provenance on blockers, evidence traces, transition tasks, and downstream artifacts while keeping tool membership and frozen top-level response keys unchanged.
+- Why: The normalized evidence layer already tracked contradiction, ambiguity, and missing-corroboration states internally, but judges could not reliably see how that trust information propagated into blockers, actions, and artifacts.
+- Affected files or lanes: implementation, architecture, evals, demo/submission
+- Follow-up: Keep provenance summaries concise, preserve blocker/evidence/next-step/artifact linkage in smoke checks, and avoid adding top-level response sprawl unless a future ADR explicitly changes the contract.
+
+- Date: 2026-04-18
+- Decision: Canonicalize the regression scenario pack at three success scenarios: `first_synthetic_discharge_slice_v1` (`not_ready`), `second_synthetic_discharge_slice_ready_with_caveats_v1` (`ready_with_caveats`), and a new third scenario that explicitly exercises `ready`, while keeping ambiguity/contradiction fixtures in the robustness lane rather than the main success matrix.
+- Why: The suite needs visible verdict breadth and more credible variance without replacing the primary demo case or bloating into an unmaintainable fixture zoo.
+- Affected files or lanes: data, evals, implementation, demo/submission
+- Follow-up: Keep truth fixtures, tool scenario selectors, and release-gate smoke checks aligned to the three-scenario success matrix plus explicit ambiguity/failure coverage.

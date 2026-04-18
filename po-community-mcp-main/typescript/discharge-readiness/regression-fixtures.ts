@@ -1,9 +1,12 @@
 import { ReadinessInput } from "./contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "./scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "./scenario-v2";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "./scenario-v3";
+import { THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1 } from "./scenario-fixtures";
 import {
   SCENARIO_V1_TRUTH,
   SCENARIO_V2_TRUTH,
+  SCENARIO_V3_TRUTH,
   ScenarioTruth,
 } from "./scenario-truth";
 
@@ -21,6 +24,15 @@ export type FailureRegressionCase = {
   expected_error: string;
 };
 
+export type RobustnessRegressionCase = {
+  id: string;
+  description: string;
+  input: ReadinessInput;
+  expected_verdict: ScenarioTruth["verdict"];
+  expected_categories: ScenarioTruth["required_categories"];
+  required_description_fragments: string[];
+};
+
 export const READINESS_REGRESSION_SUCCESS_CASES: SuccessRegressionCase[] = [
   {
     id: "scenario-v1-primary-not-ready",
@@ -35,6 +47,13 @@ export const READINESS_REGRESSION_SUCCESS_CASES: SuccessRegressionCase[] = [
       "Second scenario proves medium-priority caveats can produce ready_with_caveats without high-priority blockers.",
     input: SECOND_SYNTHETIC_SCENARIO_V1,
     expected: SCENARIO_V2_TRUTH,
+  },
+  {
+    id: "scenario-v3-ready-separation",
+    description:
+      "Third scenario proves a believable discharge-ready case can clear all blockers while preserving assistive summary language.",
+    input: THIRD_SYNTHETIC_SCENARIO_V1,
+    expected: SCENARIO_V3_TRUTH,
   },
 ];
 
@@ -78,5 +97,17 @@ export const READINESS_REGRESSION_FAILURE_CASES: FailureRegressionCase[] = [
       evidence_catalog: [],
     },
     expected_error: "Malformed readiness input",
+  },
+];
+
+export const READINESS_REGRESSION_ROBUSTNESS_CASES: RobustnessRegressionCase[] = [
+  {
+    id: "robustness-ambiguity-visible-blockers",
+    description:
+      "Ambiguous and contradictory evidence should remain visible as blockers rather than collapsing into an optimistic readiness verdict.",
+    input: THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1,
+    expected_verdict: "not_ready",
+    expected_categories: ["clinical_stability", "medication_reconciliation"],
+    required_description_fragments: ["Evidence conflict", "Evidence uncertainty"],
   },
 ];

@@ -9,12 +9,12 @@ import {
 } from "../discharge-readiness/contract";
 import {
   isSupportedScenarioId,
-  resolveScenarioInput,
 } from "../discharge-readiness/scenario-selection";
 import { extractDischargeBlockers } from "../discharge-readiness/extract-discharge-blockers";
+import { resolveWorkflowInputForRequest } from "../discharge-readiness/live-context";
 
 class ExtractDischargeBlockersTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request) {
+  registerTool(server: McpServer, req: Request) {
     server.registerTool(
       EXTRACT_BLOCKERS_TOOL_NAME,
       {
@@ -24,7 +24,7 @@ class ExtractDischargeBlockersTool implements IMcpTool {
           scenario_id: z
             .string()
             .describe(
-              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1 and second_synthetic_discharge_slice_ready_with_caveats_v1.",
+              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1, second_synthetic_discharge_slice_ready_with_caveats_v1, and third_synthetic_discharge_slice_ready_v1.",
             )
             .optional(),
         },
@@ -37,8 +37,10 @@ class ExtractDischargeBlockersTool implements IMcpTool {
           );
         }
 
-        const selectedScenario = resolveScenarioInput(scenario_id);
-        const response = extractDischargeBlockers(selectedScenario);
+        const { input } = await resolveWorkflowInputForRequest(req, {
+          scenarioId: scenario_id,
+        });
+        const response = extractDischargeBlockers(input);
         return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
       },
     );

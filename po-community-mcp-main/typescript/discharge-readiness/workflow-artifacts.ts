@@ -63,7 +63,7 @@ const buildClinicianSummary = (
   blockers: ClinicianHandoffRisk[],
 ): string => {
   if (blockers.length === 0) {
-    return "No unresolved discharge blockers were found in this assistive review. Final discharge disposition still requires clinician confirmation.";
+    return "No unresolved discharge blockers were found in this assistive review. Final discharge disposition still requires clinician review and sign-off.";
   }
 
   const counts = countPriorities(blockers);
@@ -130,6 +130,12 @@ export const buildClinicianHandoffBriefV1 = (
       priority: blocker.priority,
       unresolved_risk: blocker.description,
       evidence_ids: blocker.evidence,
+      trust_state: blocker.provenance.trust_state,
+      source_labels: blocker.provenance.source_labels,
+      contradiction_ids: blocker.provenance.contradiction_ids,
+      ambiguity_ids: blocker.provenance.ambiguity_ids,
+      missing_evidence_ids: blocker.provenance.missing_evidence_ids,
+      trace_summary: blocker.provenance.summary,
       required_action: step?.action ?? blocker.actionability,
       owner: step?.owner ?? "Care team",
       linked_next_step_id: step?.id ?? null,
@@ -164,10 +170,13 @@ export const draftPatientDischargeInstructionsV1 = (
     return {
       id: `instruction-${index + 1}`,
       linked_blockers: [blocker.id],
+      linked_evidence: blocker.evidence,
+      linked_next_step_id: linkedStep?.id ?? null,
       title: PATIENT_TITLE_BY_CATEGORY[blocker.category],
       instruction: `Before you leave, ${PATIENT_INSTRUCTION_BY_CATEGORY[blocker.category]}`,
       reason: blocker.description,
       care_team_follow_up: linkedStep?.action ?? blocker.actionability,
+      care_team_verification: blocker.provenance.summary,
     };
   });
 

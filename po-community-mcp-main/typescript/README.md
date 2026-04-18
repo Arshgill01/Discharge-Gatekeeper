@@ -40,6 +40,11 @@ npm run smoke:demo-path
 npm run smoke:release-gate
 ```
 
+Canonical built-in scenarios:
+- `first_synthetic_discharge_slice_v1` -> `not_ready`
+- `second_synthetic_discharge_slice_ready_with_caveats_v1` -> `ready_with_caveats`
+- `third_synthetic_discharge_slice_ready_v1` -> `ready`
+
 ## Prompt Opinion integration runbook
 
 Use this full guide for local run, ngrok tunneling, Prompt Opinion connection, smoke testing, and troubleshooting:

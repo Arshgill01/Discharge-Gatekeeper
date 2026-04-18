@@ -7,11 +7,11 @@ import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discha
 import { V1_SUPPORTED_SCENARIO_IDS, V1_TOOL_NAME } from "../discharge-readiness/contract";
 import {
   isSupportedScenarioId,
-  resolveScenarioInput,
 } from "../discharge-readiness/scenario-selection";
+import { resolveWorkflowInputForRequest } from "../discharge-readiness/live-context";
 
 class AssessDischargeReadinessTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request) {
+  registerTool(server: McpServer, req: Request) {
     server.registerTool(
       V1_TOOL_NAME,
       {
@@ -21,7 +21,7 @@ class AssessDischargeReadinessTool implements IMcpTool {
           scenario_id: z
             .string()
             .describe(
-              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1 and second_synthetic_discharge_slice_ready_with_caveats_v1.",
+              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1, second_synthetic_discharge_slice_ready_with_caveats_v1, and third_synthetic_discharge_slice_ready_v1.",
             )
             .optional(),
         },
@@ -34,8 +34,10 @@ class AssessDischargeReadinessTool implements IMcpTool {
           );
         }
 
-        const selectedScenario = resolveScenarioInput(scenario_id);
-        const response = assessDischargeReadinessV1(selectedScenario);
+        const { input } = await resolveWorkflowInputForRequest(req, {
+          scenarioId: scenario_id,
+        });
+        const response = assessDischargeReadinessV1(input);
         return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
       },
     );

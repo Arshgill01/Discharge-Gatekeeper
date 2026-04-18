@@ -3,14 +3,17 @@ import {
   SupportedScenarioId,
   V1_PRIMARY_SCENARIO_ID,
   V1_SCENARIO_2_ID,
+  V1_SCENARIO_3_ID,
   V1_SUPPORTED_SCENARIO_IDS,
 } from "./contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "./scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "./scenario-v2";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "./scenario-v3";
 
 const SCENARIO_BY_ID: Record<SupportedScenarioId, ReadinessInput> = {
   [V1_PRIMARY_SCENARIO_ID]: FIRST_SYNTHETIC_SCENARIO_V1,
   [V1_SCENARIO_2_ID]: SECOND_SYNTHETIC_SCENARIO_V1,
+  [V1_SCENARIO_3_ID]: THIRD_SYNTHETIC_SCENARIO_V1,
 };
 
 export const DEFAULT_SCENARIO_ID: SupportedScenarioId = V1_PRIMARY_SCENARIO_ID;

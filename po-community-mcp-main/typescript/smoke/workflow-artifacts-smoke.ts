@@ -8,7 +8,15 @@ import {
 } from "../discharge-readiness/contract";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
-import { SCENARIO_V1_TRUTH, SCENARIO_V2_TRUTH } from "../discharge-readiness/scenario-truth";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v3";
+import {
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
+} from "../discharge-readiness/regression-fixtures";
+import {
+  SCENARIO_V1_TRUTH,
+  SCENARIO_V2_TRUTH,
+  SCENARIO_V3_TRUTH,
+} from "../discharge-readiness/scenario-truth";
 import {
   buildClinicianHandoffBriefV1,
   draftPatientDischargeInstructionsV1,
@@ -96,6 +104,36 @@ const assertClinicianArtifactConsistency = (
       blocker.evidence,
       `${label}: unresolved risk evidence must stay aligned with blocker evidence IDs.`,
     );
+    assert.equal(
+      unresolvedRisk.trust_state,
+      blocker.provenance.trust_state,
+      `${label}: unresolved risk trust state should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.source_labels,
+      blocker.provenance.source_labels,
+      `${label}: unresolved risk source labels should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.contradiction_ids,
+      blocker.provenance.contradiction_ids,
+      `${label}: unresolved risk contradiction IDs should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.ambiguity_ids,
+      blocker.provenance.ambiguity_ids,
+      `${label}: unresolved risk ambiguity IDs should match blocker provenance.`,
+    );
+    assert.deepEqual(
+      unresolvedRisk.missing_evidence_ids,
+      blocker.provenance.missing_evidence_ids,
+      `${label}: unresolved risk missing evidence IDs should match blocker provenance.`,
+    );
+    assert.equal(
+      unresolvedRisk.trace_summary,
+      blocker.provenance.summary,
+      `${label}: unresolved risk trace summary should match blocker provenance summary.`,
+    );
 
     const linkedStep = nextStepByBlockerId.get(unresolvedRisk.blocker_id);
     assert.ok(
@@ -116,6 +154,11 @@ const assertClinicianArtifactConsistency = (
       unresolvedRisk.linked_next_step_id,
       linkedStep.id,
       `${label}: linked next-step ID must match readiness next-step ID.`,
+    );
+    assert.deepEqual(
+      linkedStep.linked_evidence,
+      unresolvedRisk.evidence_ids,
+      `${label}: linked next-step evidence should match unresolved risk evidence.`,
     );
   }
 };
@@ -173,6 +216,21 @@ const assertPatientArtifactConsistency = (
       linkedStep.action,
       `${label}: care_team_follow_up must map to readiness next-step action.`,
     );
+    assert.deepEqual(
+      item.linked_evidence,
+      blocker.evidence,
+      `${label}: instruction ${item.id} linked evidence must match blocker evidence.`,
+    );
+    assert.equal(
+      item.linked_next_step_id,
+      linkedStep.id,
+      `${label}: instruction ${item.id} linked next step should match readiness next step.`,
+    );
+    assert.equal(
+      item.care_team_verification,
+      blocker.provenance.summary,
+      `${label}: instruction ${item.id} verification note must match blocker provenance summary.`,
+    );
 
     for (const pattern of AUTONOMY_DRIFT_PATTERNS) {
       assert.ok(!pattern.test(item.instruction), `${label}: autonomy drift phrase in patient instruction.`);
@@ -197,6 +255,7 @@ const assertScenarioContinuity = (
   label: string,
   input: ReadinessInput,
   expectedVerdict: string,
+  expectedBlockerCount: number,
   expectedCategories: BlockerCategory[],
 ): void => {
   const readiness = assessDischargeReadinessV1(input);
@@ -209,6 +268,21 @@ const assertScenarioContinuity = (
     patientInstructions.readiness_verdict,
     expectedVerdict,
     `${label}: patient instructions verdict drifted.`,
+  );
+  assert.equal(
+    readiness.blockers.length,
+    expectedBlockerCount,
+    `${label}: readiness blocker count drifted.`,
+  );
+  assert.equal(
+    handoff.unresolved_risks.length,
+    expectedBlockerCount,
+    `${label}: unresolved risk count drifted.`,
+  );
+  assert.equal(
+    patientInstructions.instructions.length,
+    expectedBlockerCount,
+    `${label}: patient instruction count drifted.`,
   );
 
   const categorySet = new Set(readiness.blockers.map((blocker) => blocker.category));
@@ -226,6 +300,7 @@ const main = (): void => {
     "primary",
     FIRST_SYNTHETIC_SCENARIO_V1,
     SCENARIO_V1_TRUTH.verdict,
+    SCENARIO_V1_TRUTH.expected_blocker_count,
     SCENARIO_V1_TRUTH.required_categories,
   );
 
@@ -237,8 +312,36 @@ const main = (): void => {
     "second",
     SECOND_SYNTHETIC_SCENARIO_V1,
     SCENARIO_V2_TRUTH.verdict,
+    SCENARIO_V2_TRUTH.expected_blocker_count,
     SCENARIO_V2_TRUTH.required_categories,
   );
+
+  const thirdHandoff = buildClinicianHandoffBriefV1(THIRD_SYNTHETIC_SCENARIO_V1);
+  const thirdInstructions = draftPatientDischargeInstructionsV1(THIRD_SYNTHETIC_SCENARIO_V1);
+  assertClinicianArtifactConsistency("third", THIRD_SYNTHETIC_SCENARIO_V1, thirdHandoff);
+  assertPatientArtifactConsistency("third", THIRD_SYNTHETIC_SCENARIO_V1, thirdInstructions);
+  assertScenarioContinuity(
+    "third",
+    THIRD_SYNTHETIC_SCENARIO_V1,
+    SCENARIO_V3_TRUTH.verdict,
+    SCENARIO_V3_TRUTH.expected_blocker_count,
+    SCENARIO_V3_TRUTH.required_categories,
+  );
+  assert.ok(
+    /No unresolved discharge blockers/i.test(thirdHandoff.summary),
+    "third: clinician handoff should explicitly state that no unresolved blockers remain.",
+  );
+  assert.ok(
+    /No active discharge blockers/i.test(thirdInstructions.summary),
+    "third: patient instructions should keep ready-state summary language explicit.",
+  );
+
+  for (const robustnessCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+    const handoff = buildClinicianHandoffBriefV1(robustnessCase.input);
+    const instructions = draftPatientDischargeInstructionsV1(robustnessCase.input);
+    assertClinicianArtifactConsistency(robustnessCase.id, robustnessCase.input, handoff);
+    assertPatientArtifactConsistency(robustnessCase.id, robustnessCase.input, instructions);
+  }
 
   console.log("SMOKE PASS: workflow artifacts suite");
   console.log(
@@ -252,13 +355,19 @@ const main = (): void => {
         },
         second: {
           verdict: secondHandoff.readiness_verdict,
-          unresolved_risk_count: secondHandoff.unresolved_risks.length,
-          patient_instruction_count: secondInstructions.instructions.length,
-        },
+        unresolved_risk_count: secondHandoff.unresolved_risks.length,
+        patient_instruction_count: secondInstructions.instructions.length,
       },
-      null,
-      2,
-    ),
+      third: {
+        verdict: thirdHandoff.readiness_verdict,
+        unresolved_risk_count: thirdHandoff.unresolved_risks.length,
+        patient_instruction_count: thirdInstructions.instructions.length,
+      },
+      robustness_case_count: READINESS_REGRESSION_ROBUSTNESS_CASES.length,
+    },
+    null,
+    2,
+  ),
   );
 };
 

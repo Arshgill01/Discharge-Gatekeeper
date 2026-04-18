@@ -23,11 +23,14 @@ export const V1_PRIMARY_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
 export const V1_SCENARIO_ID = V1_PRIMARY_SCENARIO_ID;
 export const V1_SCENARIO_2_ID = "second_synthetic_discharge_slice_ready_with_caveats_v1";
 export const V1_SCENARIO_ID_READY_WITH_CAVEATS = V1_SCENARIO_2_ID;
+export const V1_SCENARIO_3_ID = "third_synthetic_discharge_slice_ready_v1";
+export const V1_SCENARIO_ID_READY = V1_SCENARIO_3_ID;
 export const V1_SCENARIO_ID_EVIDENCE_AMBIGUITY =
   "third_synthetic_discharge_slice_ambiguity_v1";
 export const V1_SUPPORTED_SCENARIO_IDS = [
   V1_PRIMARY_SCENARIO_ID,
   V1_SCENARIO_2_ID,
+  V1_SCENARIO_3_ID,
 ] as const;
 export type SupportedScenarioId = (typeof V1_SUPPORTED_SCENARIO_IDS)[number];
 
@@ -73,6 +76,13 @@ export const EVIDENCE_SIGNAL_STATES = [
   "ambiguous",
 ] as const;
 export type EvidenceSignalState = (typeof EVIDENCE_SIGNAL_STATES)[number];
+export const BLOCKER_TRUST_STATES = [
+  "supported",
+  "conflicted",
+  "uncertain",
+  "missing_corroboration",
+] as const;
+export type BlockerTrustState = (typeof BLOCKER_TRUST_STATES)[number];
 
 export type NoteDocumentSignalInput = {
   id: string;
@@ -181,6 +191,16 @@ export type NormalizedEvidenceBundle = {
   missing_evidence: MissingEvidenceMarker[];
 };
 
+export type BlockerProvenance = {
+  trust_state: BlockerTrustState;
+  source_labels: string[];
+  source_types: EvidenceSourceType[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  missing_evidence_ids: string[];
+  summary: string;
+};
+
 export type DischargeBlocker = {
   id: string;
   category: BlockerCategory;
@@ -188,10 +208,16 @@ export type DischargeBlocker = {
   description: string;
   evidence: string[];
   actionability: string;
+  provenance: BlockerProvenance;
 };
 
 export type EvidenceTrace = EvidenceRecord & {
   supports_blockers: string[];
+  supports_next_steps: string[];
+  signal_states: EvidenceSignalState[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  source_summary: string;
 };
 
 export type TransitionTask = {
@@ -200,6 +226,9 @@ export type TransitionTask = {
   action: string;
   owner: string;
   linked_blockers: string[];
+  linked_evidence: string[];
+  blocker_trust_state: BlockerTrustState;
+  trace_summary: string;
 };
 
 export type NextStep = TransitionTask;
@@ -233,6 +262,12 @@ export type ClinicianHandoffRisk = {
   priority: BlockerPriority;
   unresolved_risk: string;
   evidence_ids: string[];
+  trust_state: BlockerTrustState;
+  source_labels: string[];
+  contradiction_ids: string[];
+  ambiguity_ids: string[];
+  missing_evidence_ids: string[];
+  trace_summary: string;
   required_action: string;
   owner: string;
   linked_next_step_id: string | null;
@@ -250,10 +285,13 @@ export type ClinicianHandoffBriefResponse = {
 export type PatientInstructionItem = {
   id: string;
   linked_blockers: string[];
+  linked_evidence: string[];
+  linked_next_step_id: string | null;
   title: string;
   instruction: string;
   reason: string;
   care_team_follow_up: string;
+  care_team_verification: string;
 };
 
 export type PatientDischargeInstructionsResponse = {
