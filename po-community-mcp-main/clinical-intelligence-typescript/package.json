@@ -10,6 +10,7 @@
     "smoke:runtime": "npx tsx smoke/runtime-boot-and-registration-smoke.ts",
     "smoke:hidden-risk": "npx tsx smoke/hidden-risk-detection-smoke.ts",
     "smoke:narrative": "npx tsx smoke/transition-narrative-smoke.ts",
+    "smoke:phase2-two-mcp": "npx tsx smoke/two-mcp-integration-smoke.ts",
     "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:hidden-risk && npm run smoke:narrative",
     "test": "npm run smoke:release-gate"
   },
