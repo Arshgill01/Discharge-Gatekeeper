@@ -55,6 +55,10 @@ Deliverables:
 - blocker evidence sources
 - minimal FHIR resource list
 - uploaded note plan
+Current focus (2026-04-18, Agent 3 - realism pack lane):
+- add a third canonical scenario that exercises the remaining `ready` verdict without displacing the primary demo case
+- increase cross-scenario evidence heterogeneity so structured data, notes, and documents all matter across the suite
+- keep the scenario pack small, believable, and maintainable while improving perceived generality
 
 ### 4) Implementation
 Owner: open
@@ -134,6 +138,10 @@ Current focus (2026-04-18, Agent 2 - validation net hardening):
 - add runtime boot + tool-registration smoke checks so breakage in MCP startup surface is caught before demo/judging
 - strengthen regression assertions for frozen contract keys, canonical verdict/category taxonomy, and scenario-truth separation
 - add a repeatable 3-prompt demo-path smoke check and wire a pre-demo validation bundle command
+Current focus (2026-04-18, Agent 3 - realism regression lane):
+- expand the canonical scenario matrix from two to three scenarios so `not_ready`, `ready_with_caveats`, and `ready` are all protected by truth fixtures
+- extend suite-level smoke coverage to check cross-tool coherence for all canonical scenarios plus ambiguity/missing-context/insufficient-evidence behavior
+- strengthen the pre-demo release gate so scenario-pack regressions are harder to miss before recording or judge testing
 
 ### 6) Demo and submission
 Owner: open
