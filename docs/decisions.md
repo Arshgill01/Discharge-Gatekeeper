@@ -58,3 +58,15 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Stable labels reduce cross-workstream drift even as the system architecture broadens.
 - Affected files or lanes: product, architecture, evals, implementation
 - Follow-up: Any future taxonomy or verdict change requires explicit cross-file updates.
+
+- Date: 2026-04-18
+- Decision: Lock the hidden-risk analysis contract in `docs/phase0-hidden-risk-prompt-contract.md` and the reconciliation policy in `docs/phase0-orchestrator-decision-matrix.md`.
+- Why: Future implementation work needs explicit output semantics and downgrade logic instead of vague prompt strategy notes.
+- Affected files or lanes: implementation, evals, Prompt Opinion integration, demo/submission
+- Follow-up: Treat those docs as the implementation source of truth until a later ADR supersedes them.
+
+- Date: 2026-04-18
+- Decision: Require a demo-safe direct-MCP fallback path even though the preferred architecture includes an external A2A orchestrator.
+- Why: The A2A layer improves the final story but cannot be allowed to become the only working judge path.
+- Affected files or lanes: Prompt Opinion integration, demo/submission, failure planning
+- Follow-up: Rehearse both the preferred A2A path and the direct-MCP fallback before recording or live judging.

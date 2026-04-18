@@ -3,107 +3,100 @@
 ## Reference repo
 `prompt-opinion/po-community-mcp`
 
-## Why this repo matters
-This repo is the closest public pattern source for a Prompt Opinion-compatible MCP server.
-It is not the final architecture we should copy, but it is the best starting point for:
-- integration shape
-- FHIR-context handling
-- simple tool registration
-- language/runtime options
+## Why it still matters after the pivot
+The community MCP repo remains the best public reference for how Prompt Opinion expects a boring, stateless MCP integration to look.
 
-## High-confidence takeaways
-### 1) The repo is meant to extend Prompt Opinion's default MCP surface
-The README positions it as an open-source place where developers can add additional FHIR-related tools to the default MCP server used by Prompt Opinion.
+It is still relevant for:
+- `Discharge Gatekeeper MCP`
+- `Clinical Intelligence MCP`
 
-Implication:
-Our project should feel like a real domain-specific extension, not a disconnected generic MCP demo.
+It is not the reference for:
+- `external A2A orchestrator`
+- hidden-risk prompt contracts
+- verdict reconciliation policy
 
-### 2) The Python starter uses a lightweight FastMCP server
-The starter creates a FastMCP instance with `stateless_http=True` and a public host binding.
-It then registers individual tools with small, direct descriptions.
+## What to borrow for both MCPs
 
-Implication:
-Start boring.
-Do not invent a custom MCP transport story before the discharge tools are working.
-
-### 3) Prompt Opinion-specific FHIR context is exposed via MCP capabilities
-The starter patches MCP capabilities to expose the `ai.promptopinion/fhir-context` extension.
-
-Implication:
-Our server needs to preserve Prompt Opinion compatibility rather than acting like a generic MCP toy.
-
-### 4) Patient context is recovered from request metadata, not from app-global state
-The FHIR utility pattern reads:
-- FHIR server URL from headers
-- FHIR access token from headers
-- patient identifier from token claims or fallback header
-
-Implication:
-Our implementation should keep context extraction as a narrow utility layer so each tool can be stateless and testable.
-
-### 5) The example tools are intentionally narrow
-The public Python examples focus on small units like:
-- patient age
-- allergies
-- patient ID lookup
-
-Implication:
-Our discharge tools should also be narrow and composable.
-Avoid one giant “hospital brain” tool.
-
-## What we should borrow
-- simple FastMCP starter shape
+### 1. Stateless MCP transport
+Borrow:
+- straightforward MCP bootstrap
+- request-scoped handling
 - explicit per-tool registration
-- a small utility layer for FHIR context extraction
-- stateless request handling
-- minimal assumptions in tool code
 
-## What we should not borrow blindly
-- template naming
-- toy-level tool semantics
-- generic examples that do not map to discharge workflow value
-- starter descriptions that understate the clinical workflow context
+Why:
+- both MCPs need to be independently discoverable and easy to debug
 
-## Recommended project adaptation
-### Keep
-- boring MCP bootstrap
-- clear header/context utilities
-- domain-specific tool modules
+### 2. Prompt Opinion FHIR-context handling
+Borrow:
+- header-driven FHIR URL discovery
+- token/header-driven patient identification
+- capability exposure for Prompt Opinion-specific context
 
-### Change
-- rename the server and tools around the discharge wedge
-- define structured output contracts from day one
-- add evidence-aware responses
-- keep a clearer separation between data retrieval, blocker extraction, and artifact generation
+Why:
+- both MCPs should read the same request-scoped context model rather than inventing separate retrieval patterns
 
-## Proposed adaptation layers
-1. `context/`
-   - Prompt Opinion header parsing
-   - patient and encounter extraction
-2. `retrieval/`
-   - FHIR resource fetch helpers
-   - note/document access wrappers
-3. `tools/`
-   - discharge-specific MCP tool entry points
-4. `schemas/`
-   - verdict, blocker, evidence, and transition-plan contracts
-5. `orchestration/`
-   - thin business logic only if needed
+### 3. Minimal runtime assumptions
+Borrow:
+- small utility layers
+- explicit health checks
+- simple error surfaces
 
-## Recommended first language choice
-Python is the best first-slice candidate because:
-- the public starter is obvious
-- the context utilities are already easy to reason about
-- the team can move quickly on a thin vertical slice
+Why:
+- the two-MCP setup already adds enough moving parts; runtime cleverness would only increase demo risk
 
-TypeScript remains viable if the broader repo stack requires it, but the reference path makes Python the lower-risk start.
+## What not to borrow blindly
+- starter naming
+- toy tool semantics
+- single-surface assumptions that collapse deterministic and LLM behavior into one MCP
+- overly generic tool descriptions
 
-## First things to inspect when implementation starts
-- how to preserve the Prompt Opinion FHIR-context extension cleanly
-- how to package structured tool outputs without breaking compatibility
-- how to simulate note/document inputs for local smoke tests
-- how to keep tool contracts stable while the product evolves
+## Pivot-specific adaptation
 
-## Final recommendation
-Treat `po-community-mcp` as the launch rail, not the destination.
-Use it to move fast on integration while keeping all domain intelligence focused on the discharge-readiness wedge.
+| Component | What the reference helps with | What must be custom |
+| --- | --- | --- |
+| `Discharge Gatekeeper MCP` | MCP transport, FHIR context utilities, deterministic tool registration | structured discharge contracts, blocker taxonomy, next-step outputs, non-LLM deterministic spine |
+| `Clinical Intelligence MCP` | MCP transport, FHIR context utilities, independent registration/discovery | hidden-risk prompt contract, citation schema, false-positive control, contradiction handling |
+| `external A2A orchestrator` | almost nothing beyond general HTTP hygiene | orchestration logic, decision matrix, fallback policy, synchronous non-streaming behavior |
+
+## Recommended MCP split
+
+### `Discharge Gatekeeper MCP`
+Responsibilities:
+- structured discharge-readiness determination
+- canonical blocker output
+- deterministic next-step plan
+
+Implementation guardrails:
+- keep it inspectable
+- keep it deterministic
+- do not place the hidden-risk prompt here
+
+### `Clinical Intelligence MCP`
+Responsibilities:
+- detect narrative-only hidden risks
+- surface contradictions between structured and unstructured evidence
+- return citations and bounded disposition impact
+
+Implementation guardrails:
+- LLM allowed here
+- do not let it replace the deterministic spine
+- do not let it emit an uncited final discharge verdict
+
+## Shared patterns both MCPs should keep
+- one request-scoped patient/context resolver pattern
+- one citation object style
+- one set of canonical verdict labels
+- one shared understanding of blocker categories
+- one boring health/discovery story
+
+## Reference limitations that now matter more
+- the reference repo does not answer how to reconcile deterministic and narrative findings
+- the reference repo does not define false-positive controls for hidden-risk prompting
+- the reference repo does not define fallback behavior when an A2A layer fails
+- the reference repo does not define how to package a multi-surface judge demo
+
+Those gaps are now filled by:
+- [phase0-hidden-risk-prompt-contract.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-hidden-risk-prompt-contract.md)
+- [phase0-orchestrator-decision-matrix.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-orchestrator-decision-matrix.md)
+- [phase0-failure-mode-plan.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/phase0-failure-mode-plan.md)
+- [prompt-opinion-integration-runbook.md](/Users/arshdeepsingh/Developer/ctc-phase0-ops/docs/prompt-opinion-integration-runbook.md)
