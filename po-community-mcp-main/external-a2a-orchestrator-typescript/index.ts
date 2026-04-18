@@ -6,6 +6,7 @@ import { buildAgentCard } from "./agent-card";
 import { A2ATaskInput, A2ATaskRecord, ReconciliationResult } from "./types";
 import { McpToolInvoker } from "./mcp/invoker";
 import { reconcileOutputs } from "./orchestrator/reconcile";
+import { renderBoundedSynthesis } from "./orchestrator/synthesis";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const app = express();
@@ -105,6 +106,43 @@ const shouldInvokeHiddenRisk = (taskInput: A2ATaskInput): boolean => {
   );
 };
 
+const buildFailureFallback = (
+  deterministic: Awaited<ReturnType<McpToolInvoker["invokeDeterministicReadiness"]>>,
+  reason: string,
+): ReconciliationResult => {
+  const fallbackHiddenRisk = {
+    contract_version: "phase0_hidden_risk_v1" as const,
+    status: "error" as const,
+    patient_id: null,
+    encounter_id: null,
+    baseline_verdict: deterministic.verdict,
+    hidden_risk_summary: {
+      result: "inconclusive" as const,
+      overall_disposition_impact: "uncertain" as const,
+      confidence: "low" as const,
+      summary: `clinical_intelligence_unavailable: ${reason}`,
+      manual_review_required: true,
+      false_positive_guardrail:
+        "No hidden-risk findings are fabricated when Clinical Intelligence MCP is unavailable.",
+    },
+    hidden_risk_findings: [],
+    citations: [],
+    review_metadata: {
+      narrative_sources_reviewed: 0,
+      duplicate_findings_suppressed: 0,
+      weak_findings_suppressed: 0,
+    },
+  };
+
+  return reconcileOutputs(
+    {
+      prompt: "",
+    },
+    deterministic,
+    fallbackHiddenRisk,
+  );
+};
+
 const runTask = async (taskInput: A2ATaskInput): Promise<ReconciliationResult> => {
   const deterministic = await invoker.invokeDeterministicReadiness(taskInput);
 
@@ -118,8 +156,29 @@ const runTask = async (taskInput: A2ATaskInput): Promise<ReconciliationResult> =
     };
   }
 
-  const hiddenRisk = await invoker.invokeHiddenRisk(deterministic, taskInput);
-  return reconcileOutputs(taskInput, deterministic, hiddenRisk);
+  let hiddenRisk;
+  try {
+    hiddenRisk = await invoker.invokeHiddenRisk(deterministic, taskInput);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return buildFailureFallback(deterministic, message);
+  }
+
+  const reconciled = reconcileOutputs(taskInput, deterministic, hiddenRisk);
+
+  try {
+    const synthesized = renderBoundedSynthesis(taskInput, reconciled);
+    return {
+      ...reconciled,
+      contradiction_summary: `${reconciled.contradiction_summary} ${synthesized.narrative}`,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ...reconciled,
+      contradiction_summary: `${reconciled.contradiction_summary} Synthesis fallback used: ${message}.`,
+    };
+  }
 };
 
 app.get("/healthz", (_req, res) => {
