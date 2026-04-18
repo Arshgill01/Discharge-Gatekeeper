@@ -37,7 +37,7 @@ Show on screen:
 What this proves:
 - the system is not doing generic summarization
 - the answer can change when evidence outside the structured snapshot matters
-- Prompt 1 is already fused across deterministic and hidden-risk evidence, not a deterministic-only answer
+- Prompt 1 is stronger than the old structured-only story because it preserves baseline `ready` and still lands on final `not_ready`
 
 ## Prompt 2
 User prompt:
@@ -57,6 +57,7 @@ What this proves:
 - the AI factor is contradiction detection, not vague prose
 - the system can point to the evidence that changed the decision
 - if no hidden risk exists, the system can explicitly show bounded `no_hidden_risk` behavior rather than forced escalation
+- the hidden-risk signal is note-dependent (if contradiction notes are absent, escalation should not occur)
 
 This is the holy-shit moment.
 
@@ -73,6 +74,18 @@ Show on screen:
 What this proves:
 - the system moves from detection to execution
 - the contradiction is operationalized into a usable transition package
+- the fallback/non-A2A path can still deliver a complete transition package from the two MCPs
+
+## Fallback/non-A2A operator path
+Use this direct two-MCP order when A2A is unavailable or intentionally disabled in Phase 2:
+1. Prompt 1 via `Discharge Gatekeeper MCP` baseline + manual two-MCP verdict narration
+2. Prompt 2 via `Clinical Intelligence MCP` contradiction and citations
+3. Prompt 3 via `Discharge Gatekeeper MCP` transition package with cited escalation context narrated by operator
+
+Quality gates for this fallback path:
+- trap patient: baseline `ready` then final `not_ready` after contradiction review
+- control patient: explicit `no_hidden_risk`, no forced escalation
+- contradiction proof: visible citation anchors for the nursing contradiction note and case-management addendum
 
 ## Narration lines
 - Prompt 1: "The structured chart looked ready, but the system did not stop there."
@@ -104,3 +117,6 @@ If the richer display degrades, preserve the story in this order:
 ## Done check
 A judge should be able to explain the product in one sentence:
 "It caught the hidden note contradiction that turned a discharge-ready chart into an unsafe discharge."
+
+Judge feeling target at the contradiction moment:
+"The structured chart looked fine, but this system found the specific note evidence that changed the real-world discharge risk."
