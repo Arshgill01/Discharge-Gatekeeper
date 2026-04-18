@@ -81,3 +81,21 @@ Use this file for short, dated decisions that affect more than one workstream.
 - Why: The first-pass engine was brittle and overfit to one fixture shape; evidence-driven rule evaluation improves verdict separation (`ready`, `ready_with_caveats`, `not_ready`) across primary, alternate, and contradictory/insufficient-evidence scenarios while preserving the frozen top-level response keys.
 - Affected files or lanes: implementation, evals, demo reliability
 - Follow-up: Keep canonical blocker categories stable and maintain scenario-based smoke coverage for primary outcome, alternate caveat outcome, and ambiguity handling.
+
+- Date: 2026-04-18
+- Decision: Canonicalize operations guidance in `docs/prompt-opinion-integration-runbook.md` as the single operator path for local boot, public endpoint/tunnel exposure, Prompt Opinion MCP connection, and launchpad smoke validation.
+- Why: Prior guidance was fragmented and left hidden setup assumptions; one runbook reduces onboarding friction and judge-path reliability risk.
+- Affected files or lanes: implementation, Prompt Opinion integration, demo/submission
+- Follow-up: Keep root/runtime README links pointed to this runbook and update this runbook first when integration assumptions change.
+
+- Date: 2026-04-18
+- Decision: Harden TypeScript runtime operations surface with strict config validation (`PO_ENV`, `PORT`), `ALLOWED_HOSTS` normalization (including URL input), expanded request metadata logs, and a `/readyz` readiness endpoint alongside `/healthz`.
+- Why: Prompt Opinion tunnel/public endpoint testing frequently fails on host misconfiguration and stale URLs; clearer validation plus richer health/log diagnostics speeds recovery and reduces demo interruptions.
+- Affected files or lanes: implementation, Prompt Opinion integration, runtime troubleshooting
+- Follow-up: Keep runbook troubleshooting aligned with runtime log/health fields and revisit readiness checks if additional MCP tools are added.
+
+- Date: 2026-04-18
+- Decision: Change the TypeScript runtime default local port from `5000` to `5055`.
+- Why: On macOS, Control Center may occupy `5000`, causing first-run failures and avoidable setup friction during Prompt Opinion demos.
+- Affected files or lanes: implementation, Prompt Opinion integration, local operator runbook
+- Follow-up: Keep docs and compose defaults aligned with `5055` unless a future hosted baseline requires a different standard.

@@ -14,8 +14,8 @@ npm run start
 ```
 
 Endpoints:
-- `http://localhost:5000/mcp`
-- `http://localhost:5000/healthz`
+- `http://localhost:5055/mcp`
+- `http://localhost:5055/healthz`
 
 ## Validation
 

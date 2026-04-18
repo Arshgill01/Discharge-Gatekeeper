@@ -51,16 +51,30 @@ const formatError = (error: unknown): Record<string, unknown> => {
 
 app.use(cors());
 
-app.get("/healthz", async (_, res) => {
-  res.status(200).json({
+const buildHealthPayload = () => {
+  return {
     status: "ok",
     server_name: config.serverName,
     server_version: config.serverVersion,
     po_env: config.poEnv,
     tool_count: REGISTERED_TOOL_NAMES.length,
     tools: REGISTERED_TOOL_NAMES,
+    allowed_hosts: config.allowedHosts,
+    endpoints: {
+      mcp: "/mcp",
+      healthz: "/healthz",
+      readyz: "/readyz",
+    },
     uptime_seconds: Math.floor((Date.now() - startTimeMs) / 1000),
-  });
+  };
+};
+
+app.get("/healthz", async (_, res) => {
+  res.status(200).json(buildHealthPayload());
+});
+
+app.get("/readyz", async (_, res) => {
+  res.status(200).json(buildHealthPayload());
 });
 
 app.post("/mcp", async (req, res) => {
@@ -69,6 +83,9 @@ app.post("/mcp", async (req, res) => {
   log("info", "MCP request received", {
     request_id: requestId,
     host: req.headers.host || null,
+    forwarded_host: req.headers["x-forwarded-host"]?.toString() || null,
+    forwarded_proto: req.headers["x-forwarded-proto"]?.toString() || null,
+    user_agent: req.headers["user-agent"]?.toString() || null,
     path: req.path,
     method: req.method,
   });
@@ -148,5 +165,6 @@ app.listen(config.port, () => {
     allowed_hosts: config.allowedHosts,
     mcp_endpoint: `http://localhost:${config.port}/mcp`,
     health_endpoint: `http://localhost:${config.port}/healthz`,
+    readiness_endpoint: `http://localhost:${config.port}/readyz`,
   });
 });
