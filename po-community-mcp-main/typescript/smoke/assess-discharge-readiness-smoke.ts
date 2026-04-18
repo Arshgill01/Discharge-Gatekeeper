@@ -6,14 +6,16 @@ import {
   BlockerPriority,
   V1_BLOCKER_CATEGORIES,
 } from "../discharge-readiness/contract";
-import {
-  THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1,
-} from "../discharge-readiness/scenario-fixtures";
 import { FIRST_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v1";
 import { SECOND_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v2";
+import { THIRD_SYNTHETIC_SCENARIO_V1 } from "../discharge-readiness/scenario-v3";
+import {
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
+} from "../discharge-readiness/regression-fixtures";
 import {
   SCENARIO_V1_TRUTH,
   SCENARIO_V2_TRUTH,
+  SCENARIO_V3_TRUTH,
   ScenarioTruth,
 } from "../discharge-readiness/scenario-truth";
 
@@ -175,6 +177,11 @@ const assertScenarioTruth = (
   truth: ScenarioTruth,
 ) => {
   assert.equal(response.verdict, truth.verdict, `${label}: verdict drifted from scenario truth.`);
+  assert.equal(
+    response.blockers.length,
+    truth.expected_blocker_count,
+    `${label}: blocker count drifted from scenario truth.`,
+  );
   assert.ok(
     response.summary.includes(truth.summary_phrase),
     `${label}: summary should include '${truth.summary_phrase}'.`,
@@ -251,26 +258,14 @@ assert.deepEqual(
   "second: expected canonical caveat categories from scenario truth.",
 );
 
-const ambiguity = assessDischargeReadinessV1(THIRD_SYNTHETIC_SCENARIO_AMBIGUITY_V1);
-assertSharedContractInvariants("ambiguity", ambiguity);
-assert.equal(ambiguity.verdict, "not_ready", "ambiguity: expected verdict not_ready.");
-const ambiguityDescriptions = ambiguity.blockers.map((blocker) => blocker.description);
+const third = assessDischargeReadinessV1(THIRD_SYNTHETIC_SCENARIO_V1);
+assertSharedContractInvariants("third", third);
+assertScenarioTruth("third", third, SCENARIO_V3_TRUTH);
+assert.equal(third.evidence.length, 0, "third: ready scenario should not emit blocker-linked evidence.");
+assert.equal(third.next_steps.length, 0, "third: ready scenario should not emit transition tasks.");
 assert.ok(
-  ambiguityDescriptions.some((description) => description.includes("Evidence conflict")),
-  "ambiguity: expected at least one blocker to surface conflicting evidence.",
-);
-assert.ok(
-  ambiguityDescriptions.some((description) => description.includes("Evidence uncertainty")),
-  "ambiguity: expected at least one blocker to surface insufficient/uncertain evidence.",
-);
-const ambiguityCategories = new Set(ambiguity.blockers.map((blocker) => blocker.category));
-assert.ok(
-  ambiguityCategories.has("clinical_stability"),
-  "ambiguity: expected clinical_stability blocker from contradictory evidence.",
-);
-assert.ok(
-  ambiguityCategories.has("medication_reconciliation"),
-  "ambiguity: expected medication_reconciliation blocker from uncertain evidence.",
+  /No active discharge blockers/i.test(third.summary),
+  "third: ready summary should state that no active discharge blockers were detected.",
 );
 const conflictedBlocker = ambiguity.blockers.find((blocker) => blocker.category === "clinical_stability");
 assert.equal(
@@ -293,6 +288,29 @@ assert.ok(
   "ambiguity: uncertain blocker should expose ambiguity IDs.",
 );
 
+for (const robustnessCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+  const response = assessDischargeReadinessV1(robustnessCase.input);
+  assertSharedContractInvariants(robustnessCase.id, response);
+  assert.equal(
+    response.verdict,
+    robustnessCase.expected_verdict,
+    `${robustnessCase.id}: robustness verdict drifted.`,
+  );
+
+  const categorySet = new Set(response.blockers.map((blocker) => blocker.category));
+  for (const category of robustnessCase.expected_categories) {
+    assert.ok(categorySet.has(category), `${robustnessCase.id}: missing robustness category ${category}.`);
+  }
+
+  const descriptions = response.blockers.map((blocker) => blocker.description);
+  for (const fragment of robustnessCase.required_description_fragments) {
+    assert.ok(
+      descriptions.some((description) => description.includes(fragment)),
+      `${robustnessCase.id}: expected blocker description fragment '${fragment}'.`,
+    );
+  }
+}
+
 console.log("SMOKE PASS: assess_discharge_readiness v1");
 console.log(
   JSON.stringify(
@@ -309,12 +327,13 @@ console.log(
         evidence_count: second.evidence.length,
         next_step_count: second.next_steps.length,
       },
-      ambiguity: {
-        verdict: ambiguity.verdict,
-        blocker_count: ambiguity.blockers.length,
-        evidence_count: ambiguity.evidence.length,
-        next_step_count: ambiguity.next_steps.length,
+      third: {
+        verdict: third.verdict,
+        blocker_count: third.blockers.length,
+        evidence_count: third.evidence.length,
+        next_step_count: third.next_steps.length,
       },
+      robustness_case_count: READINESS_REGRESSION_ROBUSTNESS_CASES.length,
     },
     null,
     2,

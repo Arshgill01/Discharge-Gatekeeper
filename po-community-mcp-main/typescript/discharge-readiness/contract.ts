@@ -23,11 +23,14 @@ export const V1_PRIMARY_SCENARIO_ID = "first_synthetic_discharge_slice_v1";
 export const V1_SCENARIO_ID = V1_PRIMARY_SCENARIO_ID;
 export const V1_SCENARIO_2_ID = "second_synthetic_discharge_slice_ready_with_caveats_v1";
 export const V1_SCENARIO_ID_READY_WITH_CAVEATS = V1_SCENARIO_2_ID;
+export const V1_SCENARIO_3_ID = "third_synthetic_discharge_slice_ready_v1";
+export const V1_SCENARIO_ID_READY = V1_SCENARIO_3_ID;
 export const V1_SCENARIO_ID_EVIDENCE_AMBIGUITY =
   "third_synthetic_discharge_slice_ambiguity_v1";
 export const V1_SUPPORTED_SCENARIO_IDS = [
   V1_PRIMARY_SCENARIO_ID,
   V1_SCENARIO_2_ID,
+  V1_SCENARIO_3_ID,
 ] as const;
 export type SupportedScenarioId = (typeof V1_SUPPORTED_SCENARIO_IDS)[number];
 

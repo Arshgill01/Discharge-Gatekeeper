@@ -15,7 +15,7 @@
     "smoke:workflow-suite-core": "npx tsx smoke/workflow-suite-core-smoke.ts",
     "smoke:demo-path": "npx tsx smoke/demo-path-smoke.ts",
     "smoke:artifacts": "npx tsx smoke/workflow-artifacts-smoke.ts",
-    "smoke:release-gate": "npm run smoke:runtime && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:live-context && npm run smoke:readiness:regression && npm run smoke:workflow-suite-core && npm run smoke:artifacts && npm run smoke:demo-path",
+    "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:readiness && npm run smoke:evidence-layer && npm run smoke:live-context && npm run smoke:readiness:regression && npm run smoke:workflow-suite-core && npm run smoke:artifacts && npm run smoke:demo-path",
     "test": "npm run typecheck && npm run smoke:release-gate"
   },
   "author": "Discharge Gatekeeper Team",

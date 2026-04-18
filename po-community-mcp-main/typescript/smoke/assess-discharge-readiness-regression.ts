@@ -11,6 +11,7 @@ import {
 } from "../discharge-readiness/contract";
 import {
   READINESS_REGRESSION_FAILURE_CASES,
+  READINESS_REGRESSION_ROBUSTNESS_CASES,
   READINESS_REGRESSION_SUCCESS_CASES,
 } from "../discharge-readiness/regression-fixtures";
 
@@ -215,6 +216,11 @@ const assertSuccessCase = (): void => {
 
     assertCanonicalResponseShape(response, regressionCase.id);
     assert.equal(response.verdict, regressionCase.expected.verdict, `${regressionCase.id}: verdict drift`);
+    assert.equal(
+      response.blockers.length,
+      regressionCase.expected.expected_blocker_count,
+      `${regressionCase.id}: blocker count drift`,
+    );
     assert.ok(
       response.summary.includes(regressionCase.expected.summary_phrase),
       `${regressionCase.id}: summary should include '${regressionCase.expected.summary_phrase}'`,
@@ -274,8 +280,35 @@ const assertFailureCase = (): void => {
   }
 };
 
+const assertRobustnessCase = (): void => {
+  for (const regressionCase of READINESS_REGRESSION_ROBUSTNESS_CASES) {
+    const response = assessDischargeReadinessV1(regressionCase.input);
+
+    assertCanonicalResponseShape(response, regressionCase.id);
+    assert.equal(
+      response.verdict,
+      regressionCase.expected_verdict,
+      `${regressionCase.id}: robustness verdict drift`,
+    );
+
+    const categories = new Set(response.blockers.map((blocker) => blocker.category));
+    for (const category of regressionCase.expected_categories) {
+      assert.ok(categories.has(category), `${regressionCase.id}: missing robustness category '${category}'`);
+    }
+
+    const descriptions = response.blockers.map((blocker) => blocker.description);
+    for (const fragment of regressionCase.required_description_fragments) {
+      assert.ok(
+        descriptions.some((description) => description.includes(fragment)),
+        `${regressionCase.id}: expected description fragment '${fragment}' not found`,
+      );
+    }
+  }
+};
+
 assertFrozenContractConstants();
 assertSuccessCase();
+assertRobustnessCase();
 assertFailureCase();
 
 console.log("REGRESSION PASS: assess_discharge_readiness matrix");
@@ -285,6 +318,10 @@ console.log(
       success_cases: READINESS_REGRESSION_SUCCESS_CASES.map((regressionCase) => ({
         id: regressionCase.id,
         verdict: regressionCase.expected.verdict,
+      })),
+      robustness_cases: READINESS_REGRESSION_ROBUSTNESS_CASES.map((regressionCase) => ({
+        id: regressionCase.id,
+        verdict: regressionCase.expected_verdict,
       })),
       failure_cases: READINESS_REGRESSION_FAILURE_CASES.map((regressionCase) => ({
         id: regressionCase.id,
