@@ -143,6 +143,9 @@ Purpose:
 - prove the assembled system behaves credibly outside a single scripted contradiction clip
 - keep Prompt 2 as the strongest contradiction-evidence moment
 
+Source-of-truth expected-output matrix:
+- [phase4-end-to-end-expected-output-matrix.md](phase4-end-to-end-expected-output-matrix.md)
+
 Required assertions:
 - trap patient path keeps deterministic baseline visibility plus final `not_ready` escalation
 - control path stays calm (`no_hidden_risk`, no fabricated escalation)
