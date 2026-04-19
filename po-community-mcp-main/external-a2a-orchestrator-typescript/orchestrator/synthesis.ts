@@ -51,8 +51,11 @@ const renderPrompt2Narrative = (reconciled: ReconciliationResult): string => {
   const riskLine = reconciled.hidden_risk_result === "hidden_risk_present"
     ? `Hidden-risk findings changed the structured posture from ${reconciled.deterministic.verdict} to ${reconciled.final_verdict}.`
     : `No discharge-changing hidden risk was confirmed; posture remains ${reconciled.final_verdict}.`;
+  const manualReviewLine = reconciled.manual_review_required
+    ? "Manual clinician review is required before final discharge due to unresolved hidden-risk uncertainty."
+    : "No matrix-level manual-review flag is set.";
 
-  return `${riskLine} ${reconciled.contradiction_summary} ${evidenceLine} This is assistive discharge decision support and does not replace clinician authority.`;
+  return `${riskLine} ${reconciled.contradiction_summary} ${evidenceLine} ${manualReviewLine} This is assistive discharge decision support and does not replace clinician authority.`;
 };
 
 const renderPrompt3Narrative = (reconciled: ReconciliationResult): string => {

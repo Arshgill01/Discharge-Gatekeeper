@@ -49,6 +49,19 @@ const createTask = async (baseUrl: string, payload: unknown): Promise<any> => {
   return response.json();
 };
 
+const assertAssistiveFraming = (responseText: string, context: string): void => {
+  assert.equal(
+    responseText.toLowerCase().includes("assistive discharge decision support"),
+    true,
+    `${context}: response must preserve assistive framing.`,
+  );
+  assert.equal(
+    responseText.toLowerCase().includes("does not replace clinician authority"),
+    true,
+    `${context}: response must explicitly preserve clinician authority.`,
+  );
+};
+
 const run = async (): Promise<void> => {
   const root = process.cwd();
   const dgCwd = `${root}/../typescript`;
@@ -103,6 +116,22 @@ const run = async (): Promise<void> => {
       true,
     );
     assert.equal(trapPrompt2Task.output.citations.hidden_risk.length > 0, true);
+    assert.equal(
+      String(trapPrompt2Task.output.contradiction_summary).toLowerCase().includes("from ready to not_ready"),
+      true,
+      "Prompt 2 should make the structured-to-final posture change explicit.",
+    );
+    assert.equal(
+      /(oxygen|desaturation|dyspneic|caregiver)/i.test(String(trapPrompt2Task.output.contradiction_summary)),
+      true,
+      "Prompt 2 should explicitly mention the hidden-risk concern, not generic escalation.",
+    );
+    assert.equal(
+      /(Nursing Note|Case Management Addendum)/.test(String(trapPrompt2Task.output.contradiction_summary)),
+      true,
+      "Prompt 2 should carry citation-grounded evidence anchors.",
+    );
+    assertAssistiveFraming(String(trapPrompt2Task.output.contradiction_summary), "Prompt 2");
 
     const trapPrompt3Task = await createTask(a2aBaseUrl, {
       ...TRAP_PATIENT_TASK_INPUT,
@@ -114,6 +143,17 @@ const run = async (): Promise<void> => {
       trapPrompt3Task.output.merged_next_steps.some((step: { source: string }) => step.source === "hidden_risk"),
       true,
     );
+    assert.equal(
+      String(trapPrompt3Task.output.contradiction_summary).includes("Before discharge, complete:"),
+      true,
+      "Prompt 3 response should return a concrete transition package.",
+    );
+    assert.equal(
+      String(trapPrompt3Task.output.contradiction_summary).toLowerCase().includes("final posture remains not_ready"),
+      true,
+      "Prompt 3 package must remain aligned with escalated final posture.",
+    );
+    assertAssistiveFraming(String(trapPrompt3Task.output.contradiction_summary), "Prompt 3");
 
     const controlTask = await createTask(a2aBaseUrl, CONTROL_TASK_INPUT);
     assert.equal(controlTask.output.final_verdict, "ready");
@@ -122,6 +162,11 @@ const run = async (): Promise<void> => {
     assert.equal(
       controlTask.output.merged_blockers.some((blocker: { source: string }) => blocker.source === "hidden_risk"),
       false,
+    );
+    assert.equal(
+      String(controlTask.output.contradiction_summary).toLowerCase().includes("from ready to not_ready"),
+      false,
+      "No-hidden-risk path must not over-escalate response narrative.",
     );
 
     const insufficientContextTask = await createTask(a2aBaseUrl, {
@@ -138,6 +183,17 @@ const run = async (): Promise<void> => {
     assert.equal(insufficientContextTask.output.decision_matrix_row, 10);
     assert.equal(insufficientContextTask.output.final_verdict, "ready_with_caveats");
     assert.equal(insufficientContextTask.output.manual_review_required, true);
+    assert.equal(
+      String(insufficientContextTask.output.contradiction_summary).toLowerCase().includes("manual clinician review is required"),
+      true,
+      "Inconclusive hidden-risk path should defer with explicit manual review requirement.",
+    );
+    assert.equal(
+      String(insufficientContextTask.output.contradiction_summary).toLowerCase().includes("posture remains ready_with_caveats"),
+      true,
+      "Inconclusive hidden-risk path should remain bounded to structured posture policy.",
+    );
+    assertAssistiveFraming(String(insufficientContextTask.output.contradiction_summary), "Inconclusive prompt");
 
     const synthesisFallbackTask = await createTask(a2aBaseUrl, {
       ...TRAP_PATIENT_TASK_INPUT,
