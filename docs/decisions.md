@@ -106,3 +106,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 3 quality/readiness must be measurable in the real runtime surfaces used for Prompt Opinion registration, not only in narrative docs.
 - Affected files or lanes: `docs/phase3-a2a-expected-output-matrix.md`, `docs/evals.md`, A2A smoke checks, Prompt Opinion runbook, demo/submission packaging
 - Follow-up: keep `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`, `... run smoke:decision-matrix`, `... run smoke:orchestrator`, and `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` green before recording/publish.
+
+- Date: 2026-04-19
+- Decision: Make A2A final response synthesis prompt-aware and contradiction-first, with explicit structured baseline vs hidden-risk change, citation anchors, assistive framing, and manual-review language in inconclusive paths.
+- Why: The trap-patient Prompt 2 moment must read like a thoughtful clinical colleague while staying bounded, inspectable, and clearly safer than either MCP output alone.
+- Affected files or lanes: external A2A synthesis runtime (`orchestrator/synthesis.ts`, `index.ts`) and end-to-end contradiction-quality smoke assertions.
+- Follow-up: keep prompt-aware response quality checks in `smoke/orchestrator-smoke.ts` green for trap/control/inconclusive flows before demo lock.
