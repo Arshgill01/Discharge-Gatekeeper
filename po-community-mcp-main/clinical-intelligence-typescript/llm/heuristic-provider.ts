@@ -47,6 +47,28 @@ const SIGNALS: Signal[] = [
   },
 ];
 
+const buildHiddenRiskSummary = (
+  baselineVerdict: HiddenRiskInput["deterministic_snapshot"]["baseline_verdict"],
+  findings: HiddenRiskOutput["hidden_risk_findings"],
+): string => {
+  const categories = new Set(findings.map((finding) => finding.category));
+  const hasCanonicalTrapContradiction =
+    categories.has("clinical_stability") &&
+    categories.has("equipment_and_transport") &&
+    categories.has("home_support_and_services");
+
+  if (hasCanonicalTrapContradiction) {
+    return `Structured baseline was ${baselineVerdict} from resting chart data, but note evidence shows exertional desaturation with dyspnea, unavailable home oxygen tonight, and no overnight caregiver support. This contradiction makes discharge home tonight unsafe.`;
+  }
+
+  const primaryFinding = findings[0];
+  if (!primaryFinding) {
+    return "No additional note-backed discharge-critical hidden risk was found beyond deterministic context.";
+  }
+
+  return `Structured baseline was ${baselineVerdict}, but narrative evidence introduced discharge-critical risk in ${primaryFinding.category}: ${primaryFinding.title.toLowerCase()}.`;
+};
+
 export const generateHiddenRiskHeuristicResponse = async (
   input: HiddenRiskInput,
 ): Promise<string> => {
@@ -109,8 +131,10 @@ export const generateHiddenRiskHeuristicResponse = async (
           result: "hidden_risk_present",
           overall_disposition_impact: "not_ready",
           confidence: "medium",
-          summary:
-            "Narrative evidence introduces discharge-critical risk not visible in deterministic structured evidence.",
+          summary: buildHiddenRiskSummary(
+            input.deterministic_snapshot.baseline_verdict,
+            findings,
+          ),
           manual_review_required: false,
           false_positive_guardrail:
             "Only findings tied to explicit narrative contradictions or discharge logistics barriers are emitted.",

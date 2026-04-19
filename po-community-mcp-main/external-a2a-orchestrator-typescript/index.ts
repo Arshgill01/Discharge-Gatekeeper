@@ -170,7 +170,7 @@ const runTask = async (taskInput: A2ATaskInput): Promise<ReconciliationResult> =
     const synthesized = renderBoundedSynthesis(taskInput, reconciled);
     return {
       ...reconciled,
-      contradiction_summary: `${reconciled.contradiction_summary} ${synthesized.narrative}`,
+      contradiction_summary: synthesized.narrative,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

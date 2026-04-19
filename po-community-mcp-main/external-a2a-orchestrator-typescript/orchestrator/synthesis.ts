@@ -8,6 +8,67 @@ const SYNTHESIS_GUARDRAILS = [
   "When contradiction exists, explain the structured baseline vs narrative evidence change.",
 ];
 
+type PromptMode = "prompt_1" | "prompt_2" | "prompt_3";
+
+const detectPromptMode = (prompt: string): PromptMode => {
+  const normalized = prompt.toLowerCase();
+  if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
+    return "prompt_2";
+  }
+  if (
+    normalized.includes("must happen before discharge") ||
+    normalized.includes("transition package")
+  ) {
+    return "prompt_3";
+  }
+  return "prompt_1";
+};
+
+const compactEvidenceAnchor = (
+  citation: ReconciliationResult["citations"]["hidden_risk"][number],
+): string => {
+  const excerpt = citation.excerpt.replace(/\s+/g, " ").trim();
+  const shortExcerpt = excerpt.length > 110 ? `${excerpt.slice(0, 107)}...` : excerpt;
+  return `${citation.source_label} (${citation.locator}): "${shortExcerpt}"`;
+};
+
+const renderPrompt1Narrative = (reconciled: ReconciliationResult): string => {
+  const intro = `Structured discharge posture was ${reconciled.deterministic.verdict}. Final reconciled posture is ${reconciled.final_verdict}.`;
+  const change = `Disposition change: ${reconciled.contradiction_summary}`;
+  const manualReview = reconciled.manual_review_required
+    ? "Manual clinician review is required before discharge."
+    : "No matrix-level manual-review flag is set.";
+  return `${intro} ${change} ${manualReview} This is assistive discharge decision support and does not replace clinician authority.`;
+};
+
+const renderPrompt2Narrative = (reconciled: ReconciliationResult): string => {
+  const evidenceAnchors = reconciled.citations.hidden_risk
+    .slice(0, 2)
+    .map(compactEvidenceAnchor);
+  const evidenceLine = evidenceAnchors.length > 0
+    ? `Key contradiction evidence: ${evidenceAnchors.join(" | ")}.`
+    : "No additional hidden-risk citations were provided.";
+  const riskLine = reconciled.hidden_risk_result === "hidden_risk_present"
+    ? `Hidden-risk findings changed the structured posture from ${reconciled.deterministic.verdict} to ${reconciled.final_verdict}.`
+    : `No discharge-changing hidden risk was confirmed; posture remains ${reconciled.final_verdict}.`;
+  const manualReviewLine = reconciled.manual_review_required
+    ? "Manual clinician review is required before final discharge due to unresolved hidden-risk uncertainty."
+    : "No matrix-level manual-review flag is set.";
+
+  return `${riskLine} ${reconciled.contradiction_summary} ${evidenceLine} ${manualReviewLine} This is assistive discharge decision support and does not replace clinician authority.`;
+};
+
+const renderPrompt3Narrative = (reconciled: ReconciliationResult): string => {
+  const prioritizedSteps = reconciled.merged_next_steps
+    .slice(0, 3)
+    .map((step, index) => `${index + 1}. [${step.priority}] ${step.action}`)
+    .join(" ");
+  const guidance = prioritizedSteps.length > 0
+    ? `Before discharge, complete: ${prioritizedSteps}`
+    : "Before discharge, complete deterministic transition safeguards and confirm no unresolved blockers.";
+  return `${guidance} Final posture remains ${reconciled.final_verdict} because ${reconciled.contradiction_summary.toLowerCase()} This is assistive discharge decision support and does not replace clinician authority.`;
+};
+
 export const buildSynthesisPrompt = (
   taskInput: A2ATaskInput,
   reconciled: ReconciliationResult,
@@ -32,20 +93,16 @@ export const renderBoundedSynthesis = (
   }
 
   const prompt = buildSynthesisPrompt(taskInput, reconciled);
-  const contradictionLine = reconciled.contradiction_summary.trim().length > 0
-    ? reconciled.contradiction_summary
-    : "No additional narrative contradiction changed the deterministic posture.";
+  const mode = detectPromptMode(taskInput.prompt);
 
-  const narrative = [
-    `Final verdict: ${reconciled.final_verdict}.`,
-    `Decision matrix row: ${reconciled.decision_matrix_row} (${reconciled.decision_matrix_action}).`,
-    `Hidden-risk status: ${reconciled.hidden_risk_run_status}.`,
-    `Contradiction summary: ${contradictionLine}`,
-    reconciled.manual_review_required
-      ? "Manual review is required before discharge due to unresolved ambiguity or unavailable narrative review."
-      : "Manual review flag is not set by matrix policy.",
-    "This output is assistive and does not replace clinician discharge authority.",
-  ].join(" ");
+  let narrative: string;
+  if (mode === "prompt_2") {
+    narrative = renderPrompt2Narrative(reconciled);
+  } else if (mode === "prompt_3") {
+    narrative = renderPrompt3Narrative(reconciled);
+  } else {
+    narrative = renderPrompt1Narrative(reconciled);
+  }
 
   return {
     prompt_used: prompt,
