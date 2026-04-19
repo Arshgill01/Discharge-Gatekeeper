@@ -268,10 +268,34 @@ const assertFallbackWhenClinicalIntelligenceIsUnavailable = async (): Promise<vo
   );
 };
 
+const assertInconclusiveHiddenRiskRemainsBoundedAndHonest = async (): Promise<void> => {
+  const { deterministic, hiddenRiskInput } = buildTrapHiddenRiskInputFromStructuredOutput();
+  const inconclusiveInput = {
+    ...hiddenRiskInput,
+    narrative_evidence_bundle: [],
+  };
+
+  const hiddenRisk = await surfaceHiddenRisks(inconclusiveInput);
+  assert.equal(hiddenRisk.payload.status, "insufficient_context");
+  assert.equal(hiddenRisk.payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(hiddenRisk.payload.hidden_risk_summary.manual_review_required, true);
+  assert.equal(hiddenRisk.payload.hidden_risk_findings.length, 0);
+  assert.equal(hiddenRisk.payload.citations.length, 0);
+
+  const finalVerdict = reconcileFinalVerdict(
+    deterministic.verdict,
+    hiddenRisk.payload.status,
+    hiddenRisk.payload.hidden_risk_summary.result,
+    hiddenRisk.payload.hidden_risk_summary.overall_disposition_impact,
+  );
+  assert.equal(finalVerdict, "ready");
+};
+
 const main = async (): Promise<void> => {
   await assertTrapHiddenRiskEscalationAndStoryStrength();
   await assertTrapEscalationIsNoteDependent();
   await assertCleanControlRemainsBounded();
+  await assertInconclusiveHiddenRiskRemainsBoundedAndHonest();
   await assertFallbackWhenClinicalIntelligenceIsUnavailable();
 
   console.log("SMOKE PASS: phase2 two-MCP integration");
