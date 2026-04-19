@@ -102,6 +102,7 @@ const run = async (): Promise<void> => {
     assert.equal(trapPrompt1Task.output.deterministic.verdict, "ready");
     assert.equal(trapPrompt1Task.output.final_verdict, "not_ready");
     assert.equal(trapPrompt1Task.output.hidden_risk_run_status, "used");
+    assert.equal(trapPrompt1Task.output.hidden_risk_result, "hidden_risk_present");
     assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
     assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
 
@@ -131,6 +132,16 @@ const run = async (): Promise<void> => {
       true,
       "Prompt 2 should carry citation-grounded evidence anchors.",
     );
+    assert.equal(
+      String(trapPrompt2Task.output.contradiction_summary).includes("Before discharge, complete:"),
+      false,
+      "Prompt 2 should stay contradiction-focused and avoid Prompt 3 transition-package phrasing.",
+    );
+    assert.equal(
+      /(^|\s)\d+\.\s\[[a-z_]+\]/i.test(String(trapPrompt2Task.output.contradiction_summary)),
+      false,
+      "Prompt 2 should avoid action-list formatting noise.",
+    );
     assertAssistiveFraming(String(trapPrompt2Task.output.contradiction_summary), "Prompt 2");
 
     const trapPrompt3Task = await createTask(a2aBaseUrl, {
@@ -159,6 +170,7 @@ const run = async (): Promise<void> => {
     assert.equal(controlTask.output.final_verdict, "ready");
     assert.equal(controlTask.output.hidden_risk_run_status, "used");
     assert.equal(controlTask.output.hidden_risk_result, "no_hidden_risk");
+    assert.equal(controlTask.output.manual_review_required, false);
     assert.equal(
       controlTask.output.merged_blockers.some((blocker: { source: string }) => blocker.source === "hidden_risk"),
       false,

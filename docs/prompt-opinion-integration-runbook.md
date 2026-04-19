@@ -5,6 +5,11 @@ This runbook is the operator scaffold for the locked Phase 0 architecture:
 
 Use this document to separate what must be registered, what may be published, and what the demo should do when a layer fails.
 
+Phase 4 operating stance:
+- primary lane: A2A-main (`external A2A orchestrator`)
+- required backup lane: direct-MCP fallback (separate Prompt Opinion calls to both MCPs)
+- promotion rule: use A2A-main only after same-day clean rehearsal; otherwise run fallback
+
 ## 1. Registration surfaces
 
 ### Surface A: `Discharge Gatekeeper MCP`
@@ -230,6 +235,13 @@ Preferred final demo:
 
 Use this path only if all three components passed a clean-session rehearsal the same day.
 
+### A2A-main operator quick-check
+Before going live:
+1. run `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+2. run `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+3. run `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+4. confirm trap Prompt 2 still shows contradiction evidence anchors (not transition-package action-list output)
+
 ## 7. Fallback direct-MCP demo path
 
 This is the required backup path.
@@ -254,6 +266,16 @@ What must be shown on screen in fallback mode:
 - Prompt 1: baseline structured posture and final manual two-MCP interpretation
 - Prompt 2: contradiction summary plus citation anchors
 - Prompt 3: prioritized transition actions with blocker linkage
+
+### Fallback quality checks (required)
+Run before recording/live demo when fallback is active:
+1. `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
+2. `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+
+Expected fallback behavior:
+- trap path escalates from structured `ready` to final `not_ready` with citation-backed contradiction
+- no-risk control path remains explicit `no_hidden_risk` with no fabricated escalation
+- inconclusive/unavailable hidden-risk paths stay bounded and explicitly manual-review aligned
 
 ### Rules
 - do not improvise a fourth step
@@ -291,6 +313,13 @@ Otherwise:
 - disable the A2A layer for the live demo
 - use the fallback direct-MCP path
 - keep the architecture explanation accurate
+
+### Phase 4 consistency lock
+Keep these docs aligned with runtime smoke behavior:
+- `docs/phase4-end-to-end-expected-output-matrix.md`
+- `docs/demo-script.md`
+- `docs/evals.md`
+- `docs/submission-checklist.md`
 
 Phase 2 release note:
 - do not block phase completion on A2A readiness

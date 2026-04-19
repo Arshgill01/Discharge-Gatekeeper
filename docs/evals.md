@@ -138,6 +138,35 @@ Current canonical Phase 3 paths (post-integration):
 - Prompt Opinion external-agent registration runbook: `docs/prompt-opinion-integration-runbook.md`
 - demo primary/fallback path docs: `docs/demo-script.md`
 
+### Phase 4 realism/control + demo-dominance gate
+Purpose:
+- prove the assembled system behaves credibly outside a single scripted contradiction clip
+- keep Prompt 2 as the strongest contradiction-evidence moment
+
+Source-of-truth expected-output matrix:
+- [phase4-end-to-end-expected-output-matrix.md](phase4-end-to-end-expected-output-matrix.md)
+
+Required assertions:
+- trap patient path keeps deterministic baseline visibility plus final `not_ready` escalation
+- control path stays calm (`no_hidden_risk`, no fabricated escalation)
+- inconclusive/insufficient-context path stays bounded and manual-review explicit
+- direct-MCP fallback path remains runnable when A2A is unavailable
+- Prompt 2 remains contradiction-and-evidence focused and is not diluted by Prompt 3 action-list noise
+
+Canonical current path map (post-merge):
+- trap/control hidden-risk fixtures: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
+- trap/control A2A task fixtures: `po-community-mcp-main/external-a2a-orchestrator-typescript/orchestrator/fixtures.ts`
+- trap/control/inconclusive/fallback A2A smoke: `po-community-mcp-main/external-a2a-orchestrator-typescript/smoke/orchestrator-smoke.ts`
+- direct-MCP trap/control/inconclusive/fallback smoke: `po-community-mcp-main/clinical-intelligence-typescript/smoke/two-mcp-integration-smoke.ts`
+- two-MCP end-to-end smoke wrapper: `po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+- A2A end-to-end smoke wrapper: `po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+
+Required command set:
+- `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
+- `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+- `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+- `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+
 ## Hidden-risk detection assertions
 These assertions apply in all three phases.
 
