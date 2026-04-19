@@ -98,6 +98,9 @@ Current canonical Phase 2 paths (post-integration):
 Purpose:
 - prove the final judge-path control flow works when Prompt Opinion talks to the `external A2A orchestrator`
 
+Source-of-truth expected-output matrix:
+- [phase3-a2a-expected-output-matrix.md](phase3-a2a-expected-output-matrix.md)
+
 Required flow:
 1. Prompt Opinion sends one synchronous request to the `external A2A orchestrator`
 2. the orchestrator calls `Discharge Gatekeeper MCP`
@@ -110,7 +113,30 @@ Required assertions:
 - the orchestrator returns within a demo-safe timeout budget
 - the final output preserves deterministic blocker/action IDs plus hidden-risk findings and citation IDs
 - the final output surfaces whether the hidden-risk layer was used, skipped, unavailable, or inconclusive
+- trap-patient Prompt 1 path proves deterministic baseline visibility plus final escalation (`ready` -> `not_ready`) in one reconciled payload
+- contradiction-aware Prompt 2 path includes note-backed contradiction summary plus citation anchors
+- transition-package Prompt 3 path includes merged deterministic + hidden-risk actionability
+- clean control path remains bounded (`no_hidden_risk`, no forced escalation)
+- insufficient-context path remains bounded (`inconclusive`/manual review, no fabricated hidden-risk finding)
+- agent card discovery surface is valid for planned registration path (identity, no-streaming lifecycle, dependency list, task endpoints)
 - fallback to the direct-MCP demo path is documented and testable
+
+Current Phase 3 command mapping:
+- `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`
+- `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:decision-matrix`
+- `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+- `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+- `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+
+Current canonical Phase 3 paths (post-integration):
+- external A2A runtime entrypoint: `po-community-mcp-main/external-a2a-orchestrator-typescript/index.ts`
+- external A2A agent card: `po-community-mcp-main/external-a2a-orchestrator-typescript/agent-card.ts`
+- external A2A task/request schema: `po-community-mcp-main/external-a2a-orchestrator-typescript/types.ts`
+- external A2A runtime+card smoke: `po-community-mcp-main/external-a2a-orchestrator-typescript/smoke/runtime-boot-and-agent-card-smoke.ts`
+- external A2A contradiction/fallback smoke: `po-community-mcp-main/external-a2a-orchestrator-typescript/smoke/orchestrator-smoke.ts`
+- end-to-end A2A shell smoke: `po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+- Prompt Opinion external-agent registration runbook: `docs/prompt-opinion-integration-runbook.md`
+- demo primary/fallback path docs: `docs/demo-script.md`
 
 ## Hidden-risk detection assertions
 These assertions apply in all three phases.
