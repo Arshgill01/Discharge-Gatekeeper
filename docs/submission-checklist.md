@@ -35,6 +35,7 @@ Do not say:
 
 Must show:
 - final reconciled verdict
+- baseline deterministic posture visibility (for trap patient this should still be `ready`)
 - structured blockers from `Discharge Gatekeeper MCP`
 - whether hidden-risk review ran, was skipped, or was unavailable
 
@@ -45,6 +46,7 @@ Must show:
 - note/document-grounded findings from `Clinical Intelligence MCP`
 - citations
 - null-result behavior when no additional hidden risk exists
+- contradiction-focused response (do not dilute Prompt 2 with transition-package action-list formatting)
 
 ### Prompt 3
 `What exactly must happen before discharge?`
@@ -53,6 +55,13 @@ Must show:
 - prioritized next steps
 - deterministic blocker linkage
 - any hidden-risk escalations that changed urgency or disposition
+
+### Phase 4 end-to-end matrix lock
+- keep [phase4-end-to-end-expected-output-matrix.md](phase4-end-to-end-expected-output-matrix.md) aligned to runtime smoke behavior
+- this matrix must remain synchronized with:
+  - `docs/demo-script.md`
+  - `docs/prompt-opinion-integration-runbook.md`
+  - `docs/evals.md`
 
 ## Marketplace and publish checklist
 
@@ -86,6 +95,8 @@ Must show:
 - the direct-MCP fallback path has been rehearsed
 - the trap contradiction is measurable and note-dependent in the two-MCP fallback path
 - clean control behavior stays bounded (`no_hidden_risk`, no forced escalation)
+- inconclusive hidden-risk behavior remains bounded and honest (`manual_review_required`, no fabricated findings)
+- Prompt 2 remains the strongest contradiction-evidence moment in the 3-prompt story
 
 ## Trust checklist
 - outputs remain assistive, not autonomous
@@ -101,6 +112,11 @@ Must show:
 - keep the narration focused on verdict, hidden risk, and next actions
 - do not spend recording time on registration mechanics
 
+Judge-facing cue order for recordings:
+1. show Prompt 1 baseline-vs-final posture change
+2. anchor Prompt 2 with contradiction citations (strongest moment)
+3. show Prompt 3 actionable transition package
+
 ## Phase 3 readiness before final recording/publish
 Must be true before final recording/publish lock:
 - `docs/phase3-a2a-expected-output-matrix.md` is aligned with live smoke behavior
@@ -110,6 +126,9 @@ Must be true before final recording/publish lock:
   - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
   - `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
   - `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+- phase-4 realism/control checks pass via:
+  - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+  - `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
 - Prompt Opinion external-agent registration path is rehearsed using the live agent card discovery endpoint
 - direct two-MCP fallback remains green and rehearsal-ready:
   - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`

@@ -112,3 +112,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: The trap-patient Prompt 2 moment must read like a thoughtful clinical colleague while staying bounded, inspectable, and clearly safer than either MCP output alone.
 - Affected files or lanes: external A2A synthesis runtime (`orchestrator/synthesis.ts`, `index.ts`) and end-to-end contradiction-quality smoke assertions.
 - Follow-up: keep prompt-aware response quality checks in `smoke/orchestrator-smoke.ts` green for trap/control/inconclusive flows before demo lock.
+
+- Date: 2026-04-19
+- Decision: Lock Phase 4 demo-readiness on a single end-to-end matrix covering trap Prompt 1/2/3, no-risk control, inconclusive hidden-risk behavior, and explicit A2A-main/direct-MCP-fallback operational gates.
+- Why: Phase 4 must be believable beyond one scripted contradiction while preserving a judge-dominant 3-prompt flow and a reliable fallback if orchestration regresses.
+- Affected files or lanes: `docs/phase4-end-to-end-expected-output-matrix.md`, `docs/evals.md`, `docs/demo-script.md`, `docs/submission-checklist.md`, Prompt Opinion runbook, phase2/phase3 smoke checks.
+- Follow-up: keep `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`, `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`, `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`, and `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` green before demo lock.

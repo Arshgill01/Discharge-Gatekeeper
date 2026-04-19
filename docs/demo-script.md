@@ -46,6 +46,11 @@ What this proves:
 - Prompt 1 is stronger than the old structured-only story because it preserves baseline `ready` and still lands on final `not_ready`
 - A2A is functioning as the primary assembled-agent lane because the fused verdict appears in one response
 
+Judge should notice at Prompt 1:
+- the baseline structured posture is still visible (`ready`)
+- the final reconciled answer is already escalated (`not_ready`)
+- hidden-risk review status is explicit, not implied
+
 ## Prompt 2
 User prompt:
 `What hidden risk changed that answer? Show me the contradiction and the evidence.`
@@ -70,6 +75,7 @@ This is the holy-shit moment.
 Judge should notice at this moment:
 - the contradiction is explicit (`structured baseline looked ready` vs `note evidence makes home discharge unsafe now`)
 - citations anchor the exact nursing/case-management sources that forced escalation
+- Prompt 2 stays focused on contradiction evidence, not transition-package action-list noise
 
 ## Prompt 3
 User prompt:
@@ -86,6 +92,11 @@ What this proves:
 - the contradiction is operationalized into a usable transition package
 - the fallback/non-A2A path can still deliver a complete transition package from the two MCPs
 - A2A path is demo-safe because transition actions are reconciled in the same payload as final disposition context
+
+Judge should notice at Prompt 3:
+- the contradiction has been converted into concrete next actions
+- the final posture remains `not_ready` until those actions are done
+- the output remains assistive and non-autonomous
 
 ## Fallback/non-A2A operator path
 Use this direct two-MCP order when A2A discovery or `/tasks` invocation fails:
@@ -118,12 +129,23 @@ Skip:
 - custom UI mockups
 - roadmap features outside the 3-prompt story
 
+## If time is short
+Keep these in order:
+1. Prompt 2 contradiction + citations (strongest moment)
+2. Prompt 1 baseline-vs-final posture change
+3. Prompt 3 top 2-3 pre-discharge actions
+4. A2A mechanics detail
+
 ## Fallback rule
 If the richer display degrades, preserve the story in this order:
 1. final verdict
 2. structured posture before escalation
 3. exact contradiction
 4. top next steps
+
+Switch to direct two-MCP fallback immediately when:
+- A2A agent card discovery fails, or
+- `POST /tasks` does not return a clean synchronous response in rehearsal
 
 ## Done check
 A judge should be able to explain the product in one sentence:
