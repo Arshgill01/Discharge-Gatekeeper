@@ -32,9 +32,9 @@ Role:
 - synchronous orchestration layer that calls both MCPs and applies the decision matrix
 
 Must expose:
-- agent registration/discovery surface appropriate to the chosen A2A runtime
+- agent registration/discovery surface (`/.well-known/agent-card.json`)
 - health endpoint
-- synchronous request/response invocation path
+- synchronous request/response invocation path (`POST /tasks`, `GET /tasks/:taskId`, `GET /tasks`)
 - explicit no-streaming behavior
 
 ## 2. Common prerequisites
@@ -146,6 +146,13 @@ Quality expectations these checks enforce:
 
 Register the A2A layer only after both MCPs are independently reachable.
 
+### Canonical external A2A paths (implementation-grounded)
+- runtime entrypoint: `po-community-mcp-main/external-a2a-orchestrator-typescript/index.ts`
+- agent card builder: `po-community-mcp-main/external-a2a-orchestrator-typescript/agent-card.ts`
+- task input/output schema: `po-community-mcp-main/external-a2a-orchestrator-typescript/types.ts`
+- local readiness script: `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+- local end-to-end smoke: `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+
 ### Required orchestrator behavior before registration
 - synchronous request/response only
 - no streaming dependencies
@@ -153,10 +160,23 @@ Register the A2A layer only after both MCPs are independently reachable.
 - applies the matrix in [phase0-orchestrator-decision-matrix.md](phase0-orchestrator-decision-matrix.md)
 - returns a single final response suitable for the 3-prompt demo
 
+### Required env/config assumptions
+The A2A runtime assumes these environment variables (see `external-a2a-orchestrator-typescript/.env.example`):
+- `DISCHARGE_GATEKEEPER_MCP_URL`
+- `CLINICAL_INTELLIGENCE_MCP_URL`
+- `PORT` (default `5057`)
+- `PO_ENV` (`local|dev|prod`)
+- `ALLOWED_HOSTS`
+- `DEFAULT_STRUCTURED_SCENARIO_ID`
+- `A2A_TASK_TIMEOUT_MS`
+
 ### Registration checklist
 1. add the external agent integration in Prompt Opinion
 2. set the display name to `external A2A orchestrator`
-3. provide the agent discovery or invocation URL required by the chosen A2A runtime
+3. provide the public base URL for the A2A runtime and ensure Prompt Opinion can resolve:
+   - discovery: `/.well-known/agent-card.json`
+   - readiness: `/readyz`
+   - task invocation: `/tasks`
 4. validate that the orchestrator can reach both MCPs from its runtime environment
 5. run one end-to-end prompt from Prompt Opinion through the A2A layer
 
@@ -171,10 +191,35 @@ Register the A2A layer only after both MCPs are independently reachable.
   - next steps
 - response returns as one synchronous payload
 
+### Pre-registration local checks (required)
+Run from repo root:
+1. `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`
+2. `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+3. `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
+
+Do not register A2A in Prompt Opinion until these checks are green.
+
+### Post-registration checks (required)
+1. Prompt 1 (`Is this patient safe to discharge today?`) returns one reconciled payload with baseline deterministic posture and final verdict.
+2. Prompt 2 contradiction follow-up returns cited narrative contradiction evidence.
+3. Prompt 3 transition-package follow-up returns prioritized actionable next steps.
+4. clean control check returns bounded `no_hidden_risk` behavior.
+
 ### Failure handling
 - if A2A registration or invocation fails, stop using it for the judge path
 - switch the workspace to the fallback direct-MCP path
 - do not attempt live debugging on camera
+
+If agent card discovery fails:
+1. verify `GET /.well-known/agent-card.json` returns `schema_version=a2a_card_v1`
+2. verify `agent_identity.name=external A2A orchestrator`
+3. verify `task_lifecycle.streaming=false` and endpoints include `/tasks`
+4. rerun `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+
+If task invocation fails:
+1. verify `POST /tasks` succeeds locally with trap fixture via `smoke:orchestrator`
+2. verify runtime can reach both MCP URLs from its environment
+3. if unresolved before demo window, cut to direct two-MCP fallback
 
 ## 6. Preferred demo path
 Preferred final demo:
@@ -188,7 +233,7 @@ Use this path only if all three components passed a clean-session rehearsal the 
 ## 7. Fallback direct-MCP demo path
 
 This is the required backup path.
-For Phase 2, treat this as the primary proof path for quality and judge rehearsal.
+For Phase 3, keep this path rehearsal-ready in case A2A discovery/task invocation regresses.
 
 ### Setup
 - keep both MCPs registered even when using the A2A path
@@ -214,6 +259,7 @@ What must be shown on screen in fallback mode:
 - do not improvise a fourth step
 - do not claim the fallback path is the final architecture
 - do state that the system architecture remains `2 MCPs + 1 external A2A`
+- rehearse this path in the same session window as the preferred A2A rehearsal
 
 ## 8. Marketplace and publish implications
 
@@ -238,6 +284,7 @@ Use the preferred A2A path only when all are true:
 - `Discharge Gatekeeper MCP` discovery passes
 - `Clinical Intelligence MCP` discovery passes
 - `external A2A orchestrator` end-to-end invocation passes
+- A2A agent-card discovery passes on the exact public URL used by Prompt Opinion
 - the 3-prompt rehearsal finishes cleanly in one session
 
 Otherwise:

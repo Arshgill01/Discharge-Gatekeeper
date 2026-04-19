@@ -37,6 +37,18 @@ const spawnService = (name: string, command: string, args: string[], cwd: string
   return child;
 };
 
+const createTask = async (baseUrl: string, payload: unknown): Promise<any> => {
+  const response = await fetch(`${baseUrl}/tasks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  assert.equal(response.status, 201);
+  return response.json();
+};
+
 const run = async (): Promise<void> => {
   const root = process.cwd();
   const dgCwd = `${root}/../typescript`;
@@ -70,49 +82,72 @@ const run = async (): Promise<void> => {
     await waitForReady(`http://127.0.0.1:${ciPort}/readyz`, 20000);
     await waitForReady(`http://127.0.0.1:${a2aPort}/readyz`, 20000);
 
-    const trapResponse = await fetch(`http://127.0.0.1:${a2aPort}/tasks`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(TRAP_PATIENT_TASK_INPUT),
-    });
-    assert.equal(trapResponse.status, 201);
-    const trapTask = await trapResponse.json();
+    const a2aBaseUrl = `http://127.0.0.1:${a2aPort}`;
+    const trapPrompt1Task = await createTask(a2aBaseUrl, TRAP_PATIENT_TASK_INPUT);
 
-    assert.equal(trapTask.status, "completed");
-    assert.equal(trapTask.output.deterministic.verdict, "ready");
-    assert.equal(trapTask.output.final_verdict, "not_ready");
-    assert.equal(trapTask.output.hidden_risk_run_status, "used");
-    assert.equal(trapTask.output.decision_matrix_row, 3);
-    assert.equal(trapTask.output.citations.hidden_risk.length > 0, true);
+    assert.equal(trapPrompt1Task.status, "completed");
+    assert.equal(trapPrompt1Task.output.deterministic.verdict, "ready");
+    assert.equal(trapPrompt1Task.output.final_verdict, "not_ready");
+    assert.equal(trapPrompt1Task.output.hidden_risk_run_status, "used");
+    assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
+    assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
 
-    const controlResponse = await fetch(`http://127.0.0.1:${a2aPort}/tasks`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(CONTROL_TASK_INPUT),
+    const trapPrompt2Task = await createTask(a2aBaseUrl, {
+      ...TRAP_PATIENT_TASK_INPUT,
+      prompt: "What hidden risk changed that answer? Show me the contradiction and the evidence.",
     });
-    assert.equal(controlResponse.status, 201);
-    const controlTask = await controlResponse.json();
+    assert.equal(trapPrompt2Task.output.final_verdict, "not_ready");
+    assert.equal(trapPrompt2Task.output.hidden_risk_run_status, "used");
+    assert.equal(
+      String(trapPrompt2Task.output.contradiction_summary).toLowerCase().includes("contradiction"),
+      true,
+    );
+    assert.equal(trapPrompt2Task.output.citations.hidden_risk.length > 0, true);
+
+    const trapPrompt3Task = await createTask(a2aBaseUrl, {
+      ...TRAP_PATIENT_TASK_INPUT,
+      prompt: "What exactly must happen before discharge, and prepare the transition package.",
+    });
+    assert.equal(trapPrompt3Task.output.final_verdict, "not_ready");
+    assert.equal(trapPrompt3Task.output.hidden_risk_run_status, "used");
+    assert.equal(
+      trapPrompt3Task.output.merged_next_steps.some((step: { source: string }) => step.source === "hidden_risk"),
+      true,
+    );
+
+    const controlTask = await createTask(a2aBaseUrl, CONTROL_TASK_INPUT);
     assert.equal(controlTask.output.final_verdict, "ready");
+    assert.equal(controlTask.output.hidden_risk_run_status, "used");
+    assert.equal(controlTask.output.hidden_risk_result, "no_hidden_risk");
+    assert.equal(
+      controlTask.output.merged_blockers.some((blocker: { source: string }) => blocker.source === "hidden_risk"),
+      false,
+    );
 
-    const synthesisFallbackResponse = await fetch(`http://127.0.0.1:${a2aPort}/tasks`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
+    const insufficientContextTask = await createTask(a2aBaseUrl, {
+      prompt: "What hidden risks or contradictions change that answer?",
+      patient_context: {
+        scenario_id: "third_synthetic_discharge_slice_ready_v1",
+        patient_id: "phase0-insufficient-context",
+        encounter_id: "enc-phase0-insufficient-context",
+        narrative_evidence_bundle: [],
       },
-      body: JSON.stringify({
-        ...TRAP_PATIENT_TASK_INPUT,
-        prompt: "What hidden risk changed the answer?",
-        patient_context: {
-          ...TRAP_PATIENT_TASK_INPUT.patient_context,
-          narrative_evidence_bundle: TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle,
-        },
-      }),
     });
-    assert.equal(synthesisFallbackResponse.status, 201);
+    assert.equal(insufficientContextTask.output.hidden_risk_run_status, "unavailable");
+    assert.equal(insufficientContextTask.output.hidden_risk_result, "inconclusive");
+    assert.equal(insufficientContextTask.output.decision_matrix_row, 10);
+    assert.equal(insufficientContextTask.output.final_verdict, "ready_with_caveats");
+    assert.equal(insufficientContextTask.output.manual_review_required, true);
+
+    const synthesisFallbackTask = await createTask(a2aBaseUrl, {
+      ...TRAP_PATIENT_TASK_INPUT,
+      prompt: "What hidden risk changed the answer?",
+      patient_context: {
+        ...TRAP_PATIENT_TASK_INPUT.patient_context,
+        narrative_evidence_bundle: TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle,
+      },
+    });
+    assert.equal(synthesisFallbackTask.output.final_verdict, "not_ready");
 
     a2a.kill("SIGTERM");
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -126,15 +161,7 @@ const run = async (): Promise<void> => {
     });
 
     await waitForReady(`http://127.0.0.1:${a2aFallbackPort}/readyz`, 20000);
-    const unavailableResponse = await fetch(`http://127.0.0.1:${a2aFallbackPort}/tasks`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(TRAP_PATIENT_TASK_INPUT),
-    });
-    assert.equal(unavailableResponse.status, 201);
-    const unavailableTask = await unavailableResponse.json();
+    const unavailableTask = await createTask(`http://127.0.0.1:${a2aFallbackPort}`, TRAP_PATIENT_TASK_INPUT);
     assert.equal(unavailableTask.output.hidden_risk_run_status, "unavailable");
     assert.equal(unavailableTask.output.final_verdict, "ready_with_caveats");
     assert.equal(

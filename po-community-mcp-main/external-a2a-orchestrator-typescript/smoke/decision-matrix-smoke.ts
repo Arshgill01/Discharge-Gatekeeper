@@ -30,10 +30,24 @@ const run = (): void => {
   assert.equal(notReadyHiddenRisk.row, 8);
   assert.equal(notReadyHiddenRisk.finalVerdict, "not_ready");
 
+  const notReadyHiddenRiskHard = applyDecisionMatrix("not_ready", "hidden_risk_present", "not_ready");
+  assert.equal(notReadyHiddenRiskHard.row, 9);
+  assert.equal(notReadyHiddenRiskHard.finalVerdict, "not_ready");
+
   const inconclusive = applyDecisionMatrix("ready", "inconclusive", "uncertain");
   assert.equal(inconclusive.row, 10);
   assert.equal(inconclusive.finalVerdict, "ready_with_caveats");
   assert.equal(inconclusive.manualReviewRequired, true);
+
+  const caveatInconclusive = applyDecisionMatrix("ready_with_caveats", "inconclusive", "uncertain");
+  assert.equal(caveatInconclusive.row, 11);
+  assert.equal(caveatInconclusive.finalVerdict, "ready_with_caveats");
+  assert.equal(caveatInconclusive.manualReviewRequired, true);
+
+  const blockedInconclusive = applyDecisionMatrix("not_ready", "inconclusive", "uncertain");
+  assert.equal(blockedInconclusive.row, 12);
+  assert.equal(blockedInconclusive.finalVerdict, "not_ready");
+  assert.equal(blockedInconclusive.manualReviewRequired, true);
 
   console.log("PASS decision matrix smoke");
 };

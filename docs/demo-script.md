@@ -15,6 +15,12 @@ The demo story assumes:
 - the external A2A orchestrator fuses both into one answer
 - Prompt Opinion is the only user-facing surface
 
+Primary demo path:
+- Prompt Opinion -> `external A2A orchestrator` -> both MCPs -> one synchronous reconciled response
+
+Fallback demo path:
+- direct two-MCP invocation per [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
+
 ## Canonical patient
 Use the patient defined in `docs/phase0-trap-patient-spec.md`.
 
@@ -38,6 +44,7 @@ What this proves:
 - the system is not doing generic summarization
 - the answer can change when evidence outside the structured snapshot matters
 - Prompt 1 is stronger than the old structured-only story because it preserves baseline `ready` and still lands on final `not_ready`
+- A2A is functioning as the primary assembled-agent lane because the fused verdict appears in one response
 
 ## Prompt 2
 User prompt:
@@ -60,6 +67,9 @@ What this proves:
 - the hidden-risk signal is note-dependent (if contradiction notes are absent, escalation should not occur)
 
 This is the holy-shit moment.
+Judge should notice at this moment:
+- the contradiction is explicit (`structured baseline looked ready` vs `note evidence makes home discharge unsafe now`)
+- citations anchor the exact nursing/case-management sources that forced escalation
 
 ## Prompt 3
 User prompt:
@@ -75,9 +85,10 @@ What this proves:
 - the system moves from detection to execution
 - the contradiction is operationalized into a usable transition package
 - the fallback/non-A2A path can still deliver a complete transition package from the two MCPs
+- A2A path is demo-safe because transition actions are reconciled in the same payload as final disposition context
 
 ## Fallback/non-A2A operator path
-Use this direct two-MCP order when A2A is unavailable or intentionally disabled in Phase 2:
+Use this direct two-MCP order when A2A discovery or `/tasks` invocation fails:
 1. Prompt 1 via `Discharge Gatekeeper MCP` baseline + manual two-MCP verdict narration
 2. Prompt 2 via `Clinical Intelligence MCP` contradiction and citations
 3. Prompt 3 via `Discharge Gatekeeper MCP` transition package with cited escalation context narrated by operator

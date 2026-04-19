@@ -100,3 +100,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 3 requires inspectable orchestration behavior and safe failure handling instead of prompt-only reconciliation.
 - Affected files or lanes: external A2A runtime, phase-3 smoke checks, Prompt Opinion A2A registration path
 - Follow-up: keep `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` and external A2A smoke checks green before preferring A2A in demo.
+
+- Date: 2026-04-19
+- Decision: Lock Phase 3 A2A quality gates on an implementation-grounded expected-output matrix that requires trap-patient contradiction escalation, control-path bounded behavior, insufficient-context/manual-review behavior, agent-card discovery validity, and direct-MCP fallback continuity.
+- Why: Phase 3 quality/readiness must be measurable in the real runtime surfaces used for Prompt Opinion registration, not only in narrative docs.
+- Affected files or lanes: `docs/phase3-a2a-expected-output-matrix.md`, `docs/evals.md`, A2A smoke checks, Prompt Opinion runbook, demo/submission packaging
+- Follow-up: keep `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`, `... run smoke:decision-matrix`, `... run smoke:orchestrator`, and `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` green before recording/publish.
