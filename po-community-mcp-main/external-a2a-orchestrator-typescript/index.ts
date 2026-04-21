@@ -14,6 +14,14 @@ const startTimeMs = Date.now();
 const tasks = new Map<string, A2ATaskRecord>();
 const invoker = new McpToolInvoker(config);
 
+const derivePublicBaseUrl = (req: express.Request): string => {
+  const forwardedProto = req.headers["x-forwarded-proto"]?.toString();
+  const forwardedHost = req.headers["x-forwarded-host"]?.toString();
+  const protocol = forwardedProto || req.protocol || "http";
+  const host = forwardedHost || req.get("host") || `127.0.0.1:${config.port}`;
+  return `${protocol}://${host}`;
+};
+
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
@@ -190,11 +198,11 @@ app.get("/readyz", (_req, res) => {
 });
 
 app.get("/.well-known/agent-card.json", (_req, res) => {
-  res.status(200).json(buildAgentCard(config));
+  res.status(200).json(buildAgentCard(config, derivePublicBaseUrl(_req)));
 });
 
 app.get("/agent-card", (_req, res) => {
-  res.status(200).json(buildAgentCard(config));
+  res.status(200).json(buildAgentCard(config, derivePublicBaseUrl(_req)));
 });
 
 app.post("/tasks", async (req, res) => {
