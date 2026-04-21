@@ -38,6 +38,9 @@ const run = async (): Promise<void> => {
 
     const cardPayload = await (await fetch(`http://127.0.0.1:${port}/.well-known/agent-card.json`)).json();
     assert.equal(cardPayload.schema_version, "a2a_card_v1");
+    assert.equal(cardPayload.name, "external A2A orchestrator");
+    assert.equal(cardPayload.version, "1.0.0");
+    assert.deepEqual(cardPayload.supportedInterfaces, []);
     assert.equal(cardPayload.agent_identity.name, "external A2A orchestrator");
     assert.equal(cardPayload.agent_identity.system, "Care Transitions Command");
     assert.equal(cardPayload.capabilities.task_lifecycle.streaming, false);

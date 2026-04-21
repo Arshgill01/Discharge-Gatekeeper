@@ -62,7 +62,7 @@ Validated fallback behavior:
 - `output/prompt-opinion-e2e/timed-rehearsal-results.md` - Detailed timing results
 
 ## Open risks
-1. **A2A Registration Schema Strictness**: Prompt Opinion backend throws `422 Unprocessable Entity` when attempting to register the External A2A Agent due to `supportedInterfaces` enum mismatches. As defined in the Phase 0 Failure Plan, the demo must proceed using the direct-MCP fallback path.
+1. **A2A Registration Schema Strictness**: Prompt Opinion backend throws `422 Unprocessable Entity` when attempting to register the External A2A Agent. Commit `2f1e54e` added root-level fields (`supportedInterfaces`, `skills`, etc.) to address this, but registration remains blocked in the latest workspace attempt. As defined in the Phase 0 Failure Plan, the demo must proceed using the direct-MCP fallback path.
 2. **Tool Bindings**: The default workspace agents (e.g. General Chat Agent) do not automatically gain access to newly registered MCP tools. The operator must create a BYO Agent that explicitly includes these tools.
 
 ## Conclusion
