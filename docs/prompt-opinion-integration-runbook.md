@@ -48,11 +48,43 @@ Must expose:
 - one trap-patient bundle available for demo fallback
 - one operator note that maps each public URL to the correct identity
 - local two-MCP boot path prepared via [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
+- Node.js 20+ with dependencies installed via `npm ci` in:
+  - `po-community-mcp-main/typescript`
+  - `po-community-mcp-main/clinical-intelligence-typescript`
+  - `po-community-mcp-main/external-a2a-orchestrator-typescript`
 
 Before registration, verify for every component:
 - identity string matches the frozen name
 - health check passes
 - logs show requests clearly enough to debug discovery failures
+
+### Validated local boot order
+
+Run this from repo root before any Prompt Opinion registration work:
+
+1. `./po-community-mcp-main/scripts/run-full-system-validation.sh`
+2. `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
+3. `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+4. `./po-community-mcp-main/scripts/start-a2a-local.sh`
+5. `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+
+Local port map:
+- `Discharge Gatekeeper MCP`: `http://127.0.0.1:5055/mcp`
+- `Clinical Intelligence MCP`: `http://127.0.0.1:5056/mcp`
+- `external A2A orchestrator`: `http://127.0.0.1:5057`
+
+Local readiness map:
+- `http://127.0.0.1:5055/readyz`
+- `http://127.0.0.1:5056/readyz`
+- `http://127.0.0.1:5057/readyz`
+- `http://127.0.0.1:5057/.well-known/agent-card.json`
+
+Do not run the lifecycle wrappers in parallel:
+- `smoke-two-mcp-integration.sh`
+- `smoke-a2a-orchestration.sh`
+- `run-full-system-validation.sh`
+
+They start and stop shared local runtimes as part of their own cleanup.
 
 ## 3. Register `Discharge Gatekeeper MCP`
 
@@ -321,6 +353,26 @@ Keep these docs aligned with runtime smoke behavior:
 - `docs/evals.md`
 - `docs/submission-checklist.md`
 
+### Public URL / tunnel expectations
+
+Keep a one-to-one mapping between local ports and public URLs:
+- `5055` -> `Discharge Gatekeeper MCP`
+- `5056` -> `Clinical Intelligence MCP`
+- `5057` -> `external A2A orchestrator`
+
+If you tunnel locally, use one tunnel per surface and keep the hostnames in the corresponding allowlists before registration:
+
+```bash
+DISCHARGE_GATEKEEPER_ALLOWED_HOSTS="localhost,127.0.0.1,<gatekeeper-host>" \
+CLINICAL_INTELLIGENCE_ALLOWED_HOSTS="localhost,127.0.0.1,<clinical-host>" \
+./po-community-mcp-main/scripts/start-two-mcp-local.sh
+
+ALLOWED_HOSTS="localhost,127.0.0.1,<a2a-host>" \
+./po-community-mcp-main/scripts/start-a2a-local.sh
+```
+
+Use only the hostname portion of each public URL inside the allowlist entries.
+
 Phase 2 release note:
 - do not block phase completion on A2A readiness
 - block phase completion if two-MCP contradiction quality gates fail
@@ -335,3 +387,17 @@ Phase 2 (`two-MCP integration`) should assume the following from Phase 1:
 - operator can boot and stop both MCPs from one command surface:
   - `./po-community-mcp-main/scripts/start-two-mcp-local.sh`
   - `./po-community-mcp-main/scripts/stop-two-mcp-local.sh`
+
+## 11. Exact fallback actions
+
+When `external A2A orchestrator` is unavailable:
+1. stop using the A2A integration immediately
+2. keep both MCPs running on `5055` and `5056`
+3. confirm `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` passes
+4. continue in Prompt Opinion with the direct-MCP sequence from [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
+
+When `Clinical Intelligence MCP` is reachable but hidden-risk review is unavailable:
+1. treat the result as `clinical_intelligence_unavailable`
+2. keep the deterministic verdict, blockers, and next steps from `Discharge Gatekeeper MCP`
+3. surface hidden-risk review as unavailable or manual-review required
+4. do not narrate a hidden-risk escalation that the runtime did not return
