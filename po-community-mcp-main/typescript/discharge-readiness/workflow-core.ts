@@ -71,6 +71,31 @@ const OWNER_BY_CATEGORY: Record<BlockerCategory, string> = {
   administrative_and_documentation: "Primary team / Case management",
 };
 
+const TIMING_HINT_BY_PRIORITY: Record<BlockerPriority, string> = {
+  high: "Immediate discharge hold action:",
+  medium: "Before final discharge order:",
+  low: "Before packet finalization:",
+};
+
+const COMPLETION_SIGNAL_BY_CATEGORY: Record<BlockerCategory, string> = {
+  clinical_stability:
+    "Primary team documents exertion-aware stability and explicit discharge clearance.",
+  pending_diagnostics:
+    "All discharge-critical diagnostics are resulted or explicitly cleared in the chart.",
+  medication_reconciliation:
+    "A single reconciled discharge medication list is signed and reviewed with the patient.",
+  follow_up_and_referrals:
+    "Follow-up/referral dates, locations, and contacts are documented in the packet.",
+  patient_education:
+    "Teach-back completion and escalation instructions are documented as understood.",
+  home_support_and_services:
+    "Overnight caregiver/home-service plan is confirmed with named contact and timing.",
+  equipment_and_transport:
+    "Required equipment and transport have confirmed delivery/pickup windows.",
+  administrative_and_documentation:
+    "Required discharge summary, AVS, and sign-offs are finalized in the packet.",
+};
+
 const BLOCKER_ID_BY_CATEGORY: Record<BlockerCategory, string> = {
   clinical_stability: "blocker-clinical-stability",
   pending_diagnostics: "blocker-pending-diagnostics",
@@ -131,6 +156,8 @@ type WorkflowCoreResult = {
   summary: string;
   normalized_evidence: NormalizedEvidenceBundle;
 };
+
+const TOTAL_CANONICAL_CATEGORIES = Object.keys(CATEGORY_ORDER).length;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
@@ -210,6 +237,7 @@ const buildEvidenceTrace = (
 ): EvidenceTrace[] => {
   const evidenceToBlockers = new Map<string, string[]>();
   const blockerOrder = new Map<string, number>();
+  const blockerById = new Map(blockers.map((blocker) => [blocker.id, blocker]));
   blockers.forEach((blocker, index) => {
     blockerOrder.set(blocker.id, index);
   });
@@ -269,6 +297,16 @@ const buildEvidenceTrace = (
       : ambiguityIds.length > 0
       ? " Participates in ambiguous source evidence."
       : "";
+    const linkedCategories = [...new Set(uniqueSupports
+      .map((blockerId) => blockerById.get(blockerId)?.category)
+      .filter((category): category is BlockerCategory => Boolean(category)))];
+    linkedCategories.sort((a, b) => CATEGORY_ORDER[a] - CATEGORY_ORDER[b]);
+    const linkedCategorySummary = linkedCategories.length > 0
+      ? ` Linked domains: ${linkedCategories.map((category) => CATEGORY_LABEL[category]).join(", ")}.`
+      : "";
+    const signalStateSummary = signalStates.length > 0
+      ? ` Signal states: ${signalStates.join(", ")}.`
+      : "";
 
     trace.push({
       ...evidence,
@@ -277,7 +315,10 @@ const buildEvidenceTrace = (
       signal_states: signalStates,
       contradiction_ids: contradictionIds,
       ambiguity_ids: ambiguityIds,
-      source_summary: `${evidence.source_type} evidence from ${evidence.source_label}.${sourceSummarySuffix}`,
+      source_summary:
+        `${evidence.source_type} evidence from ${evidence.source_label}.` +
+        ` Linked to ${uniqueSupports.length} blocker(s) and ${supportsNextSteps.length} next step(s).` +
+        `${sourceSummarySuffix}${signalStateSummary}${linkedCategorySummary}`,
     });
   }
 
@@ -295,17 +336,43 @@ const buildEvidenceTrace = (
   });
 };
 
+const buildTransitionAction = (blocker: DischargeBlocker): string => {
+  return `${TIMING_HINT_BY_PRIORITY[blocker.priority]} ${blocker.actionability} ` +
+    `Completion signal: ${COMPLETION_SIGNAL_BY_CATEGORY[blocker.category]}`;
+};
+
 const buildTransitionTasks = (blockers: DischargeBlocker[]): TransitionTask[] => {
   return sortedByPriority(blockers).map((blocker, index) => ({
     id: `step-${index + 1}`,
     priority: blocker.priority,
-    action: blocker.actionability,
+    action: buildTransitionAction(blocker),
     owner: OWNER_BY_CATEGORY[blocker.category],
     linked_blockers: [blocker.id],
     linked_evidence: blocker.evidence,
     blocker_trust_state: blocker.provenance.trust_state,
     trace_summary: blocker.provenance.summary,
   }));
+};
+
+const summarizeStructuredPosture = (blockers: DischargeBlocker[]): string => {
+  const unresolvedCategories = new Set(blockers.map((blocker) => blocker.category));
+  const clearDomainCount = TOTAL_CANONICAL_CATEGORIES - unresolvedCategories.size;
+  return `Structured baseline posture: ${clearDomainCount}/${TOTAL_CANONICAL_CATEGORIES} discharge domains currently clear.`;
+};
+
+const summarizeCategoryLabels = (
+  blockers: DischargeBlocker[],
+  maxCategories: number,
+): string => {
+  const orderedCategories = [...new Set(blockers.map((blocker) => blocker.category))]
+    .sort((a, b) => CATEGORY_ORDER[a] - CATEGORY_ORDER[b])
+    .slice(0, maxCategories);
+
+  if (orderedCategories.length === 0) {
+    return "none";
+  }
+
+  return orderedCategories.map((category) => CATEGORY_LABEL[category]).join(", ");
 };
 
 const buildSummary = (
@@ -317,9 +384,10 @@ const buildSummary = (
     (blocker) => blocker.priority === "medium",
   );
   const lowPriorityBlockers = blockers.filter((blocker) => blocker.priority === "low");
+  const structuredPostureSummary = summarizeStructuredPosture(blockers);
 
   if (verdict === "ready") {
-    return "Verdict: READY. No active discharge blockers were detected in this assistive readiness review; final disposition remains with the clinical team.";
+    return `Verdict: READY. ${structuredPostureSummary} No active discharge blockers were detected in this assistive readiness review; continue standard transition checks with final clinician sign-off.`;
   }
 
   const highCount = highPriorityBlockers.length;
@@ -327,16 +395,12 @@ const buildSummary = (
   const lowCount = lowPriorityBlockers.length;
 
   if (verdict === "not_ready") {
-    const topHighCategories = highPriorityBlockers
-      .map((blocker) => CATEGORY_LABEL[blocker.category])
-      .join(", ");
-    return `Verdict: NOT READY. ${blockers.length} active blockers detected (${highCount} high, ${mediumCount} medium, ${lowCount} low). Highest-priority blockers: ${topHighCategories}. Resolve high-priority blockers and confirm readiness with clinician review before discharge.`;
+    const topHighCategories = summarizeCategoryLabels(highPriorityBlockers, 3);
+    return `Verdict: NOT READY. ${structuredPostureSummary} ${blockers.length} active blockers detected (${highCount} high, ${mediumCount} medium, ${lowCount} low). Highest-priority blocker domains: ${topHighCategories}. Hold discharge and complete high-priority actions with care team clinician re-assessment.`;
   }
 
-  const caveatCategories = mediumPriorityBlockers
-    .map((blocker) => CATEGORY_LABEL[blocker.category])
-    .join(", ");
-  return `Verdict: READY WITH CAVEATS. ${blockers.length} blockers remain (${highCount} high, ${mediumCount} medium, ${lowCount} low), primarily in: ${caveatCategories}. Discharge should proceed only after caveats are explicitly addressed and documented by the care team.`;
+  const caveatCategories = summarizeCategoryLabels(mediumPriorityBlockers, 4);
+  return `Verdict: READY WITH CAVEATS. ${structuredPostureSummary} ${blockers.length} blockers remain (${highCount} high, ${mediumCount} medium, ${lowCount} low), primarily in: ${caveatCategories}. Discharge can proceed only after caveat closure is documented by the care team.`;
 };
 
 const formatGaps = (issues: string[], fallback: string): string => {

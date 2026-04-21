@@ -186,6 +186,10 @@ const assertTransitionLinkage = (
     assert.ok(step.owner.trim().length > 0, `${label}: step ${step.id} missing owner.`);
     assert.ok(step.action.trim().length > 0, `${label}: step ${step.id} missing action.`);
     assert.ok(
+      step.action.includes("Completion signal:"),
+      `${label}: step ${step.id} should include explicit completion signal text.`,
+    );
+    assert.ok(
       step.trace_summary.trim().length > 0,
       `${label}: step ${step.id} missing trace summary.`,
     );
@@ -318,6 +322,11 @@ const runCase = (
   const readiness = assessDischargeReadinessV1(input);
   const blockers = extractDischargeBlockers(input);
   const transition = generateTransitionPlan(input);
+
+  assert.ok(
+    readiness.summary.includes("Structured baseline posture:"),
+    `${label}/readiness: summary should expose structured baseline posture visibility.`,
+  );
 
   assertKeys(readiness as unknown as Record<string, unknown>, READINESS_RESPONSE_KEYS, `${label}/readiness`);
   assertKeys(blockers as unknown as Record<string, unknown>, BLOCKER_EXTRACTION_KEYS, `${label}/blockers`);

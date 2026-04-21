@@ -38,6 +38,10 @@ const assertContractShape = (
     `${label}: top-level response keys drifted.`,
   );
   assert.match(response.summary, /^Verdict: /, `${label}: summary should start with verdict.`);
+  assert.ok(
+    response.summary.includes("Structured baseline posture:"),
+    `${label}: summary should expose deterministic structured posture visibility.`,
+  );
 };
 
 const assertCanonicalCategories = (

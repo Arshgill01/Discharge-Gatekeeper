@@ -88,6 +88,10 @@ const assertCanonicalResponseShape = (
     V1_VERDICTS.includes(response.verdict),
     `${caseId}: verdict '${response.verdict}' is outside canonical verdict taxonomy.`,
   );
+  assert.ok(
+    response.summary.includes("Structured baseline posture:"),
+    `${caseId}: summary must keep deterministic structured posture visibility.`,
+  );
 
   const allowedCategories = new Set(V1_BLOCKER_CATEGORIES);
   for (const blocker of response.blockers) {
