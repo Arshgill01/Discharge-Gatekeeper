@@ -3,6 +3,13 @@ import { RuntimeConfig } from "./runtime-config";
 export const buildAgentCard = (config: RuntimeConfig) => {
   return {
     schema_version: "a2a_card_v1",
+    name: config.agentName,
+    description: "Care Transitions Command - Synchronous external orchestrator",
+    version: config.agentVersion,
+    supportedInterfaces: [],
+    skills: [],
+    defaultInputModes: ["text"],
+    defaultOutputModes: ["text"],
     agent_identity: {
       name: config.agentName,
       version: config.agentVersion,
