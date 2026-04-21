@@ -3,6 +3,8 @@
 This runbook is the operator scaffold for the locked Phase 0 architecture:
 `Discharge Gatekeeper MCP` + `Clinical Intelligence MCP` + `external A2A orchestrator`.
 
+If you want the exact manual verification order for re-checking what is already configured in your Prompt Opinion account, use [`docs/prompt-opinion-complete-verification-guide.md`](prompt-opinion-complete-verification-guide.md) first.
+
 Use this document to separate what must be registered, what may be published, and what the demo should do when a layer fails.
 
 Phase 4 operating stance:
