@@ -42,16 +42,20 @@ Phase 1 expected-output matrix:
 - enforcement asset: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/expected-output-matrix.ts`
 - trap patient gate: must cite/reference the canonical contradiction nursing note and case-management reinforcement note
 - no-risk control gate: must stay `no_hidden_risk` with explicit bounded summary and no forced escalation
+- ablation gate: removing Maria contradiction notes must keep `no_hidden_risk`
+- duplicate-signal gate: deterministic duplicates must be suppressed with no new hidden-risk findings
+- alternative hidden-risk gate: isolated home-support contradiction must still escalate with citation traceability
 - insufficient-context gate: must return `status=insufficient_context` with no findings and no citations
 - malformed/unparseable model-output gate: must fail closed to structured `status=error` without fabricated hidden-risk findings
 - prompt drift gate: runtime checks verify required system-prompt guardrails are still present
 
-Suggested fixture lanes:
-- `trap_hidden_home_support_gap`
-- `trap_medication_contradiction_in_note`
-- `trap_note_only_fall_risk`
-- `trap_no_additional_hidden_risk`
-- `trap_insufficient_narrative_context`
+Canonical fixture lanes:
+- `maria_trap_primary`
+- `maria_trap_ablation`
+- `clean_control_no_hidden_risk`
+- `duplicate_signal_control`
+- `inconclusive_missing_narrative`
+- `alternative_home_support_hidden_risk`
 
 ### Phase 2: Two-MCP integration
 Purpose:
@@ -78,6 +82,8 @@ Required assertions:
 - the reconciled output is still parseable without free-text repair
 - trap contradiction is measurable and note-dependent (ablation of contradiction notes prevents escalation)
 - clean control case remains bounded with explicit `no_hidden_risk`
+- duplicate-signal control must preserve deterministic blockers without hidden-risk duplication
+- alternative hidden-risk lane must escalate with bounded category scope and citation anchors
 - Prompt 1/Prompt 2 fallback story is stronger than structured-only output:
   - Prompt 1 exposes baseline structured `ready` posture and final escalated verdict
   - Prompt 2 exposes contradiction categories and citation-backed evidence
@@ -90,7 +96,7 @@ Current Phase 2 command mapping:
 Current canonical Phase 2 paths (post-integration):
 - structured MCP runtime entrypoint: `po-community-mcp-main/typescript/index.ts`
 - hidden-risk MCP runtime entrypoint: `po-community-mcp-main/clinical-intelligence-typescript/index.ts`
-- trap/control fixture source: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
+- scenario-pack fixture source: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
 - phase-2 two-MCP smoke assertions: `po-community-mcp-main/clinical-intelligence-typescript/smoke/two-mcp-integration-smoke.ts`
 - phase-2 operator fallback runbook: `docs/phase2-two-mcp-operator-runbook.md`
 
@@ -116,7 +122,9 @@ Required assertions:
 - trap-patient Prompt 1 path proves deterministic baseline visibility plus final escalation (`ready` -> `not_ready`) in one reconciled payload
 - contradiction-aware Prompt 2 path includes note-backed contradiction summary plus citation anchors
 - transition-package Prompt 3 path includes merged deterministic + hidden-risk actionability
-- clean control path remains bounded (`no_hidden_risk`, no forced escalation)
+- clean and ablation control paths remain bounded (`no_hidden_risk`, no forced escalation)
+- duplicate-signal path suppresses repeated deterministic blockers
+- alternative hidden-risk path demonstrates non-trap escalation with bounded category scope
 - insufficient-context path remains bounded (`inconclusive`/manual review, no fabricated hidden-risk finding)
 - agent card discovery surface is valid for planned registration path (identity, no-streaming lifecycle, dependency list, task endpoints)
 - fallback to the direct-MCP demo path is documented and testable
@@ -148,16 +156,17 @@ Source-of-truth expected-output matrix:
 
 Required assertions:
 - trap patient path keeps deterministic baseline visibility plus final `not_ready` escalation
-- control path stays calm (`no_hidden_risk`, no fabricated escalation)
+- control, ablation, and duplicate-signal paths stay calm (`no_hidden_risk`, no fabricated escalation)
 - inconclusive/insufficient-context path stays bounded and manual-review explicit
+- alternative hidden-risk path escalates with bounded category scope and explicit citation anchors
 - direct-MCP fallback path remains runnable when A2A is unavailable
 - Prompt 2 remains contradiction-and-evidence focused and is not diluted by Prompt 3 action-list noise
 
 Canonical current path map (post-merge):
-- trap/control hidden-risk fixtures: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
-- trap/control A2A task fixtures: `po-community-mcp-main/external-a2a-orchestrator-typescript/orchestrator/fixtures.ts`
-- trap/control/inconclusive/fallback A2A smoke: `po-community-mcp-main/external-a2a-orchestrator-typescript/smoke/orchestrator-smoke.ts`
-- direct-MCP trap/control/inconclusive/fallback smoke: `po-community-mcp-main/clinical-intelligence-typescript/smoke/two-mcp-integration-smoke.ts`
+- scenario-pack hidden-risk fixtures: `po-community-mcp-main/clinical-intelligence-typescript/clinical-intelligence/fixtures.ts`
+- scenario-pack A2A task fixtures: `po-community-mcp-main/external-a2a-orchestrator-typescript/orchestrator/fixtures.ts`
+- trap/control/ablation/duplicate/alternative/inconclusive/fallback A2A smoke: `po-community-mcp-main/external-a2a-orchestrator-typescript/smoke/orchestrator-smoke.ts`
+- direct-MCP trap/control/ablation/duplicate/alternative/inconclusive/fallback smoke: `po-community-mcp-main/clinical-intelligence-typescript/smoke/two-mcp-integration-smoke.ts`
 - two-MCP end-to-end smoke wrapper: `po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
 - A2A end-to-end smoke wrapper: `po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
 

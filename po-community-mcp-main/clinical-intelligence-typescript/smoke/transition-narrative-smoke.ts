@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 import {
+  ALTERNATIVE_HIDDEN_RISK_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
 import {
+  ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
@@ -44,6 +46,27 @@ const assertTrapNarrative = async (): Promise<void> => {
   }
 };
 
+const assertAlternativeNarrative = async (): Promise<void> => {
+  const payload = await synthesizeTransitionNarrative(ALTERNATIVE_HIDDEN_RISK_INPUT);
+  assert.equal(payload.status, "ok");
+  assert.equal(
+    payload.proposed_disposition,
+    ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
+  assert.ok(
+    payload.narrative.includes("Deterministic discharge posture was ready"),
+    "Alternative hidden-risk narrative must preserve baseline deterministic context.",
+  );
+  assert.ok(
+    payload.recommended_actions.every((action) => action.linked_categories.includes("home_support_and_services")),
+    "Alternative hidden-risk actions should stay tied to home-support risk.",
+  );
+  assert.ok(
+    payload.citations.some((citation) => citation.source_label.includes("Case Management Escalation Note 2026-04-18 21:05")),
+    "Alternative hidden-risk narrative must cite the case-management escalation note.",
+  );
+};
+
 const assertControlNarrative = async (): Promise<void> => {
   const payload = await synthesizeTransitionNarrative(NO_RISK_CONTROL_INPUT);
   assert.equal(payload.status, "ok");
@@ -67,6 +90,7 @@ const assertControlNarrative = async (): Promise<void> => {
 
 const main = async (): Promise<void> => {
   await assertTrapNarrative();
+  await assertAlternativeNarrative();
   await assertControlNarrative();
   console.log("SMOKE PASS: transition narrative synthesis");
 };
