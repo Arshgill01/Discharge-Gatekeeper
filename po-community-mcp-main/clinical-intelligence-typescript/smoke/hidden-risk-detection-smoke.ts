@@ -3,11 +3,19 @@ import { HiddenRiskLlmClient } from "../llm/client";
 import { HIDDEN_RISK_SYSTEM_PROMPT } from "../clinical-intelligence/prompt-contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
 import {
+  ALTERNATIVE_HIDDEN_RISK_INPUT,
+  DUPLICATE_SIGNAL_CONTROL_INPUT,
+  INCONCLUSIVE_CONTEXT_INPUT,
+  MARIA_ALVAREZ_ABLATION_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
 import {
+  ABLATION_HIDDEN_RISK_EXPECTED_MATRIX,
+  ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX,
   CONTROL_HIDDEN_RISK_EXPECTED_MATRIX,
+  DUPLICATE_SIGNAL_EXPECTED_MATRIX,
+  INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX,
   TRAP_HIDDEN_RISK_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
@@ -41,12 +49,15 @@ const assertTrapPatientBehavior = async (): Promise<void> => {
   const payload = result.payload;
 
   assert.equal(payload.contract_version, "phase0_hidden_risk_v1");
-  assert.equal(payload.status, "ok");
+  assert.equal(payload.status, TRAP_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
   assert.equal(
     payload.hidden_risk_summary.result === "hidden_risk_present",
     TRAP_HIDDEN_RISK_EXPECTED_MATRIX.should_find_hidden_risk,
   );
-  assert.equal(payload.hidden_risk_summary.overall_disposition_impact, "not_ready");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    TRAP_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
   assert.equal(payload.hidden_risk_findings.length > 0, true);
 
   const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
@@ -77,7 +88,7 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
   const result = await surfaceHiddenRisks(NO_RISK_CONTROL_INPUT);
   const payload = result.payload;
 
-  assert.equal(payload.status, "ok");
+  assert.equal(payload.status, CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
   assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
   assert.equal(
     payload.hidden_risk_summary.overall_disposition_impact,
@@ -99,15 +110,71 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
   );
 };
 
-const assertInsufficientContextBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks({
-    ...NO_RISK_CONTROL_INPUT,
-    narrative_evidence_bundle: [],
-  });
+const assertAblationBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(MARIA_ALVAREZ_ABLATION_INPUT);
   const payload = result.payload;
 
-  assert.equal(payload.status, "insufficient_context");
+  assert.equal(payload.status, ABLATION_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    ABLATION_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.citations.length, 0);
+};
+
+const assertDuplicateSignalSuppressionBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(DUPLICATE_SIGNAL_CONTROL_INPUT);
+  const payload = result.payload;
+
+  assert.equal(payload.status, DUPLICATE_SIGNAL_EXPECTED_MATRIX.expected_status);
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.citations.length, 0);
+  assert.ok(
+    payload.review_metadata.duplicate_findings_suppressed >=
+      DUPLICATE_SIGNAL_EXPECTED_MATRIX.minimum_duplicate_findings_suppressed,
+    "Duplicate-signal control must suppress at least one finding that repeats deterministic blockers.",
+  );
+};
+
+const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(ALTERNATIVE_HIDDEN_RISK_INPUT);
+  const payload = result.payload;
+
+  assert.equal(payload.status, ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
+  assert.equal(payload.hidden_risk_summary.result, "hidden_risk_present");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
+
+  const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
+  assert.equal(categories.size, 1);
+  for (const category of ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.expected_categories) {
+    assert.ok(categories.has(category), `Alternative hidden-risk case missing category ${category}.`);
+  }
+
+  const sourceLabels = payload.citations.map((citation) => citation.source_label);
+  for (const expectedSource of ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.required_citation_source_labels) {
+    assert.ok(
+      sourceLabels.some((label) => label.includes(expectedSource)),
+      `Alternative hidden-risk case must cite ${expectedSource}.`,
+    );
+  }
+};
+
+const assertInconclusiveContextBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(INCONCLUSIVE_CONTEXT_INPUT);
+  const payload = result.payload;
+
+  assert.equal(payload.status, INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX.expected_status);
   assert.equal(payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX.expected_disposition_impact,
+  );
   assert.equal(payload.hidden_risk_summary.manual_review_required, true);
   assert.equal(payload.hidden_risk_findings.length, 0);
   assert.equal(payload.citations.length, 0);
@@ -184,12 +251,150 @@ const assertCitationFailuresAreSuppressed = async (): Promise<void> => {
   assert.equal(payload.review_metadata.weak_findings_suppressed > 0, true);
 };
 
+const assertDuplicateFindingsAreSuppressedAgainstDeterministicBlockers = async (): Promise<void> => {
+  const duplicateClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: JSON.stringify({
+        contract_version: "phase0_hidden_risk_v1",
+        status: "ok",
+        patient_id: "phase0-test",
+        encounter_id: "enc-phase0-test",
+        baseline_verdict: "ready",
+        hidden_risk_summary: {
+          result: "hidden_risk_present",
+          overall_disposition_impact: "not_ready",
+          confidence: "medium",
+          summary: "Duplicate should be filtered.",
+          manual_review_required: false,
+          false_positive_guardrail: "test",
+        },
+        hidden_risk_findings: [
+          {
+            finding_id: "hr_dup",
+            title: "Overnight oxygen setup still unconfirmed",
+            category: "equipment_and_transport",
+            disposition_impact: "not_ready",
+            confidence: "medium",
+            is_duplicate_of_blocker_id: "det_blocker_001",
+            rationale: "Home oxygen concentrator unavailable tonight and logistics incomplete.",
+            recommended_orchestrator_action: "add_blocker",
+            citation_ids: ["cit_001"],
+          },
+        ],
+        citations: [
+          {
+            citation_id: "cit_001",
+            source_type: "case_management_note",
+            source_label: "Case Management Note",
+            locator: "line 1",
+            excerpt: "Home oxygen concentrator unavailable tonight.",
+          },
+        ],
+        review_metadata: {
+          narrative_sources_reviewed: 1,
+          duplicate_findings_suppressed: 0,
+          weak_findings_suppressed: 0,
+        },
+      }),
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(
+    {
+      ...PHASE0_TRAP_PATIENT_INPUT,
+      deterministic_snapshot: {
+        ...PHASE0_TRAP_PATIENT_INPUT.deterministic_snapshot,
+        deterministic_blockers: [
+          {
+            blocker_id: "det_blocker_001",
+            category: "equipment_and_transport",
+            description: "Home oxygen concentrator unavailable tonight; discharge transport not safe.",
+            severity: "high",
+          },
+        ],
+      },
+    },
+    {
+      llmClientOverride: duplicateClient,
+    },
+  );
+
+  const payload = result.payload;
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.review_metadata.duplicate_findings_suppressed > 0, true);
+};
+
+const assertLowConfidenceEscalationIsDowngradedToInconclusive = async (): Promise<void> => {
+  const lowConfidenceClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: JSON.stringify({
+        contract_version: "phase0_hidden_risk_v1",
+        status: "ok",
+        patient_id: "phase0-test",
+        encounter_id: "enc-phase0-test",
+        baseline_verdict: "ready",
+        hidden_risk_summary: {
+          result: "hidden_risk_present",
+          overall_disposition_impact: "not_ready",
+          confidence: "low",
+          summary: "Single weak source claimed escalation.",
+          manual_review_required: false,
+          false_positive_guardrail: "test",
+        },
+        hidden_risk_findings: [
+          {
+            finding_id: "hr_weak",
+            title: "Possible overnight risk",
+            category: "home_support_and_services",
+            disposition_impact: "not_ready",
+            confidence: "low",
+            is_duplicate_of_blocker_id: null,
+            rationale: "Support status unclear.",
+            recommended_orchestrator_action: "add_blocker",
+            citation_ids: ["cit_weak_001"],
+          },
+        ],
+        citations: [
+          {
+            citation_id: "cit_weak_001",
+            source_type: "case_management_note",
+            source_label: "Case Management Note",
+            locator: "line 2",
+            excerpt: "Overnight support status remains uncertain and requires follow-up.",
+          },
+        ],
+        review_metadata: {
+          narrative_sources_reviewed: 1,
+          duplicate_findings_suppressed: 0,
+          weak_findings_suppressed: 0,
+        },
+      }),
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+    llmClientOverride: lowConfidenceClient,
+  });
+  const payload = result.payload;
+  assert.equal(payload.status, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.manual_review_required, true);
+  assert.equal(payload.hidden_risk_findings.length, 1);
+  assert.equal(payload.hidden_risk_findings[0]?.disposition_impact, "uncertain");
+  assert.equal(payload.hidden_risk_findings[0]?.recommended_orchestrator_action, "request_manual_review");
+};
+
 const assertPromptContractGuardrailsPresent = (): void => {
   const requiredPhrases = [
     "Review only the evidence provided",
     "Suppress duplicates",
     "uncited claims",
     "Return only the JSON schema",
+    "contradiction across multiple notes",
   ];
   for (const phrase of requiredPhrases) {
     assert.ok(
@@ -204,9 +409,14 @@ const main = async (): Promise<void> => {
   await assertTrapPatientBehavior();
   await assertFindingCitationQuality();
   await assertControlNoRiskBehavior();
-  await assertInsufficientContextBehavior();
+  await assertAblationBehavior();
+  await assertDuplicateSignalSuppressionBehavior();
+  await assertAlternativeHiddenRiskBehavior();
+  await assertInconclusiveContextBehavior();
   await assertMalformedModelOutputBecomesStructuredError();
   await assertCitationFailuresAreSuppressed();
+  await assertDuplicateFindingsAreSuppressedAgainstDeterministicBlockers();
+  await assertLowConfidenceEscalationIsDowngradedToInconclusive();
   console.log("SMOKE PASS: hidden-risk detection");
 };
 

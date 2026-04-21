@@ -86,17 +86,37 @@ const mapDisposition = (
   if (hiddenRiskResult === "hidden_risk_present" && dispositionImpact === "not_ready") {
     return "not_ready";
   }
+  if (hiddenRiskResult === "hidden_risk_present" && dispositionImpact === "caveat") {
+    return baselineVerdict === "ready" ? "ready_with_caveats" : baselineVerdict;
+  }
+  if (hiddenRiskResult === "hidden_risk_present" && dispositionImpact === "uncertain") {
+    return baselineVerdict === "ready" ? "ready_with_caveats" : baselineVerdict;
+  }
   if (hiddenRiskResult === "inconclusive") {
     return baselineVerdict === "ready" ? "ready_with_caveats" : baselineVerdict;
   }
   return baselineVerdict;
 };
 
-const joinCitationRefs = (citationIds: string[]): string => {
-  if (citationIds.length === 0) {
-    return "no note citation";
+const rankPriority = (priority: "high" | "medium" | "low"): number => {
+  if (priority === "high") {
+    return 3;
   }
-  return citationIds.join(", ");
+  if (priority === "medium") {
+    return 2;
+  }
+  return 1;
+};
+
+const getCitationLabel = (
+  citationId: string,
+  citations: TransitionNarrativeOutput["citations"],
+): string => {
+  const citation = citations.find((item) => item.citation_id === citationId);
+  if (!citation) {
+    return citationId;
+  }
+  return `${citation.source_label} [${citation.citation_id}]`;
 };
 
 export const synthesizeTransitionNarrative = async (
@@ -120,13 +140,18 @@ export const synthesizeTransitionNarrative = async (
 
   const keyPoints: string[] = [];
   keyPoints.push(`Baseline deterministic verdict: ${input.deterministic_snapshot.baseline_verdict}.`);
+  keyPoints.push(`Deterministic summary: ${input.deterministic_snapshot.deterministic_summary}`);
   keyPoints.push(
-    `Hidden-risk review status: ${hiddenRiskOutput.status}; result: ${hiddenRiskOutput.hidden_risk_summary.result}.`,
+    `Hidden-risk review status: ${hiddenRiskOutput.status}; result: ${hiddenRiskOutput.hidden_risk_summary.result}; impact: ${hiddenRiskOutput.hidden_risk_summary.overall_disposition_impact}.`,
   );
+  keyPoints.push(`Hidden-risk summary: ${hiddenRiskOutput.hidden_risk_summary.summary}`);
 
   for (const finding of hiddenRiskOutput.hidden_risk_findings) {
+    const evidenceRefs = finding.citation_ids
+      .map((citationId) => getCitationLabel(citationId, hiddenRiskOutput.citations))
+      .join("; ");
     keyPoints.push(
-      `${finding.category}: ${finding.title} (${joinCitationRefs(finding.citation_ids)}).`,
+      `${finding.category}: ${finding.title} (impact=${finding.disposition_impact}, confidence=${finding.confidence}, evidence=${evidenceRefs || "none"}).`,
     );
   }
 
@@ -134,16 +159,55 @@ export const synthesizeTransitionNarrative = async (
     keyPoints.push("No additional discharge-changing hidden risk was surfaced from notes.");
   }
 
-  const recommendedActions: TransitionNarrativeOutput["recommended_actions"] = [];
+  const actionAccumulator = new Map<string, TransitionNarrativeOutput["recommended_actions"][number]>();
   for (const finding of hiddenRiskOutput.hidden_risk_findings) {
     const template = actionTemplateByCategory[finding.category];
-    recommendedActions.push({
-      action_id: `action_${String(recommendedActions.length + 1).padStart(3, "0")}`,
-      priority: template.priority,
+    const key = `hidden_${finding.category}`;
+    const existing = actionAccumulator.get(key);
+    const nextAction: TransitionNarrativeOutput["recommended_actions"][number] = {
+      action_id: key,
+      priority: existing
+        ? rankPriority(existing.priority) >= rankPriority(template.priority)
+          ? existing.priority
+          : template.priority
+        : template.priority,
       action: template.action,
       linked_categories: [finding.category],
-      citation_ids: finding.citation_ids,
+      citation_ids: [...new Set([...(existing?.citation_ids || []), ...finding.citation_ids])],
+    };
+    actionAccumulator.set(key, nextAction);
+  }
+
+  const recommendedActions: TransitionNarrativeOutput["recommended_actions"] = [
+    ...actionAccumulator.values(),
+  ];
+
+  if (hiddenRiskOutput.status === "inconclusive") {
+    recommendedActions.push({
+      action_id: "action_manual_review",
+      priority: "high",
+      action:
+        "Escalate to manual clinician review to resolve conflicting or low-confidence narrative evidence before discharge.",
+      linked_categories: [
+        ...new Set(hiddenRiskOutput.hidden_risk_findings.map((finding) => finding.category)),
+      ],
+      citation_ids: hiddenRiskOutput.citations.slice(0, 3).map((citation) => citation.citation_id),
     });
+  }
+
+  if (hiddenRiskOutput.hidden_risk_findings.length > 0) {
+    for (const [index, nextStep] of input.deterministic_snapshot.deterministic_next_steps.entries()) {
+      recommendedActions.push({
+        action_id: `action_det_${String(index + 1).padStart(3, "0")}`,
+        priority: "medium",
+        action: `Deterministic transition safeguard: ${nextStep}`,
+        linked_categories: [],
+        citation_ids: [],
+      });
+      if (index >= 1) {
+        break;
+      }
+    }
   }
 
   if (recommendedActions.length === 0) {
@@ -160,8 +224,12 @@ export const synthesizeTransitionNarrative = async (
 
   const primaryFinding = hiddenRiskOutput.hidden_risk_findings[0];
   const narrative = primaryFinding
-    ? `Deterministic discharge posture was ${input.deterministic_snapshot.baseline_verdict}, but note evidence introduced a discharge-critical contradiction: ${primaryFinding.rationale} (citations: ${joinCitationRefs(primaryFinding.citation_ids)}). Pending clinician reassessment, the transition posture should be treated as ${proposedDisposition}.`
-    : `Deterministic discharge posture is ${input.deterministic_snapshot.baseline_verdict}. Narrative review did not surface additional discharge-changing hidden risk. Continue with deterministic transition safeguards and clinician sign-off before final disposition.`;
+    ? `Deterministic discharge posture was ${input.deterministic_snapshot.baseline_verdict}. Narrative review identified contradiction-backed hidden risk: ${hiddenRiskOutput.hidden_risk_summary.summary} Primary evidence: ${primaryFinding.citation_ids
+        .map((citationId) => getCitationLabel(citationId, hiddenRiskOutput.citations))
+        .join("; ")}. Pending clinician reassessment, transition posture should be treated as ${proposedDisposition}.`
+    : hiddenRiskOutput.status === "inconclusive"
+      ? `Deterministic discharge posture is ${input.deterministic_snapshot.baseline_verdict}, but hidden-risk review was inconclusive. Conflicting or low-confidence narrative evidence requires manual clinician review before final disposition.`
+      : `Deterministic discharge posture is ${input.deterministic_snapshot.baseline_verdict}. Narrative review did not surface additional discharge-changing hidden risk. Continue with deterministic transition safeguards and clinician sign-off before final disposition.`;
 
   const output: TransitionNarrativeOutput = {
     contract_version: "phase0_transition_narrative_v1",
@@ -172,7 +240,10 @@ export const synthesizeTransitionNarrative = async (
     proposed_disposition: proposedDisposition,
     narrative,
     key_points: keyPoints,
-    recommended_actions: recommendedActions,
+    recommended_actions: recommendedActions.map((action, index) => ({
+      ...action,
+      action_id: `action_${String(index + 1).padStart(3, "0")}`,
+    })),
     citations: hiddenRiskOutput.citations,
     manual_review_required: hiddenRiskOutput.hidden_risk_summary.manual_review_required,
     safety_boundary:

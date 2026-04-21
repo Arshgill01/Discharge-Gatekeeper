@@ -52,6 +52,10 @@ const run = async (): Promise<void> => {
     assert.equal(cardPayload.skills.length > 0, true);
     assert.equal(cardPayload.agent_identity.name, "external A2A orchestrator");
     assert.equal(cardPayload.agent_identity.system, "Care Transitions Command");
+    assert.equal(cardPayload.endpoints.readyz, `http://127.0.0.1:${port}/readyz`);
+    assert.equal(cardPayload.endpoints.create_task, `http://127.0.0.1:${port}/tasks`);
+    assert.equal(cardPayload.task_surface.mode, "synchronous");
+    assert.equal(cardPayload.task_surface.supports_streaming, false);
     assert.equal(cardPayload.capabilities.task_lifecycle.streaming, false);
     assert.equal(cardPayload.capabilities.task_lifecycle.mode, "synchronous");
     assert.equal(cardPayload.capabilities.task_lifecycle.endpoints.create_task, "/tasks");

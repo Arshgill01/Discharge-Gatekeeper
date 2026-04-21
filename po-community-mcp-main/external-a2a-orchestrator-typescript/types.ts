@@ -31,6 +31,27 @@ export type A2ATaskInput = {
   };
 };
 
+export type DownstreamCallStatus = "ok" | "error" | "skipped";
+
+export type DownstreamCallDiagnostic = {
+  component: "discharge_gatekeeper_mcp" | "clinical_intelligence_mcp";
+  tool_name: string;
+  mcp_url: string;
+  status: DownstreamCallStatus;
+  started_at: string;
+  duration_ms: number;
+  error_message?: string;
+};
+
+export type TaskRuntimeDiagnostics = {
+  request_id: string;
+  prompt_mode: "prompt_1" | "prompt_2" | "prompt_3";
+  task_duration_ms: number;
+  hidden_risk_invoked: boolean;
+  fallbacks_applied: string[];
+  downstream_calls: DownstreamCallDiagnostic[];
+};
+
 export type DeterministicResponse = {
   verdict: CanonicalVerdict;
   blockers: Array<{
@@ -131,16 +152,34 @@ export type ReconciliationResult = {
   };
   contradiction_summary: string;
   hidden_risk_unavailable_reason?: string;
+  runtime_diagnostics?: TaskRuntimeDiagnostics;
 };
 
 export type A2ATaskStatus = "queued" | "running" | "completed" | "failed";
 
+export type A2ATaskErrorCode =
+  | "invalid_task_input"
+  | "task_timeout"
+  | "deterministic_mcp_failure"
+  | "clinical_intelligence_mcp_failure"
+  | "orchestrator_runtime_error";
+
+export type A2ATaskError = {
+  code: A2ATaskErrorCode;
+  message: string;
+  retryable: boolean;
+  stage: "validation" | "deterministic_call" | "hidden_risk_call" | "reconciliation";
+  details?: Record<string, unknown>;
+};
+
 export type A2ATaskRecord = {
   task_id: string;
+  request_id: string;
   status: A2ATaskStatus;
   created_at: string;
   completed_at: string | null;
   input: A2ATaskInput;
   output: ReconciliationResult | null;
-  error: string | null;
+  error: A2ATaskError | null;
+  diagnostics: TaskRuntimeDiagnostics | null;
 };

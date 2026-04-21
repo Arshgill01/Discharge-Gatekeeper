@@ -76,6 +76,12 @@ const assertClinicianArtifactConsistency = (
     /clinician review|sign-off|clinical team/i.test(handoff.summary),
     `${label}: handoff summary must keep review/sign-off language explicit.`,
   );
+  if (handoff.unresolved_risks.length > 0) {
+    assert.ok(
+      /across/i.test(handoff.summary),
+      `${label}: handoff summary should include risk-domain carry-through context.`,
+    );
+  }
 
   const blockerById = new Map(readiness.blockers.map((blocker) => [blocker.id, blocker]));
   const nextStepByBlockerId = new Map(
@@ -144,6 +150,10 @@ const assertClinicianArtifactConsistency = (
       unresolvedRisk.required_action,
       linkedStep.action,
       `${label}: required action must map to linked next-step action.`,
+    );
+    assert.ok(
+      unresolvedRisk.required_action.includes("Completion signal:"),
+      `${label}: required action should include completion-signal scaffolding.`,
     );
     assert.equal(
       unresolvedRisk.owner,
@@ -215,6 +225,10 @@ const assertPatientArtifactConsistency = (
       item.care_team_follow_up,
       linkedStep.action,
       `${label}: care_team_follow_up must map to readiness next-step action.`,
+    );
+    assert.ok(
+      item.care_team_follow_up.includes("Completion signal:"),
+      `${label}: care_team_follow_up should include completion-signal scaffolding.`,
     );
     assert.deepEqual(
       item.linked_evidence,

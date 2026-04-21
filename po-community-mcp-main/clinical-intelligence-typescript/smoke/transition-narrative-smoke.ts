@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 import {
+  ALTERNATIVE_HIDDEN_RISK_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
 import {
+  ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
@@ -22,7 +24,7 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative must preserve baseline deterministic context.",
   );
   assert.ok(
-    payload.narrative.includes("citations:"),
+    payload.narrative.includes("Primary evidence:"),
     "Narrative should remain explicitly grounded in note citations.",
   );
   assert.ok(
@@ -30,18 +32,43 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative output must keep assistive non-autonomous framing.",
   );
   assert.ok(payload.recommended_actions.length > 0);
+  const hiddenRiskActions = payload.recommended_actions.filter(
+    (action) => action.linked_categories.length > 0 || action.citation_ids.length > 0,
+  );
+  assert.ok(hiddenRiskActions.length > 0, "Trap narrative must include hidden-risk-grounded actions.");
   if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_linked_categories_for_hidden_risk) {
     assert.ok(
-      payload.recommended_actions.every((action) => action.linked_categories.length > 0),
-      "Trap narrative actions must map to hidden-risk categories.",
+      hiddenRiskActions.every((action) => action.linked_categories.length > 0),
+      "Trap hidden-risk actions must map to hidden-risk categories.",
     );
   }
   if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_action_citations_for_hidden_risk) {
     assert.ok(
-      payload.recommended_actions.every((action) => action.citation_ids.length > 0),
-      "Trap narrative actions must include supporting citation ids.",
+      hiddenRiskActions.every((action) => action.citation_ids.length > 0),
+      "Trap hidden-risk actions must include supporting citation ids.",
     );
   }
+};
+
+const assertAlternativeNarrative = async (): Promise<void> => {
+  const payload = await synthesizeTransitionNarrative(ALTERNATIVE_HIDDEN_RISK_INPUT);
+  assert.equal(payload.status, "ok");
+  assert.equal(
+    payload.proposed_disposition,
+    ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
+  assert.ok(
+    payload.narrative.includes("Deterministic discharge posture was ready"),
+    "Alternative hidden-risk narrative must preserve baseline deterministic context.",
+  );
+  assert.ok(
+    payload.recommended_actions.every((action) => action.linked_categories.includes("home_support_and_services")),
+    "Alternative hidden-risk actions should stay tied to home-support risk.",
+  );
+  assert.ok(
+    payload.citations.some((citation) => citation.source_label.includes("Case Management Escalation Note 2026-04-18 21:05")),
+    "Alternative hidden-risk narrative must cite the case-management escalation note.",
+  );
 };
 
 const assertControlNarrative = async (): Promise<void> => {
@@ -67,6 +94,7 @@ const assertControlNarrative = async (): Promise<void> => {
 
 const main = async (): Promise<void> => {
   await assertTrapNarrative();
+  await assertAlternativeNarrative();
   await assertControlNarrative();
   console.log("SMOKE PASS: transition narrative synthesis");
 };
