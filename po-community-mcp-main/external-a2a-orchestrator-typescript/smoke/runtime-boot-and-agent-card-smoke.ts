@@ -40,7 +40,16 @@ const run = async (): Promise<void> => {
     assert.equal(cardPayload.schema_version, "a2a_card_v1");
     assert.equal(cardPayload.name, "external A2A orchestrator");
     assert.equal(cardPayload.version, "1.0.0");
-    assert.deepEqual(cardPayload.supportedInterfaces, []);
+    assert.equal(cardPayload.url, `http://127.0.0.1:${port}`);
+    assert.equal(Array.isArray(cardPayload.supportedInterfaces), true);
+    assert.equal(cardPayload.supportedInterfaces.length > 0, true);
+    assert.equal(cardPayload.supportedInterfaces[0].protocolBinding, "JSONRPC");
+    assert.equal(cardPayload.supportedInterfaces[0].url, `http://127.0.0.1:${port}`);
+    assert.equal(Array.isArray(cardPayload.additionalInterfaces), true);
+    assert.equal(cardPayload.additionalInterfaces.length > 0, true);
+    assert.equal(cardPayload.additionalInterfaces[0].transport, "JSONRPC");
+    assert.equal(Array.isArray(cardPayload.skills), true);
+    assert.equal(cardPayload.skills.length > 0, true);
     assert.equal(cardPayload.agent_identity.name, "external A2A orchestrator");
     assert.equal(cardPayload.agent_identity.system, "Care Transitions Command");
     assert.equal(cardPayload.capabilities.task_lifecycle.streaming, false);
