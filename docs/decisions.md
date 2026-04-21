@@ -118,3 +118,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 4 must be believable beyond one scripted contradiction while preserving a judge-dominant 3-prompt flow and a reliable fallback if orchestration regresses.
 - Affected files or lanes: `docs/phase4-end-to-end-expected-output-matrix.md`, `docs/evals.md`, `docs/demo-script.md`, `docs/submission-checklist.md`, Prompt Opinion runbook, phase2/phase3 smoke checks.
 - Follow-up: keep `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`, `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`, `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`, and `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh` green before demo lock.
+
+- Date: 2026-04-21
+- Decision: Use `Clinical Intelligence MCP.synthesize_transition_narrative` as the Prompt 3 direct-MCP fallback surface instead of relying on deterministic `generate_transition_plan` alone.
+- Why: The trap patient keeps a structured baseline of `ready`, so deterministic `generate_transition_plan` can return no next steps even when the hidden-risk review correctly escalates to `not_ready`. The fallback path needs a real transition package, not operator improvisation.
+- Affected files or lanes: Prompt Opinion integration runbook, demo script, fallback rehearsal checks
+- Follow-up: keep the Prompt Opinion rehearsal smoke green and ensure fallback docs continue to point Prompt 3 at the clinical-intelligence transition narrative surface.
