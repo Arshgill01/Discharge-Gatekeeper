@@ -7,6 +7,36 @@ This is the manual operator guide for verifying the full Prompt Opinion path for
 
 Use this guide when you want to validate what is already set up in your Prompt Opinion account, what still needs to be re-registered, and what is currently broken.
 
+## How this lines up with the getting-started video
+
+The video `Agents Assemble Challenge Getting Started [Qvs_QK4meHc].webm` is useful, but treat it as a setup-pattern reference, not as an exact required sequence for this repo.
+
+What the video confirms:
+- Prompt Opinion treats these as separate integration surfaces:
+  - BYO agent
+  - MCP server
+  - custom A2A agent
+- MCP server setup uses:
+  - a friendly name
+  - an endpoint
+  - `Streamable HTTP`
+  - `No Authentication (Open)`
+- a BYO agent may optionally use a workspace collection/content source
+- a BYO agent is distinct from MCP registration
+- A2A is a separate surface from both BYO and MCP setup
+
+What you should **not** infer from the video for this repo:
+- that you must always create new MCP server entries for every run
+- that you must always create a new BYO agent from scratch
+- that collections/content are required for the Care Transitions Command fallback verification
+- that a successful MCP setup automatically proves the A2A path
+
+For this repo's current verification pass:
+- re-check existing MCP registrations before creating new ones
+- reuse the existing BYO fallback agent if it is still correctly configured
+- treat collection/content binding as optional
+- treat A2A registration as its own verification step
+
 ## Current known state from the last pass
 
 These are the repo-grounded and workspace-grounded facts from the last validation pass:
@@ -31,6 +61,7 @@ These are the repo-grounded and workspace-grounded facts from the last validatio
 - MCP registration is not permanently one-off if your public tunnel URLs change.
 - If the existing MCP registrations still point at valid public URLs and Prompt Opinion connection tests pass, reuse them.
 - If the tunnel hostnames changed, edit the existing MCP registrations rather than assuming you need new entries.
+- The getting-started video shows MCP creation from scratch, but for your account this should be treated as a fallback action, not the default first move.
 
 ## Step 1: Run local prerequisite validation
 
@@ -98,6 +129,10 @@ Decision rule:
 - If the entry is present but the URL is stale, edit the URL and re-test.
 - Only create a brand-new MCP server entry if the old one is missing or unusable.
 
+Use these MCP settings, matching the video unless the Prompt Opinion UI wording changed:
+- transport: `Streamable HTTP`
+- authentication: `No Authentication (Open)`
+
 Expected tools for `Discharge Gatekeeper MCP`:
 - `assess_discharge_readiness`
 - `extract_discharge_blockers`
@@ -142,6 +177,11 @@ Inside Prompt Opinion:
    - Prompt 1 -> `assess_discharge_readiness`
    - Prompt 2 -> `surface_hidden_risks`
    - Prompt 3 -> `synthesize_transition_narrative`
+
+Collection/content note:
+- the getting-started video shows a workspace collection as a possible BYO-agent content source
+- for this repo's fallback verification, collection binding is optional and should not be used as a substitute for MCP tool binding
+- if a collection is attached, it should not change the required MCP/tool routing checks
 
 Do not use `General Chat Agent` for fallback verification.
 
