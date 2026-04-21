@@ -353,6 +353,12 @@ Keep these docs aligned with runtime smoke behavior:
 - `docs/evals.md`
 - `docs/submission-checklist.md`
 
+### MCP transport note
+Both MCP runtimes use the Streamable HTTP transport from `@modelcontextprotocol/sdk`.
+Prompt Opinion and any direct client must send `Accept: application/json, text/event-stream` in the request headers.
+Requests without that header receive a `Not Acceptable` error.
+This is standard MCP SDK behavior and does not require a code change.
+
 ### Public URL / tunnel expectations
 
 Keep a one-to-one mapping between local ports and public URLs:
