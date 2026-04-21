@@ -150,14 +150,14 @@ In Phase 2, this path is sufficient for demo-readiness; A2A is preferred archite
 ### Prompt Opinion manual call sequence
 1. Prompt 1 goes to `Discharge Gatekeeper MCP` for the deterministic baseline verdict
 2. Prompt 2 goes to `Clinical Intelligence MCP` for hidden-risk contradiction review with citations
-3. Prompt 3 goes back to `Discharge Gatekeeper MCP` for transition plan output while the operator narrates hidden-risk escalation
+3. Prompt 3 goes to `Clinical Intelligence MCP` via `synthesize_transition_narrative` for the fallback transition package grounded in the hidden-risk findings
 
 ### Pass criteria
 - both MCPs are discoverable in the same Prompt Opinion workspace
 - tool surfaces stay separated by role (deterministic vs hidden-risk)
 - trap-patient path shows baseline `ready` posture before hidden-risk review
 - hidden-risk review shows cited contradiction and disposition impact `not_ready`
-- deterministic transition plan remains callable after hidden-risk escalation
+- fallback Prompt 3 returns a usable transition package even when deterministic `generate_transition_plan` stays empty on a structured `ready` baseline
 - trap contradiction remains note-dependent (removing contradiction notes prevents escalation)
 - clean control path remains explicit `no_hidden_risk` with no fabricated escalation
 
@@ -281,18 +281,32 @@ For Phase 3, keep this path rehearsal-ready in case A2A discovery/task invocatio
 
 ### Setup
 - keep both MCPs registered even when using the A2A path
+- use a BYO agent, not `General Chat Agent`, because the default workspace agent does not automatically expose newly registered MCP tools
 - prepare one Prompt Opinion workspace view where both MCP tool surfaces are available
 - prepare the trap-patient bundle or deterministic synthetic context
+
+### BYO agent configuration path
+1. open `Agents -> BYO Agents`
+2. create or edit `Care Transitions Command BYO Fallback`
+3. bind only:
+   - `Discharge Gatekeeper MCP`
+   - `Clinical Intelligence MCP`
+4. disable embedded/community tools so the demo stays on the direct-MCP lane
+5. use a system prompt that locks:
+   - Prompt 1 -> `assess_discharge_readiness`
+   - Prompt 2 -> `surface_hidden_risks`
+   - Prompt 3 -> `synthesize_transition_narrative`
+   - structured `scenario_id=third_synthetic_discharge_slice_ready_v1`
 
 ### Execution
 1. use `Discharge Gatekeeper MCP` for the baseline verdict
 2. use `Clinical Intelligence MCP` for the hidden-risk/contradiction follow-up
-3. use the deterministic next-step output for the discharge-action prompt
+3. use `Clinical Intelligence MCP.synthesize_transition_narrative` for the discharge-action prompt
 
 ### Acceptable fallback story
 - Prompt 1: deterministic readiness answer
 - Prompt 2: hidden-risk review with citations
-- Prompt 3: final next-step checklist driven by the deterministic spine, verbally noting any hidden-risk escalation if the UI does not merge them
+- Prompt 3: final transition package from `synthesize_transition_narrative`, grounded in the hidden-risk findings and proposed disposition
 
 What must be shown on screen in fallback mode:
 - Prompt 1: baseline structured posture and final manual two-MCP interpretation
@@ -303,6 +317,7 @@ What must be shown on screen in fallback mode:
 Run before recording/live demo when fallback is active:
 1. `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
 2. `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+3. `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal`
 
 Expected fallback behavior:
 - trap path escalates from structured `ready` to final `not_ready` with citation-backed contradiction
@@ -314,6 +329,12 @@ Expected fallback behavior:
 - do not claim the fallback path is the final architecture
 - do state that the system architecture remains `2 MCPs + 1 external A2A`
 - rehearse this path in the same session window as the preferred A2A rehearsal
+
+### Real workspace status as of 2026-04-21
+- Prompt 1 is visibly proven in a real BYO agent and returns the correct structured `ready` baseline.
+- Prompt 2 hit both MCP runtimes in the real workspace, but Prompt Opinion did not persist/render the resulting assistant or tool messages.
+- Fresh-session Prompt 3 did not visibly complete and did not prove `Clinical Intelligence MCP.synthesize_transition_narrative` in the workspace.
+- Until those gaps are fixed, do not claim the BYO fallback is fully demo-ready inside Prompt Opinion.
 
 ## 8. Marketplace and publish implications
 
