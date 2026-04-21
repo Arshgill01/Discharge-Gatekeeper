@@ -111,11 +111,21 @@ Must show:
 - decide before recording which path is primary and which path is backup
 - keep the narration focused on verdict, hidden risk, and next actions
 - do not spend recording time on registration mechanics
+- verify run-folder evidence exists at `output/prompt-opinion-e2e/latest/` with:
+  - `reports/status-summary.md`
+  - `reports/command-results.json`
+  - `notes/validation-notes.md`
+  - `notes/workspace-evidence.md`
 
 Judge-facing cue order for recordings:
 1. show Prompt 1 baseline-vs-final posture change
 2. anchor Prompt 2 with contradiction citations (strongest moment)
 3. show Prompt 3 actionable transition package
+
+Status color lock for submission:
+- `green`: lane is fully proven with current run-folder evidence
+- `yellow`: lane is partial; may be used only as backup with explicit narration
+- `red`: lane is blocked; cannot be labeled demo-ready
 
 ## Phase 3 readiness before final recording/publish
 Must be true before final recording/publish lock:

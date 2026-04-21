@@ -75,6 +75,29 @@ Run this from repo root before any Prompt Opinion registration work:
 4. `./po-community-mcp-main/scripts/start-a2a-local.sh`
 5. `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
 
+### Rehearsal artifact capture (required)
+Use the capture wrapper for reproducible local evidence bundles:
+
+1. `./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh`
+2. open `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+3. complete:
+   - `output/prompt-opinion-e2e/latest/notes/validation-notes.md`
+   - `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
+4. add Prompt Opinion screenshots into `output/prompt-opinion-e2e/latest/screenshots/`
+
+Artifact bundle contract:
+- one run per folder: `output/prompt-opinion-e2e/runs/<run-id>/`
+- command logs in `logs/`
+- machine-readable command results in `reports/command-results.json`
+- local automated status board in `reports/status-summary.md`
+- raw per-prompt local outputs in `raw/`
+- dependency bootstrap via `npm ci` runs automatically for all three runtimes unless `PROMPT_OPINION_SKIP_NPM_CI=1` is set
+
+Status color contract:
+- `green`: lane is proven and evidence is captured in the run folder
+- `yellow`: lane is partially proven or awaiting manual workspace evidence
+- `red`: lane failed with a blocking defect or missing required artifact
+
 Local port map:
 - `Discharge Gatekeeper MCP`: `http://127.0.0.1:5055/mcp`
 - `Clinical Intelligence MCP`: `http://127.0.0.1:5056/mcp`
@@ -277,10 +300,10 @@ Use this path only if all three components passed a clean-session rehearsal the 
 
 ### A2A-main operator quick-check
 Before going live:
-1. run `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
-2. run `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
-3. run `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
-4. confirm trap Prompt 2 still shows contradiction evidence anchors (not transition-package action-list output)
+1. run `./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh`
+2. confirm all automated checks are `GREEN` in `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+3. confirm trap Prompt 2 still shows contradiction evidence anchors (not transition-package action-list output)
+4. update manual workspace statuses to `GREEN/YELLOW/RED` in `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
 
 ## 7. Fallback direct-MCP demo path
 

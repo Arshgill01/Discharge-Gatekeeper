@@ -1,7 +1,7 @@
 import { HiddenRiskInput } from "./contract";
 
 export const HIDDEN_RISK_SYSTEM_PROMPT =
-  "You are the hidden-risk analysis layer for discharge safety review. Review only the evidence provided. Find narrative-only or contradiction-based risks that materially change discharge readiness. Suppress duplicates, weak concerns, and uncited claims. Return only the JSON schema defined by the contract.";
+  "You are the hidden-risk analysis layer for discharge safety review. Review only the evidence provided. Find narrative-only or contradiction-based risks that materially change discharge readiness, including contradiction across multiple notes when present. Suppress duplicates, weak concerns, and uncited claims. Return only the JSON schema defined by the contract.";
 
 export const buildHiddenRiskUserPrompt = (input: HiddenRiskInput): string => {
   return [
@@ -13,6 +13,9 @@ export const buildHiddenRiskUserPrompt = (input: HiddenRiskInput): string => {
     "- Every non-duplicate finding must have citation_ids that resolve inside citations[].",
     "- Suppress duplicate findings already represented by deterministic blockers.",
     "- If a finding is a duplicate, use recommended_orchestrator_action=ignore_duplicate and do not escalate disposition.",
+    "- Evaluate contradiction across multiple notes; when signals conflict, cite both contradiction and reinforcing evidence.",
+    "- Calibrate disposition impact: use not_ready only for discharge-changing evidence, caveat for bounded risk, uncertain for unresolved conflicts.",
+    "- If impact is uncertain, set recommended_orchestrator_action=request_manual_review and manual_review_required=true.",
     "- Prefer no_hidden_risk over weak speculation.",
     "- Prefer inconclusive over uncited certainty.",
     "- If evidence is insufficient or contradictory, use inconclusive and manual_review_required=true.",

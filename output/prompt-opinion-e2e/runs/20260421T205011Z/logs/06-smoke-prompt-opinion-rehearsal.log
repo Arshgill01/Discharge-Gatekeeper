@@ -1,0 +1,88 @@
+
+> external-a2a-orchestrator-ts@1.0.0 smoke:prompt-opinion-rehearsal
+> npx tsx smoke/prompt-opinion-rehearsal-smoke.ts
+
+PASS prompt opinion rehearsal smoke
+Run artifacts: /Users/arshdeepsingh/Developer/ctc-phase6-po-rehearsal/output/prompt-opinion-e2e/runs/20260421T205011Z
+{
+  "generated_at": "2026-04-21T20:51:50.406Z",
+  "run_id": "20260421T205011Z",
+  "a2a_rehearsals": [
+    {
+      "run": 1,
+      "totalElapsedMs": 243,
+      "promptResults": [
+        {
+          "prompt": "Is this patient safe to discharge today?",
+          "elapsedMs": 166,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Structured discharge posture was ready. Final reconciled posture is not_ready. Disposition change: Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). Manual clinician review is required before discharge. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+          "elapsedMs": 37,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Hidden-risk findings changed the structured posture from ready to not_ready. Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). Key contradiction evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\". Manual clinician review is required before final discharge due to unresolved hidden-risk uncertainty. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+          "elapsedMs": 40,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Before discharge, complete: 1. [medium] Resolve hidden risk: Exertional oxygen instability not visible in resting structured data 2. [high] Resolve hidden risk: Required home oxygen or discharge equipment unavailable tonight 3. [high] Resolve hidden risk: No confirmed overnight support for high-friction home environment Final posture remains not_ready because Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "totalElapsedMs": 120,
+      "promptResults": [
+        {
+          "prompt": "Is this patient safe to discharge today?",
+          "elapsedMs": 32,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Structured discharge posture was ready. Final reconciled posture is not_ready. Disposition change: Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). Manual clinician review is required before discharge. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+          "elapsedMs": 32,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Hidden-risk findings changed the structured posture from ready to not_ready. Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). Key contradiction evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\". Manual clinician review is required before final discharge due to unresolved hidden-risk uncertainty. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+          "elapsedMs": 56,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Before discharge, complete: 1. [medium] Resolve hidden risk: Exertional oxygen instability not visible in resting structured data 2. [high] Resolve hidden risk: Required home oxygen or discharge equipment unavailable tonight 3. [high] Resolve hidden risk: No confirmed overnight support for high-friction home environment Final posture remains not_ready because Structured baseline 'ready' changed by narrative contradiction: Deterministic baseline was ready; narrative review found 3 discharge-relevant contradiction(s): clinical_stability: Exertional oxygen instability not visible in resting structured data (Nursing Note 2026-04-18 20:40; Hospitalist Progress Note 2026-04-18 08:10) | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55). This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        }
+      ]
+    }
+  ],
+  "direct_mcp_fallback": {
+    "deterministic_verdict": "ready",
+    "hidden_risk_status": "ok",
+    "hidden_risk_result": "hidden_risk_present",
+    "hidden_risk_impact": "not_ready",
+    "transition_package_status": "ok",
+    "transition_package_disposition": "not_ready",
+    "transition_package_action_count": 3,
+    "control_hidden_risk_result": "no_hidden_risk"
+  }
+}

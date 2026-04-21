@@ -16,34 +16,45 @@ const CLINICIAN_REVIEW_BOUNDARY =
 const PATIENT_REVIEW_BOUNDARY =
   "Draft instructions generated to support care-team workflow. A licensed clinician must review and finalize before patient use.";
 
+const CATEGORY_LABEL: Record<BlockerCategory, string> = {
+  clinical_stability: "clinical stability",
+  pending_diagnostics: "pending diagnostics",
+  medication_reconciliation: "medication reconciliation",
+  follow_up_and_referrals: "follow-up and referrals",
+  patient_education: "patient education",
+  home_support_and_services: "home support and services",
+  equipment_and_transport: "equipment and transport",
+  administrative_and_documentation: "administrative and documentation",
+};
+
 const PATIENT_TITLE_BY_CATEGORY: Record<BlockerCategory, string> = {
-  clinical_stability: "Breathing and stability check",
-  pending_diagnostics: "Pending test result check",
-  medication_reconciliation: "Medication list check",
-  follow_up_and_referrals: "Follow-up appointment check",
-  patient_education: "Teach-back and warning-sign check",
-  home_support_and_services: "Home support check",
-  equipment_and_transport: "Equipment and ride check",
-  administrative_and_documentation: "Discharge paperwork check",
+  clinical_stability: "Urgent breathing and stability check",
+  pending_diagnostics: "Urgent pending test result check",
+  medication_reconciliation: "Medication plan confirmation",
+  follow_up_and_referrals: "Follow-up appointment confirmation",
+  patient_education: "Teach-back and warning-sign review",
+  home_support_and_services: "Home support confirmation",
+  equipment_and_transport: "Equipment and ride confirmation",
+  administrative_and_documentation: "Discharge paperwork completion",
 };
 
 const PATIENT_INSTRUCTION_BY_CATEGORY: Record<BlockerCategory, string> = {
   clinical_stability:
-    "wait for your care team to confirm your breathing and vital signs are stable for home.",
+    "wait for your care team to confirm your breathing is stable both at rest and during activity.",
   pending_diagnostics:
-    "wait until your care team reviews any pending test results that could change your plan.",
+    "wait until your care team reviews all pending test results that could change your plan.",
   medication_reconciliation:
-    "review your final medication list with your nurse or pharmacist so you know what to take, when to take it, and what changed.",
+    "review your final medication list with your nurse or pharmacist so you know what changed and when to take each medicine.",
   follow_up_and_referrals:
-    "make sure your follow-up visits and referrals are booked before you leave.",
+    "make sure your follow-up visits and referrals are booked with dates, locations, and phone numbers before you leave.",
   patient_education:
-    "review warning signs with your nurse and explain back when to call for help.",
+    "review warning signs with your nurse and explain back when to call for help during the day and at night.",
   home_support_and_services:
-    "confirm who will help you at home and which home services are arranged.",
+    "confirm who will help you at home tonight and which home services are arranged.",
   equipment_and_transport:
-    "confirm your equipment delivery timing and your ride plan before departure.",
+    "confirm your equipment delivery and ride pickup timing before departure.",
   administrative_and_documentation:
-    "wait for your care team to complete and review your discharge paperwork with you.",
+    "wait for your care team to complete and review your discharge paperwork and final instructions with you.",
 };
 
 const countPriorities = (
@@ -58,6 +69,13 @@ const countPriorities = (
   );
 };
 
+const summarizeRiskDomains = (blockers: ClinicianHandoffRisk[], maxCount: number): string => {
+  const ordered = [...new Set(blockers.map((blocker) => blocker.category))]
+    .slice(0, maxCount)
+    .map((category) => CATEGORY_LABEL[category]);
+  return ordered.length > 0 ? ordered.join(", ") : "none";
+};
+
 const buildClinicianSummary = (
   verdict: ReadinessVerdict,
   blockers: ClinicianHandoffRisk[],
@@ -68,7 +86,9 @@ const buildClinicianSummary = (
 
   const counts = countPriorities(blockers);
   const unresolvedCount = blockers.length;
-  return `Assistive clinician handoff for verdict '${verdict}': ${unresolvedCount} unresolved blockers remain (${counts.high} high, ${counts.medium} medium, ${counts.low} low). Final discharge disposition requires clinician review and sign-off.`;
+  const topDomains = summarizeRiskDomains(blockers, 4);
+  const firstOwner = blockers[0]?.owner ?? "Care team";
+  return `Assistive clinician handoff for verdict '${verdict}': ${unresolvedCount} unresolved blockers remain (${counts.high} high, ${counts.medium} medium, ${counts.low} low) across ${topDomains}. First coordinated owner: ${firstOwner}. Final discharge disposition requires clinician review and sign-off.`;
 };
 
 const buildPatientSummary = (
@@ -76,7 +96,7 @@ const buildPatientSummary = (
   instructionCount: number,
 ): string => {
   if (verdict === "not_ready") {
-    return `Discharge is not ready yet. ${instructionCount} care-plan items still need completion before you leave.`;
+    return `Discharge is not ready yet. ${instructionCount} care-plan items still need completion before you leave, and your clinician will confirm when it is safe to go home.`;
   }
 
   if (verdict === "ready_with_caveats") {
@@ -104,6 +124,12 @@ const buildFollowUpReminders = (
   }
   if (categories.has("equipment_and_transport")) {
     reminders.push("Confirm your ride and equipment delivery timing before discharge.");
+  }
+  if (categories.has("home_support_and_services")) {
+    reminders.push("Confirm who will stay with you tonight and how to reach them after discharge.");
+  }
+  if (categories.has("clinical_stability")) {
+    reminders.push("Ask your nurse what symptoms mean you should call for urgent help right away.");
   }
 
   return reminders;

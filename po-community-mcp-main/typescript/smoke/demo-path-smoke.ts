@@ -30,6 +30,10 @@ assert.ok(
   response.summary.includes("clinician review") || response.summary.includes("care team"),
   "Prompt 1: summary should remain assistive and clinician-anchored.",
 );
+assert.ok(
+  response.summary.includes("Structured baseline posture:"),
+  "Prompt 1: summary should keep deterministic structured baseline visibility.",
+);
 
 const blockerCategories = new Set(response.blockers.map((blocker) => blocker.category));
 for (const requiredCategory of SCENARIO_V1_TRUTH.required_categories) {
@@ -107,6 +111,10 @@ for (const step of response.next_steps) {
   assert.ok(
     step.linked_evidence.length > 0,
     `Prompt 3: next step ${step.id} must carry linked evidence.`,
+  );
+  assert.ok(
+    step.action.includes("Completion signal:"),
+    `Prompt 3: next step ${step.id} should include completion signal scaffolding.`,
   );
 }
 
