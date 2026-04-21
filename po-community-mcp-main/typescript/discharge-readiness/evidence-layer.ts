@@ -574,9 +574,8 @@ export const getEvidenceIdsForCategory = (
     .sort((a, b) => stableSortSignals(a, b));
 
   const ids = [...new Set(selectedSignals.map((signal) => signal.source_id))];
-  const firstId = ids[0];
-  if (firstId) {
-    return [firstId];
+  if (ids.length > 0) {
+    return ids.slice(0, 3);
   }
 
   return bundle.missing_evidence

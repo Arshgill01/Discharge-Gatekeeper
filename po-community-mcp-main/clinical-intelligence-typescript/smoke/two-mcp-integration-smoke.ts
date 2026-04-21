@@ -89,6 +89,13 @@ const buildHiddenRiskInputFromDeterministicOutput = (
   optional_context_metadata: fixture.optional_context_metadata,
 });
 
+const buildBaselineFinalPostureLine = (
+  baselineVerdict: "ready" | "ready_with_caveats" | "not_ready",
+  finalVerdict: "ready" | "ready_with_caveats" | "not_ready",
+): string => {
+  return `Structured baseline verdict: ${baselineVerdict} -> final reconciled verdict: ${finalVerdict}.`;
+};
+
 const buildTrapHiddenRiskInputFromStructuredOutput = () => {
   const deterministic = assessDischargeReadinessV1(PHASE2_TRAP_STRUCTURED_BASELINE);
   assert.equal(deterministic.verdict, "ready", "Phase 2 trap baseline must remain structured-ready.");
@@ -96,6 +103,10 @@ const buildTrapHiddenRiskInputFromStructuredOutput = () => {
     deterministic.blockers.length,
     0,
     "Phase 2 trap baseline must have no deterministic blockers before hidden-risk escalation.",
+  );
+  assert.ok(
+    deterministic.summary.includes("Structured baseline posture:"),
+    "Phase 2 trap baseline summary must keep deterministic posture visibility explicit.",
   );
 
   return {
@@ -194,10 +205,15 @@ const assertTrapHiddenRiskEscalationAndStoryStrength = async (): Promise<void> =
   const prompt1Proof = {
     baseline_structured_verdict: deterministic.verdict,
     final_manual_two_mcp_verdict: finalVerdict,
+    baseline_vs_final_posture_line: buildBaselineFinalPostureLine(deterministic.verdict, finalVerdict),
     contradiction_visible: payload.hidden_risk_summary.summary.length > 0,
   };
   assert.equal(prompt1Proof.baseline_structured_verdict, "ready");
   assert.equal(prompt1Proof.final_manual_two_mcp_verdict, "not_ready");
+  assert.ok(
+    prompt1Proof.baseline_vs_final_posture_line.includes("ready -> final reconciled verdict: not_ready"),
+    "Prompt 1 posture line must make baseline-vs-final escalation explicit.",
+  );
   assert.equal(prompt1Proof.contradiction_visible, true);
 
   const prompt2Proof = {
