@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
-import { TRAP_PATIENT_TASK_INPUT, CONTROL_TASK_INPUT } from "../orchestrator/fixtures";
+import {
+  ABLATION_TASK_INPUT,
+  ALTERNATIVE_HIDDEN_RISK_TASK_INPUT,
+  CONTROL_TASK_INPUT,
+  DUPLICATE_SIGNAL_TASK_INPUT,
+  INCONCLUSIVE_TASK_INPUT,
+  TRAP_PATIENT_TASK_INPUT,
+} from "../orchestrator/fixtures";
 
 const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   const start = Date.now();
@@ -18,7 +25,13 @@ const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   throw new Error(`Timed out waiting for ${url}`);
 };
 
-const spawnService = (name: string, command: string, args: string[], cwd: string, env: Record<string, string>): ChildProcess => {
+const spawnService = (
+  name: string,
+  command: string,
+  args: string[],
+  cwd: string,
+  env: Record<string, string>,
+): ChildProcess => {
   const child = spawn(command, args, {
     cwd,
     env: {
@@ -106,6 +119,18 @@ const run = async (): Promise<void> => {
     assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
     assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
 
+    const ablationTask = await createTask(a2aBaseUrl, ABLATION_TASK_INPUT);
+    assert.equal(ablationTask.output.deterministic.verdict, "ready");
+    assert.equal(ablationTask.output.final_verdict, "ready");
+    assert.equal(ablationTask.output.hidden_risk_run_status, "used");
+    assert.equal(ablationTask.output.hidden_risk_result, "no_hidden_risk");
+    assert.equal(ablationTask.output.decision_matrix_row, 1);
+    assert.equal(
+      String(ablationTask.output.contradiction_summary).toLowerCase().includes("from ready to not_ready"),
+      false,
+      "Ablated note set must not trigger hidden-risk escalation.",
+    );
+
     const trapPrompt2Task = await createTask(a2aBaseUrl, {
       ...TRAP_PATIENT_TASK_INPUT,
       prompt: "What hidden risk changed that answer? Show me the contradiction and the evidence.",
@@ -165,16 +190,35 @@ const run = async (): Promise<void> => {
       "Prompt 3 response should return a concrete transition package.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).toLowerCase().includes("final posture remains not_ready"),
+      String(trapPrompt3Task.output.contradiction_summary)
+        .toLowerCase()
+        .includes("final posture remains not_ready"),
       true,
       "Prompt 3 package must remain aligned with escalated final posture.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).includes("Structured baseline 'ready' changed by narrative contradiction"),
+      String(trapPrompt3Task.output.contradiction_summary).includes(
+        "Structured baseline 'ready' changed by narrative contradiction",
+      ),
       true,
       "Prompt 3 should preserve readable contradiction phrasing without mangled casing.",
     );
     assertAssistiveFraming(String(trapPrompt3Task.output.contradiction_summary), "Prompt 3");
+
+    const alternativeTask = await createTask(a2aBaseUrl, ALTERNATIVE_HIDDEN_RISK_TASK_INPUT);
+    assert.equal(alternativeTask.output.deterministic.verdict, "ready");
+    assert.equal(alternativeTask.output.final_verdict, "not_ready");
+    assert.equal(alternativeTask.output.hidden_risk_run_status, "used");
+    assert.equal(alternativeTask.output.hidden_risk_result, "hidden_risk_present");
+    assert.equal(alternativeTask.output.decision_matrix_row, 3);
+    assert.equal(
+      alternativeTask.output.merged_blockers.filter(
+        (blocker: { source: string; category: string }) =>
+          blocker.source === "hidden_risk" && blocker.category === "home_support_and_services",
+      ).length > 0,
+      true,
+      "Alternative hidden-risk lane should append a home-support hidden-risk blocker.",
+    );
 
     const controlTask = await createTask(a2aBaseUrl, CONTROL_TASK_INPUT);
     assert.equal(controlTask.output.final_verdict, "ready");
@@ -191,31 +235,39 @@ const run = async (): Promise<void> => {
       "No-hidden-risk path must not over-escalate response narrative.",
     );
 
-    const insufficientContextTask = await createTask(a2aBaseUrl, {
-      prompt: "What hidden risks or contradictions change that answer?",
-      patient_context: {
-        scenario_id: "third_synthetic_discharge_slice_ready_v1",
-        patient_id: "phase0-insufficient-context",
-        encounter_id: "enc-phase0-insufficient-context",
-        narrative_evidence_bundle: [],
-      },
-    });
-    assert.equal(insufficientContextTask.output.hidden_risk_run_status, "unavailable");
-    assert.equal(insufficientContextTask.output.hidden_risk_result, "inconclusive");
-    assert.equal(insufficientContextTask.output.decision_matrix_row, 10);
-    assert.equal(insufficientContextTask.output.final_verdict, "ready_with_caveats");
-    assert.equal(insufficientContextTask.output.manual_review_required, true);
+    const duplicateSignalTask = await createTask(a2aBaseUrl, DUPLICATE_SIGNAL_TASK_INPUT);
+    assert.equal(duplicateSignalTask.output.deterministic.verdict, "not_ready");
+    assert.equal(duplicateSignalTask.output.final_verdict, "not_ready");
+    assert.equal(duplicateSignalTask.output.hidden_risk_run_status, "used");
+    assert.equal(duplicateSignalTask.output.hidden_risk_result, "no_hidden_risk");
+    assert.equal(duplicateSignalTask.output.decision_matrix_row, 7);
     assert.equal(
-      String(insufficientContextTask.output.contradiction_summary).toLowerCase().includes("manual clinician review is required"),
+      duplicateSignalTask.output.merged_blockers.some((blocker: { source: string }) => blocker.source === "hidden_risk"),
+      false,
+      "Duplicate hidden-risk signal should not create extra blockers on top of deterministic blockers.",
+    );
+
+    const inconclusiveTask = await createTask(a2aBaseUrl, INCONCLUSIVE_TASK_INPUT);
+    assert.equal(inconclusiveTask.output.hidden_risk_run_status, "unavailable");
+    assert.equal(inconclusiveTask.output.hidden_risk_result, "inconclusive");
+    assert.equal(inconclusiveTask.output.decision_matrix_row, 10);
+    assert.equal(inconclusiveTask.output.final_verdict, "ready_with_caveats");
+    assert.equal(inconclusiveTask.output.manual_review_required, true);
+    assert.equal(
+      String(inconclusiveTask.output.contradiction_summary)
+        .toLowerCase()
+        .includes("manual clinician review is required"),
       true,
       "Inconclusive hidden-risk path should defer with explicit manual review requirement.",
     );
     assert.equal(
-      String(insufficientContextTask.output.contradiction_summary).toLowerCase().includes("posture remains ready_with_caveats"),
+      String(inconclusiveTask.output.contradiction_summary)
+        .toLowerCase()
+        .includes("posture remains ready_with_caveats"),
       true,
       "Inconclusive hidden-risk path should remain bounded to structured posture policy.",
     );
-    assertAssistiveFraming(String(insufficientContextTask.output.contradiction_summary), "Inconclusive prompt");
+    assertAssistiveFraming(String(inconclusiveTask.output.contradiction_summary), "Inconclusive prompt");
 
     const synthesisFallbackTask = await createTask(a2aBaseUrl, {
       ...TRAP_PATIENT_TASK_INPUT,
@@ -243,7 +295,9 @@ const run = async (): Promise<void> => {
     assert.equal(unavailableTask.output.hidden_risk_run_status, "unavailable");
     assert.equal(unavailableTask.output.final_verdict, "ready_with_caveats");
     assert.equal(
-      String(unavailableTask.output.hidden_risk_unavailable_reason).includes("clinical_intelligence_unavailable"),
+      String(unavailableTask.output.hidden_risk_unavailable_reason).includes(
+        "clinical_intelligence_unavailable",
+      ),
       true,
     );
 
