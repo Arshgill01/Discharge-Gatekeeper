@@ -26,13 +26,14 @@ Local runtime and smoke coverage remain green, but the real BYO-agent workspace 
 | Authenticated workspace access | ✅ PASS (`Arshgill's org`) |
 | `Discharge Gatekeeper MCP` registration | ✅ PASS (workspace discovery succeeded) |
 | `Clinical Intelligence MCP` registration | ✅ PASS (workspace discovery succeeded) |
-| A2A agent registration | ❌ BLOCKED (`422 Unprocessable Entity`; accepted failure mode) |
-| BYO agent creation | ✅ PASS (`Care Transitions Command BYO Fallback`) |
-| BYO MCP tool binding | ✅ PASS (`Discharge Gatekeeper MCP` + `Clinical Intelligence MCP`) |
-| General Chat Agent usable for fallback | ❌ FAIL (tool bindings are not exposed by default) |
-| Prompt 1 visible direct-MCP fallback | ✅ PASS |
-| Prompt 2 visible direct-MCP fallback | ❌ FAIL |
-| Prompt 3 visible direct-MCP fallback | ❌ FAIL |
+| A2A agent-card validation | ✅ PASS after runtime card fix |
+| A2A connection creation | ✅ PASS |
+| A2A chat execution | ❌ FAIL |
+| BYO agent creation | ✅ PASS |
+| BYO dual-tool binding | ✅ PASS |
+| BYO single-tool Clinical Intelligence Prompt 2 | ✅ PASS |
+| BYO single-tool Clinical Intelligence Prompt 3 (tool-explicit) | ✅ PASS |
+| BYO dual-tool Prompt 2/3 | ❌ FAIL |
 
 ## Real BYO agent path used
 1. Log into Prompt Opinion.
@@ -75,45 +76,64 @@ Result:
 - this proves the BYO agent can see and invoke `Discharge Gatekeeper MCP`
 - this proves the structured trap-patient baseline is correctly `ready`
 
-### Prompt 2
-Prompt:
-`What hidden risk changed that answer? Show me the contradiction and the evidence.`
+### Prompt 2 and Prompt 3 experiment results
 
-Observed behavior in the same conversation:
-- user message persisted at `2026-04-21T09:20:35.605677+00:00`
-- no assistant/tool messages were persisted afterward in the conversation API
-- live MCP server logs show both MCP surfaces were hit immediately after the prompt:
-  - `Discharge Gatekeeper MCP`: `09:20:36.548Z`, `09:20:37.130Z`, `09:20:38.606Z`
-  - `Clinical Intelligence MCP`: `09:20:37.541Z`, `09:20:38.303Z`, `09:20:39.178Z`
-- Prompt Opinion also emitted a successful `POST .../prompt-stream => 200 OK`
+Key new finding from the continuation pass:
+- the blocker is not a raw `Clinical Intelligence MCP` transport failure
+- the blocker is specific to a BYO agent bound to more than one MCP server
+
+#### Single-tool Clinical Intelligence agents
+
+`Care Transitions Command CI Hidden Risk Debug`
+- explicit Prompt 2 (`Run surface_hidden_risks on the trap patient and show the result.`): PASS
+- canonical Prompt 2 (`What hidden risk changed that answer? Show me the contradiction and the evidence.`): PASS
+
+`Care Transitions Command CI Transition Debug`
+- explicit Prompt 3 (`Run synthesize_transition_narrative for the trap patient and show the result.`): PASS
+- canonical Prompt 3 (`What exactly must happen before discharge, and prepare the transition package.`): still not proven in the checked window
+
+What this proves:
+- Prompt Opinion can persist and render the Clinical Intelligence tool path in the real workspace
+- the original failure is not caused by the MCP server being unreachable or undiscoverable
+
+#### Dual-tool BYO agents
+
+`Care Transitions Command BYO Fallback`
+- even after hardening the system prompt to force one tool call per turn and forbid `Discharge Gatekeeper MCP` on Prompt 2/3, Prompt Opinion still failed to complete a final assistant transcript artifact
+
+`Care Transitions Command Dual Tool Lean Debug`
+- a smaller two-tool routing prompt did not remove the failure
+
+What this proves:
+- the narrowest BYO blocker is a Prompt Opinion multi-MCP BYO execution/persistence problem, not a repo transport problem
+
+### A2A registration and execution
+
+The continuation pass fixed A2A registration in the repo/runtime:
+- Prompt Opinion `external-agent-card` validation now returns `200`
+- `POST /a2a-connections` now returns `201`
+
+But A2A execution is still blocked in the workspace:
+- the registered external connection can be selected in the chat UI
+- direct `prompt-stream` with `a2aConnectionId` does not produce confirmed external runtime execution
+- the external A2A runtime was not hit from the chat execution attempts
 
 Result:
-- the hidden-risk path appears to execute at the MCP layer
-- the actual workspace transcript did not render or persist the contradiction result
-- therefore Prompt 2 is not demo-safe in the real BYO workspace yet
-
-### Prompt 3
-Prompt:
-`What exactly must happen before discharge, and prepare the transition package.`
-
-Observed behavior in a fresh BYO session:
-- user message persisted at `2026-04-21T09:29:34.888816+00:00`
-- no assistant/tool messages were persisted afterward in the conversation API
-- MCP logs show only `Discharge Gatekeeper MCP` traffic:
-  - `09:29:35.767Z`
-  - `09:29:36.524Z`
-- no corresponding `Clinical Intelligence MCP` hit was observed for this prompt
-
-Result:
-- the required visible Prompt 3 fallback path via `Clinical Intelligence MCP.synthesize_transition_narrative` is not proven in the real workspace
-- the fresh-session Prompt 3 path is currently blocked
+- A2A registration is fixed
+- A2A chat execution inside Prompt Opinion is still externally blocked
 
 ## Timed results
 | Step | Result | Timing |
 | --- | --- | --- |
-| Prompt 1 visible result | ✅ PASS | 13.2s from user message to persisted tool response |
-| Prompt 2 visible result | ❌ FAIL | MCP traffic within 4s, but no persisted/rendered result after extended wait |
-| Prompt 3 visible result | ❌ FAIL | user message persisted; no persisted/rendered result after extended wait |
+| Previous-pass BYO Prompt 1 visible result | ✅ PASS | 13.2s from user message to persisted tool response |
+| Single-tool CI Prompt 2 explicit | ✅ PASS | ~56s from user message to assistant persistence |
+| Single-tool CI Prompt 2 canonical | ✅ PASS | ~49s from user message to assistant persistence |
+| Single-tool CI Prompt 3 explicit | ✅ PASS | ~48s from user message to assistant persistence |
+| Dual-tool BYO Prompt 2 after routing hardening | ❌ FAIL | function call and tool response persisted, but no assistant completion after extended wait |
+| Dual-tool BYO Prompt 2 lean variant | ❌ FAIL | no clean completion after extended wait |
+| A2A card validation | ✅ PASS | immediate after runtime patch |
+| A2A connection creation | ✅ PASS | immediate after runtime patch |
+| A2A chat execution | ❌ FAIL | no confirmed external runtime execution from Prompt Opinion chat path |
 
 ## Artifacts captured
 - `output/playwright/01-po-login-page.png` - Prompt Opinion login page
@@ -122,26 +142,31 @@ Result:
 - `output/playwright/05-byo-agent-system-prompt.png` - BYO fallback agent configuration
 - `output/playwright/06-byo-prompt1-ready-tool-response.png` - Prompt 1 visible `ready` tool response
 - `output/playwright/07-byo-prompt3-stalled-session.png` - Fresh-session Prompt 3 stalled workspace state
+- `output/playwright/08-a2a-connection-check-modal.png` - External agent connection modal
+- `output/playwright/09-single-tool-canonical-prompt2.png` - Single-tool Prompt 2 workspace run
+- `output/playwright/10-single-tool-canonical-prompt3.png` - Single-tool Prompt 3 workspace run
 - `output/prompt-opinion-e2e/byo-workspace-validation-notes.md` - conversation ids, timings, MCP log findings
+- `output/prompt-opinion-e2e/final-transcript-debug-notes.md` - continuation-pass experiment matrix and final blocker isolation
 - `output/prompt-opinion-e2e/local-readiness-evidence.txt` - readiness evidence
 - `output/prompt-opinion-e2e/timed-rehearsal-results.md` - local rehearsal timings
 
 ## Open risks
-1. **BYO transcript persistence/rendering gap**: Prompt 2 reached both MCP runtimes, but Prompt Opinion did not persist or render the resulting assistant/tool messages in the conversation.
-2. **Prompt 3 routing gap**: the fresh-session Prompt 3 path did not reach `Clinical Intelligence MCP`, so the required `synthesize_transition_narrative` fallback surface is not proven in-workspace.
-3. **One-session repeatability is not proven**: the current workspace evidence supports Prompt 1 only; the 3-prompt live demo is not yet stable enough to claim readiness.
-4. **A2A remains blocked**: the accepted direct-MCP fallback is still required because the Prompt Opinion A2A registration path is not usable today.
+1. **Dual-tool BYO execution gap**: when one BYO agent is bound to both MCP servers, Prompt Opinion still fails to reliably complete Prompt 2/3 into a final assistant transcript artifact, even after routing hardening.
+2. **Canonical Prompt 3 remains weaker than tool-explicit Prompt 3**: the single-tool Clinical Intelligence transition agent completed the explicit tool-directed Prompt 3 but did not prove the canonical Prompt 3 in the checked window.
+3. **A2A execution remains blocked**: Prompt Opinion now accepts the external A2A connection, but chat execution still does not produce confirmed external runtime use.
+4. **One-agent full 3-prompt BYO fallback path is still not green**: the continuation pass isolated the blocker but did not convert the original one-agent dual-MCP BYO flow into a stable live-demo path.
 
 ## Conclusion
-**The real BYO-agent direct-MCP fallback path is only partially validated and is not yet demo-ready.**
+**The continuation pass improved the workspace lane materially, but the original single-agent dual-MCP BYO fallback path is still not fully green.**
 
 What is proven:
 - workspace auth works
 - both MCPs can be registered
-- a BYO agent can be created with the correct MCP tool bindings
-- Prompt 1 can visibly execute the deterministic baseline and returns the correct `ready` trap-patient posture
+- Prompt Opinion now accepts and stores the external A2A connection after the runtime card fix
+- single-tool Clinical Intelligence MCP Prompt 2 can visibly complete in the real workspace
+- single-tool Clinical Intelligence MCP Prompt 3 can visibly complete with the tool-explicit phrasing in the real workspace
 
 What is not yet proven:
-- a stable visible Prompt 2 contradiction result in the real BYO workspace
-- a stable visible Prompt 3 transition-package result via `Clinical Intelligence MCP.synthesize_transition_narrative`
-- a repeatable full 3-prompt direct-MCP demo inside one authenticated Prompt Opinion session
+- a stable single-agent dual-MCP BYO Prompt 2/3 path in the real workspace
+- canonical Prompt 3 as a stable visible workspace path
+- a Prompt Opinion chat execution path that actually reaches the registered external A2A runtime

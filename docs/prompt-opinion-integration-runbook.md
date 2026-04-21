@@ -334,9 +334,11 @@ Expected fallback behavior:
 
 ### Real workspace status as of 2026-04-21
 - Prompt 1 is visibly proven in a real BYO agent and returns the correct structured `ready` baseline.
-- Prompt 2 hit both MCP runtimes in the real workspace, but Prompt Opinion did not persist/render the resulting assistant or tool messages.
-- Fresh-session Prompt 3 did not visibly complete and did not prove `Clinical Intelligence MCP.synthesize_transition_narrative` in the workspace.
-- Until those gaps are fixed, do not claim the BYO fallback is fully demo-ready inside Prompt Opinion.
+- Prompt Opinion accepts both MCP registrations and now accepts the external A2A connection after the runtime card fix.
+- Single-tool `Clinical Intelligence MCP` BYO agents can complete Prompt 2 and tool-explicit Prompt 3 in the real workspace.
+- A single BYO agent bound to both MCP servers still does not reliably complete Prompt 2/3 into a final assistant transcript artifact.
+- The registered external A2A connection is not yet proven to execute from the Prompt Opinion chat path.
+- Until those gaps are fixed, do not claim the original one-agent dual-MCP fallback or the A2A chat path are fully demo-ready inside Prompt Opinion.
 
 ## 8. Marketplace and publish implications
 
