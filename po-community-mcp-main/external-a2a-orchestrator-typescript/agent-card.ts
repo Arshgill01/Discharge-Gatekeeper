@@ -1,6 +1,18 @@
 import { RuntimeConfig } from "./runtime-config";
 
 export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => {
+  const taskEndpoints = {
+    create_task: "/tasks",
+    get_task: "/tasks/:taskId",
+    list_tasks: "/tasks",
+  };
+
+  const absoluteTaskEndpoints = {
+    create_task: `${publicBaseUrl}/tasks`,
+    get_task_template: `${publicBaseUrl}/tasks/:taskId`,
+    list_tasks: `${publicBaseUrl}/tasks`,
+  };
+
   return {
     schema_version: "a2a_card_v1",
     protocolVersion: "0.2.6",
@@ -56,6 +68,23 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       system: "Care Transitions Command",
       role: "Synchronous external orchestrator for Discharge Gatekeeper MCP + Clinical Intelligence MCP",
     },
+    endpoints: {
+      readyz: `${publicBaseUrl}/readyz`,
+      healthz: `${publicBaseUrl}/healthz`,
+      agent_card: `${publicBaseUrl}/.well-known/agent-card.json`,
+      ...absoluteTaskEndpoints,
+    },
+    task_surface: {
+      mode: "synchronous",
+      supports_streaming: false,
+      accepted_content_types: ["application/json"],
+      accepted_task_shapes: [
+        "POST /tasks with {prompt, patient_context?}",
+        "POST /tasks with {input: {prompt, patient_context?}}",
+      ],
+      request_id_header: "x-request-id",
+      timeout_ms: config.taskTimeoutMs,
+    },
     capabilities: {
       streaming: false,
       pushNotifications: false,
@@ -63,11 +92,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       task_lifecycle: {
         mode: "synchronous",
         streaming: false,
-        endpoints: {
-          create_task: "/tasks",
-          get_task: "/tasks/:taskId",
-          list_tasks: "/tasks",
-        },
+        endpoints: taskEndpoints,
       },
       dependencies: [
         {

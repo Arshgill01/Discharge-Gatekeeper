@@ -184,6 +184,8 @@ const run = async (): Promise<void> => {
           contradictionSummary: String(task.output.contradiction_summary),
           hiddenRiskCitationCount: task.output.citations.hidden_risk.length,
         });
+        assert.equal(typeof task.request_id, "string");
+        assert.equal(task.output.runtime_diagnostics?.request_id, task.request_id);
       }
 
       rehearsals.push({
