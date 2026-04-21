@@ -99,6 +99,9 @@ const run = async (): Promise<void> => {
     const trapPrompt1Task = await createTask(a2aBaseUrl, TRAP_PATIENT_TASK_INPUT);
 
     assert.equal(trapPrompt1Task.status, "completed");
+    assert.equal(typeof trapPrompt1Task.request_id, "string");
+    assert.equal(typeof trapPrompt1Task.diagnostics?.task_duration_ms, "number");
+    assert.equal(Array.isArray(trapPrompt1Task.diagnostics?.downstream_calls), true);
     assert.equal(trapPrompt1Task.output.deterministic.verdict, "ready");
     assert.equal(trapPrompt1Task.output.final_verdict, "not_ready");
     assert.equal(trapPrompt1Task.output.hidden_risk_run_status, "used");
@@ -205,6 +208,16 @@ const run = async (): Promise<void> => {
     assert.equal(insufficientContextTask.output.decision_matrix_row, 10);
     assert.equal(insufficientContextTask.output.final_verdict, "ready_with_caveats");
     assert.equal(insufficientContextTask.output.manual_review_required, true);
+    assert.equal(
+      insufficientContextTask.output.runtime_diagnostics?.hidden_risk_invoked,
+      true,
+    );
+    assert.equal(
+      insufficientContextTask.output.runtime_diagnostics?.downstream_calls.some(
+        (call: { component: string }) => call.component === "clinical_intelligence_mcp",
+      ),
+      true,
+    );
     assert.equal(
       String(insufficientContextTask.output.contradiction_summary).toLowerCase().includes("manual clinician review is required"),
       true,
