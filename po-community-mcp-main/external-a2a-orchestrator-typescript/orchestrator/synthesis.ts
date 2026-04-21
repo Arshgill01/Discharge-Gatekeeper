@@ -32,6 +32,20 @@ const compactEvidenceAnchor = (
   return `${citation.source_label} (${citation.locator}): "${shortExcerpt}"`;
 };
 
+const selectDistinctEvidenceAnchors = (
+  citations: ReconciliationResult["citations"]["hidden_risk"],
+): ReconciliationResult["citations"]["hidden_risk"] => {
+  const seen = new Set<string>();
+  return citations.filter((citation) => {
+    const key = `${citation.source_label}::${citation.locator}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
+
 const renderPrompt1Narrative = (reconciled: ReconciliationResult): string => {
   const intro = `Structured discharge posture was ${reconciled.deterministic.verdict}. Final reconciled posture is ${reconciled.final_verdict}.`;
   const change = `Disposition change: ${reconciled.contradiction_summary}`;
@@ -42,7 +56,7 @@ const renderPrompt1Narrative = (reconciled: ReconciliationResult): string => {
 };
 
 const renderPrompt2Narrative = (reconciled: ReconciliationResult): string => {
-  const evidenceAnchors = reconciled.citations.hidden_risk
+  const evidenceAnchors = selectDistinctEvidenceAnchors(reconciled.citations.hidden_risk)
     .slice(0, 2)
     .map(compactEvidenceAnchor);
   const evidenceLine = evidenceAnchors.length > 0
@@ -66,7 +80,7 @@ const renderPrompt3Narrative = (reconciled: ReconciliationResult): string => {
   const guidance = prioritizedSteps.length > 0
     ? `Before discharge, complete: ${prioritizedSteps}`
     : "Before discharge, complete deterministic transition safeguards and confirm no unresolved blockers.";
-  return `${guidance} Final posture remains ${reconciled.final_verdict} because ${reconciled.contradiction_summary.toLowerCase()} This is assistive discharge decision support and does not replace clinician authority.`;
+  return `${guidance} Final posture remains ${reconciled.final_verdict} because ${reconciled.contradiction_summary} This is assistive discharge decision support and does not replace clinician authority.`;
 };
 
 export const buildSynthesisPrompt = (
