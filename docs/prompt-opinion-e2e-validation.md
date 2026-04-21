@@ -1,23 +1,39 @@
 # Prompt Opinion E2E Validation Report
 
 ## Date
-2026-04-21
+2026-04-22
 
 ## Validation scope
-Real authenticated Prompt Opinion workspace validation of the BYO-agent direct-MCP fallback path for `Care Transitions Command`.
+Local reproducibility validation plus real authenticated Prompt Opinion workspace validation for the BYO-agent direct-MCP fallback and A2A lanes for `Care Transitions Command`.
 
 This report replaces the earlier optimistic fallback claim.
 Local runtime and smoke coverage remain green, but the real BYO-agent workspace path is only partially proven.
+
+## Status legend
+- `green`: fully proven with run-folder evidence
+- `yellow`: partially proven or missing required workspace evidence
+- `red`: blocking failure
+
+## Artifact source of truth
+- latest run bundle: `output/prompt-opinion-e2e/latest/`
+- run history: `output/prompt-opinion-e2e/runs/<run-id>/`
 
 ## What was validated
 
 ### Local prerequisite checks
 | Check | Result |
 | --- | --- |
-| `./po-community-mcp-main/scripts/run-full-system-validation.sh` | ✅ PASS |
-| `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator` | ✅ PASS |
-| `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` | ✅ PASS |
-| `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` | ✅ PASS |
+| `./po-community-mcp-main/scripts/run-full-system-validation.sh` | ✅ PASS (captured in run `20260421T203407Z`) |
+| `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` | ✅ PASS (captured in run `20260421T203407Z`) |
+| `./po-community-mcp-main/scripts/check-a2a-readiness.sh` | ✅ PASS (captured in run `20260421T203407Z`) |
+| `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` | ✅ PASS (captured in run `20260421T203407Z`) |
+
+### Current lane status (explicit)
+| Lane | Status | Evidence |
+| --- | --- | --- |
+| Local automated rehearsal lane | `green` | `output/prompt-opinion-e2e/runs/20260421T203407Z/reports/status-summary.md` |
+| Prompt Opinion A2A chat execution lane | `yellow` | no current run proving external runtime execution from Prompt Opinion chat |
+| Prompt Opinion dual-tool BYO Prompt 2/3 lane | `red` | persistent transcript completion failures in `output/prompt-opinion-e2e/final-transcript-debug-notes.md` |
 
 ### Prompt Opinion workspace validation
 | Check | Result |
@@ -136,6 +152,8 @@ Result:
 | A2A chat execution | ❌ FAIL | no confirmed external runtime execution from Prompt Opinion chat path |
 
 ## Artifacts captured
+- `output/prompt-opinion-e2e/runs/20260421T203407Z/` - latest reproducible run bundle (logs, raw payloads, notes templates, status board)
+- `output/prompt-opinion-e2e/latest/` - symlink to latest run bundle
 - `output/playwright/01-po-login-page.png` - Prompt Opinion login page
 - `output/playwright/02-po-workspace-launchpad.png` - Authenticated launchpad
 - `output/playwright/03-po-mcp-servers-registered.png` - Both MCPs registered in workspace
@@ -157,7 +175,7 @@ Result:
 4. **One-agent full 3-prompt BYO fallback path is still not green**: the continuation pass isolated the blocker but did not convert the original one-agent dual-MCP BYO flow into a stable live-demo path.
 
 ## Conclusion
-**The continuation pass improved the workspace lane materially, but the original single-agent dual-MCP BYO fallback path is still not fully green.**
+**Local rehearsal reproducibility is now green with run-scoped evidence, but the workspace A2A and one-agent dual-MCP BYO lanes remain unresolved.**
 
 What is proven:
 - workspace auth works

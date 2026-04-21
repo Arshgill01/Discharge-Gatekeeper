@@ -51,7 +51,7 @@ These are the repo-grounded and workspace-grounded facts from the last validatio
   - `Clinical Intelligence MCP`
 
 ### Not successfully completed
-- `external A2A orchestrator` was **not** successfully registered as a Prompt Opinion external/A2A agent.
+- `external A2A orchestrator` registration was fixed, but in-workspace chat execution remains unproven.
 - The BYO fallback path was only partially proven:
   - Prompt 1 worked visibly.
   - Prompt 2 did not persist/render a visible result in Prompt Opinion even though both MCPs were hit.
@@ -68,16 +68,19 @@ These are the repo-grounded and workspace-grounded facts from the last validatio
 From repo root:
 
 ```bash
-./po-community-mcp-main/scripts/run-full-system-validation.sh
-./po-community-mcp-main/scripts/check-two-mcp-readiness.sh
-npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator
-npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal
+./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh
 ```
 
 Expected result:
-- all commands pass
+- the wrapper runs and records:
+  - `./po-community-mcp-main/scripts/run-full-system-validation.sh`
+  - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
+  - `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
+  - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal`
+- all automated checks are `GREEN` in `output/prompt-opinion-e2e/latest/reports/status-summary.md`
 - both MCPs are healthy locally
 - the external A2A orchestrator is healthy locally
+- by default the wrapper performs `npm ci` in all three runtime packages; set `PROMPT_OPINION_SKIP_NPM_CI=1` only when dependencies are already known-good
 
 If these fail, do not continue into Prompt Opinion yet.
 
@@ -156,10 +159,11 @@ Inside Prompt Opinion:
    - `/tasks`
 
 Current known failure mode from the last pass:
-- Prompt Opinion returned `422 Unprocessable Entity` during A2A registration.
+- A2A registration is accepted, but chat execution from Prompt Opinion is still not reliably proven.
 
 Decision rule:
-- If A2A registration still fails with `422`, record that as an active Prompt Opinion blocker.
+- If A2A registration fails, record that as an active Prompt Opinion blocker.
+- If A2A registration succeeds but chat execution does not hit the external runtime, keep A2A lane at `YELLOW` or `RED` (not `GREEN`).
 - Do not mislabel the direct-MCP fallback as an A2A success.
 
 ## Step 6: Verify the BYO fallback agent
@@ -252,10 +256,24 @@ Capture at minimum:
 - Prompt 2 visible result or visible failure state
 - Prompt 3 visible result or visible failure state
 - timing notes
+- explicit lane status (`green`/`yellow`/`red`) for:
+  - A2A-main workspace execution
+  - dual-tool BYO Prompt 2/3 persistence
+  - direct-MCP fallback viability
 
 Existing evidence from the previous pass is in:
 - [`output/playwright/`](../output/playwright)
 - [`output/prompt-opinion-e2e/`](../output/prompt-opinion-e2e)
+
+For each new run, use the run bundle created by:
+- `output/prompt-opinion-e2e/runs/<run-id>/`
+- `output/prompt-opinion-e2e/latest/` (symlink to the latest run)
+
+Required run files:
+- `reports/status-summary.md`
+- `reports/command-results.json`
+- `notes/validation-notes.md`
+- `notes/workspace-evidence.md`
 
 Useful existing files:
 - [`output/prompt-opinion-e2e/byo-workspace-validation-notes.md`](../output/prompt-opinion-e2e/byo-workspace-validation-notes.md)
@@ -267,8 +285,8 @@ Useful existing files:
 These are the currently known breakpoints:
 
 ### A2A registration blocker
-- Prompt Opinion A2A registration returned `422 Unprocessable Entity`
-- This prevented a clean in-workspace A2A proof
+- Prompt Opinion now accepts A2A registration
+- The remaining blocker is chat execution proof from Prompt Opinion to external runtime
 
 ### BYO fallback workspace blocker
 - Prompt 1 was visible and correct
@@ -279,7 +297,7 @@ These are the currently known breakpoints:
 - two MCPs: reachable and registrable
 - BYO agent: created and configured
 - direct-MCP fallback: only partially proven
-- A2A agent: not proven in Prompt Opinion
+- A2A agent: registration proven, chat execution not yet proven
 
 ## Recommended operator order
 

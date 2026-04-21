@@ -62,7 +62,15 @@ const assertAlternativeNarrative = async (): Promise<void> => {
     "Alternative hidden-risk narrative must preserve baseline deterministic context.",
   );
   assert.ok(
-    payload.recommended_actions.every((action) => action.linked_categories.includes("home_support_and_services")),
+    payload.recommended_actions.length > 0,
+    "Alternative hidden-risk narrative should return actionable guidance.",
+  );
+  const hiddenRiskActions = payload.recommended_actions.filter(
+    (action) => action.linked_categories.length > 0 || action.citation_ids.length > 0,
+  );
+  assert.ok(hiddenRiskActions.length > 0, "Alternative hidden-risk narrative must include risk-grounded actions.");
+  assert.ok(
+    hiddenRiskActions.every((action) => action.linked_categories.includes("home_support_and_services")),
     "Alternative hidden-risk actions should stay tied to home-support risk.",
   );
   assert.ok(

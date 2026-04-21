@@ -90,6 +90,48 @@ const parseToolPayload = (toolResult: any): any => {
   return JSON.parse(textItem.text);
 };
 
+const createRunId = (): string =>
+  new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+
+const writeJson = (filePath: string, payload: unknown): void => {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+};
+
+const renderTimedResultsMarkdown = (report: {
+  generated_at: string;
+  run_id: string;
+  a2a_rehearsals: Array<{
+    run: number;
+    totalElapsedMs: number;
+    promptResults: Array<{ prompt: string; elapsedMs: number }>;
+  }>;
+}): string => {
+  const lines = [
+    "# Timed Rehearsal Results",
+    "",
+    "## Generated at",
+    report.generated_at,
+    "",
+    "## Run ID",
+    `\`${report.run_id}\``,
+    "",
+  ];
+
+  for (const rehearsal of report.a2a_rehearsals) {
+    lines.push(`## A2A Run ${rehearsal.run}`);
+    lines.push("| Prompt | Time (ms) |");
+    lines.push("| --- | --- |");
+    for (const promptResult of rehearsal.promptResults) {
+      lines.push(`| ${promptResult.prompt} | ${promptResult.elapsedMs} |`);
+    }
+    lines.push(`| **Total** | **${rehearsal.totalElapsedMs}** |`);
+    lines.push("");
+  }
+
+  return `${lines.join("\n")}\n`;
+};
+
 const buildDeterministicSnapshot = (deterministic: any) => ({
   patient_id: TRAP_PATIENT_TASK_INPUT.patient_context?.patient_id || null,
   encounter_id: TRAP_PATIENT_TASK_INPUT.patient_context?.encounter_id || null,
@@ -113,8 +155,16 @@ const run = async (): Promise<void> => {
   const root = process.cwd();
   const dgCwd = `${root}/../typescript`;
   const ciCwd = `${root}/../clinical-intelligence-typescript`;
-  const outputDir = path.resolve(root, "../../output/prompt-opinion-e2e");
+  const outputDir = process.env.PROMPT_OPINION_E2E_OUTPUT_DIR
+    ? path.resolve(process.env.PROMPT_OPINION_E2E_OUTPUT_DIR)
+    : path.resolve(root, "../../output/prompt-opinion-e2e");
+  const runId = process.env.PROMPT_OPINION_E2E_RUN_ID || createRunId();
+  const runDir = path.join(outputDir, "runs", runId);
+  const runReportsDir = path.join(runDir, "reports");
+  const runRawDir = path.join(runDir, "raw");
   fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(runReportsDir, { recursive: true });
+  fs.mkdirSync(runRawDir, { recursive: true });
 
   const dgPort = "5055";
   const ciPort = "5056";
@@ -163,10 +213,31 @@ const run = async (): Promise<void> => {
         hiddenRiskCitationCount: number;
       }>;
     }>;
+    const promptArtifacts = [] as Array<{
+      run: number;
+      prompts: Array<{
+        prompt: string;
+        elapsedMs: number;
+        task: any;
+      }>;
+    }>;
 
     for (let runIndex = 1; runIndex <= 2; runIndex += 1) {
       const runStart = Date.now();
-      const promptResults = [];
+      const promptResults = [] as Array<{
+        prompt: string;
+        elapsedMs: number;
+        finalVerdict: string;
+        hiddenRiskRunStatus: string;
+        decisionMatrixRow: number;
+        contradictionSummary: string;
+        hiddenRiskCitationCount: number;
+      }>;
+      const promptTasks = [] as Array<{
+        prompt: string;
+        elapsedMs: number;
+        task: any;
+      }>;
 
       for (const prompt of prompts) {
         const taskStart = Date.now();
@@ -175,6 +246,11 @@ const run = async (): Promise<void> => {
           prompt,
         });
         const elapsedMs = Date.now() - taskStart;
+        promptTasks.push({
+          prompt,
+          elapsedMs,
+          task,
+        });
         promptResults.push({
           prompt,
           elapsedMs,
@@ -192,6 +268,10 @@ const run = async (): Promise<void> => {
         run: runIndex,
         totalElapsedMs: Date.now() - runStart,
         promptResults,
+      });
+      promptArtifacts.push({
+        run: runIndex,
+        prompts: promptTasks,
       });
     }
 
@@ -297,6 +377,7 @@ const run = async (): Promise<void> => {
 
     const report = {
       generated_at: new Date().toISOString(),
+      run_id: runId,
       a2a_rehearsals: rehearsals,
       direct_mcp_fallback: {
         deterministic_verdict: deterministic.verdict,
@@ -310,12 +391,34 @@ const run = async (): Promise<void> => {
       },
     };
 
-    fs.writeFileSync(
-      path.join(outputDir, "prompt-opinion-rehearsal-report.json"),
-      JSON.stringify(report, null, 2),
-    );
+    writeJson(path.join(runReportsDir, "prompt-opinion-rehearsal-report.json"), report);
+    writeJson(path.join(outputDir, "prompt-opinion-rehearsal-report.json"), report);
+
+    for (const artifact of promptArtifacts) {
+      for (let promptIndex = 0; promptIndex < artifact.prompts.length; promptIndex += 1) {
+        const promptArtifact = artifact.prompts[promptIndex];
+        writeJson(
+          path.join(runRawDir, `a2a-run${artifact.run}-prompt${promptIndex + 1}.json`),
+          promptArtifact.task,
+        );
+      }
+    }
+
+    writeJson(path.join(runRawDir, "fallback-prompt1-deterministic.json"), deterministic);
+    writeJson(path.join(runRawDir, "fallback-prompt2-hidden-risk.json"), trapDirectHiddenRisk);
+    writeJson(path.join(runRawDir, "fallback-prompt3-transition-package.json"), directFallbackPrompt3);
+    writeJson(path.join(runRawDir, "control-hidden-risk.json"), controlFallback);
+
+    const timedResultsMarkdown = renderTimedResultsMarkdown({
+      generated_at: report.generated_at,
+      run_id: report.run_id,
+      a2a_rehearsals: report.a2a_rehearsals,
+    });
+    fs.writeFileSync(path.join(runReportsDir, "timed-rehearsal-results.md"), timedResultsMarkdown);
+    fs.writeFileSync(path.join(outputDir, "timed-rehearsal-results.md"), timedResultsMarkdown);
 
     console.log("PASS prompt opinion rehearsal smoke");
+    console.log(`Run artifacts: ${runDir}`);
     console.log(JSON.stringify(report, null, 2));
   } finally {
     a2a.kill("SIGTERM");

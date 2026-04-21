@@ -25,6 +25,10 @@ Current workspace note:
 - the intended fallback story remains one BYO operator path, but the 2026-04-21 continuation pass isolated a Prompt Opinion dual-MCP BYO execution problem.
 - if that blocker is still present on demo day, the narrowest stable workspace fallback is to use the dedicated single-tool Clinical Intelligence BYO agents for Prompt 2 and Prompt 3 while keeping the architecture explanation accurate.
 
+Run-status source of truth before any demo:
+- `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+- `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
+
 ## Canonical patient
 Use the patient defined in `docs/phase0-trap-patient-spec.md`.
 
@@ -157,3 +161,9 @@ A judge should be able to explain the product in one sentence:
 
 Judge feeling target at the contradiction moment:
 "The structured chart looked fine, but this system found the specific note evidence that changed the real-world discharge risk."
+
+## Operator status lock
+Do not go live until status is explicit:
+- `green`: local automated checks and selected demo lane are proven with run-folder evidence
+- `yellow`: lane is partially proven and only acceptable if the backup lane is `green`
+- `red`: lane is blocked and cannot be the live/demo lane
