@@ -22,7 +22,13 @@ const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   throw new Error(`Timed out waiting for ${url}`);
 };
 
-const spawnService = (name: string, command: string, args: string[], cwd: string, env: Record<string, string>): ChildProcess => {
+const spawnService = (
+  name: string,
+  command: string,
+  args: string[],
+  cwd: string,
+  env: Record<string, string>,
+): ChildProcess => {
   const child = spawn(command, args, {
     cwd,
     env: {
@@ -53,7 +59,10 @@ const createTask = async (baseUrl: string, payload: unknown): Promise<any> => {
   return response.json();
 };
 
-const withMcpClient = async <T>(mcpUrl: string, action: (client: Client) => Promise<T>): Promise<T> => {
+const withMcpClient = async <T>(
+  mcpUrl: string,
+  action: (client: Client) => Promise<T>,
+): Promise<T> => {
   const client = new Client(
     {
       name: "prompt-opinion-rehearsal-smoke",
@@ -222,8 +231,10 @@ const run = async (): Promise<void> => {
           name: "surface_hidden_risks",
           arguments: {
             deterministic_snapshot: buildDeterministicSnapshot(deterministic),
-            narrative_evidence_bundle: TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
-            optional_context_metadata: TRAP_PATIENT_TASK_INPUT.patient_context?.optional_context_metadata,
+            narrative_evidence_bundle:
+              TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
+            optional_context_metadata:
+              TRAP_PATIENT_TASK_INPUT.patient_context?.optional_context_metadata,
           },
         }),
       ),
@@ -238,7 +249,8 @@ const run = async (): Promise<void> => {
           name: "synthesize_transition_narrative",
           arguments: {
             deterministic_snapshot: buildDeterministicSnapshot(deterministic),
-            narrative_evidence_bundle: TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
+            narrative_evidence_bundle:
+              TRAP_PATIENT_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
             optional_context_metadata: {
               ...TRAP_PATIENT_TASK_INPUT.patient_context?.optional_context_metadata,
               explicit_task_goal: "Prepare the transition package for direct-MCP fallback validation.",
@@ -264,13 +276,15 @@ const run = async (): Promise<void> => {
               deterministic_evidence: [
                 {
                   source_label: "Structured resting snapshot",
-                  detail: "Vitals stable on room air at rest and all discharge checklist fields complete.",
+                  detail:
+                    "Vitals stable on room air at rest and all discharge checklist fields complete.",
                 },
               ],
               deterministic_next_steps: [],
               deterministic_summary: "Structured discharge snapshot remains ready.",
             },
-            narrative_evidence_bundle: CONTROL_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
+            narrative_evidence_bundle:
+              CONTROL_TASK_INPUT.patient_context?.narrative_evidence_bundle || [],
             optional_context_metadata: CONTROL_TASK_INPUT.patient_context?.optional_context_metadata,
           },
         }),

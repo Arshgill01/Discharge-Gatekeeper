@@ -21,6 +21,10 @@ Primary demo path:
 Fallback demo path:
 - direct two-MCP invocation per [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
 
+Current workspace note:
+- the intended fallback story remains one BYO operator path, but the 2026-04-21 continuation pass isolated a Prompt Opinion dual-MCP BYO execution problem.
+- if that blocker is still present on demo day, the narrowest stable workspace fallback is to use the dedicated single-tool Clinical Intelligence BYO agents for Prompt 2 and Prompt 3 while keeping the architecture explanation accurate.
+
 ## Canonical patient
 Use the patient defined in `docs/phase0-trap-patient-spec.md`.
 

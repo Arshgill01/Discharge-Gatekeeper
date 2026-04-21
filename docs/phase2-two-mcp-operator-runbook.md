@@ -102,8 +102,8 @@ Prompt 2:
 - validate contradiction is cited and hidden-risk disposition impact is visible
 
 Prompt 3:
-- call `generate_transition_plan`
-- keep deterministic next-step spine and explicitly carry hidden-risk escalation context in the operator narration
+- call `synthesize_transition_narrative`
+- validate the fallback transition package stays grounded in the hidden-risk findings and escalated disposition
 
 ## 7. Failure fallback in this phase
 

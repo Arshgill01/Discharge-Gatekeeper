@@ -57,6 +57,7 @@ The point is that **Care Transitions Command prevents an unsafe discharge that w
 - [Architecture](docs/architecture.md)
 - [Demo script](docs/demo-script.md)
 - [Trap patient spec](docs/phase0-trap-patient-spec.md)
+- [Prompt Opinion complete verification guide](docs/prompt-opinion-complete-verification-guide.md)
 - [Phase 2 two-MCP operator runbook](docs/phase2-two-mcp-operator-runbook.md)
 - [Data plan](docs/data-plan.md)
 - [Live plan](PLAN.md)

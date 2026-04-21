@@ -3,6 +3,8 @@
 This runbook is the operator scaffold for the locked Phase 0 architecture:
 `Discharge Gatekeeper MCP` + `Clinical Intelligence MCP` + `external A2A orchestrator`.
 
+If you want the exact manual verification order for re-checking what is already configured in your Prompt Opinion account, use [`docs/prompt-opinion-complete-verification-guide.md`](prompt-opinion-complete-verification-guide.md) first.
+
 Use this document to separate what must be registered, what may be published, and what the demo should do when a layer fails.
 
 Phase 4 operating stance:
@@ -287,9 +289,23 @@ For Phase 3, keep this path rehearsal-ready in case A2A discovery/task invocatio
 
 ### Setup
 - keep both MCPs registered even when using the A2A path
+- use a BYO agent, not `General Chat Agent`, because the default workspace agent does not automatically expose newly registered MCP tools
 - prepare one Prompt Opinion workspace view where both MCP tool surfaces are available
 - prepare the trap-patient bundle or deterministic synthetic context
 - keep the workspace logged in before starting the rehearsal or recording
+
+### BYO agent configuration path
+1. open `Agents -> BYO Agents`
+2. create or edit `Care Transitions Command BYO Fallback`
+3. bind only:
+   - `Discharge Gatekeeper MCP`
+   - `Clinical Intelligence MCP`
+4. disable embedded/community tools so the demo stays on the direct-MCP lane
+5. use a system prompt that locks:
+   - Prompt 1 -> `assess_discharge_readiness`
+   - Prompt 2 -> `surface_hidden_risks`
+   - Prompt 3 -> `synthesize_transition_narrative`
+   - structured `scenario_id=third_synthetic_discharge_slice_ready_v1`
 
 ### Execution
 1. use `Discharge Gatekeeper MCP` for the baseline verdict
@@ -322,6 +338,14 @@ Expected fallback behavior:
 - do not claim the fallback path is the final architecture
 - do state that the system architecture remains `2 MCPs + 1 external A2A`
 - rehearse this path in the same session window as the preferred A2A rehearsal
+
+### Real workspace status as of 2026-04-21
+- Prompt 1 is visibly proven in a real BYO agent and returns the correct structured `ready` baseline.
+- Prompt Opinion accepts both MCP registrations and now accepts the external A2A connection after the runtime card fix.
+- Single-tool `Clinical Intelligence MCP` BYO agents can complete Prompt 2 and tool-explicit Prompt 3 in the real workspace.
+- A single BYO agent bound to both MCP servers still does not reliably complete Prompt 2/3 into a final assistant transcript artifact.
+- The registered external A2A connection is not yet proven to execute from the Prompt Opinion chat path.
+- Until those gaps are fixed, do not claim the original one-agent dual-MCP fallback or the A2A chat path are fully demo-ready inside Prompt Opinion.
 
 ## 8. Marketplace and publish implications
 

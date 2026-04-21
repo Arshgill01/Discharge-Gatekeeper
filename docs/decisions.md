@@ -124,3 +124,21 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: The trap patient keeps a structured baseline of `ready`, so deterministic `generate_transition_plan` can return no next steps even when the hidden-risk review correctly escalates to `not_ready`. The fallback path needs a real transition package, not operator improvisation.
 - Affected files or lanes: Prompt Opinion integration runbook, demo script, fallback rehearsal checks
 - Follow-up: keep the Prompt Opinion rehearsal smoke green and ensure fallback docs continue to point Prompt 3 at the clinical-intelligence transition narrative surface.
+
+- Date: 2026-04-21
+- Decision: Treat the real Prompt Opinion BYO direct-MCP path as only partially validated until Prompt 2 and Prompt 3 results are visibly persisted/rendered in the authenticated workspace.
+- Why: The 2026-04-21 workspace validation proved MCP registration, BYO tool binding, and a visible Prompt 1 `ready` baseline, but Prompt 2/3 did not complete into stable conversation artifacts even when the MCP layer was reachable.
+- Affected files or lanes: Prompt Opinion integration, demo readiness, submission evidence, live operator runbook
+- Follow-up: Do not claim direct-MCP fallback demo readiness in submission or judge materials until the workspace persistence/rendering gap is resolved and a clean 3-prompt BYO run is revalidated.
+
+- Date: 2026-04-21
+- Decision: Update `external A2A orchestrator` agent-card generation to expose a public URL, protocol version, interface declarations, non-empty skills, and `text/plain` modes so Prompt Opinion accepts the external connection.
+- Why: The prior sparse card shape produced a hard `422` during Prompt Opinion external-agent validation; the richer card shape is the narrowest runtime fix that made registration succeed.
+- Affected files or lanes: external A2A runtime, Prompt Opinion registration path, external-agent validation evidence
+- Follow-up: Keep the runtime card compatible with Prompt Opinion's external-agent validation flow and avoid regressing the accepted fields.
+
+- Date: 2026-04-21
+- Decision: Treat Prompt Opinion dual-MCP BYO execution and Prompt Opinion external-agent chat execution as separate blockers.
+- Why: The continuation pass proved single-tool Clinical Intelligence MCP turns can complete, while dual-tool BYO turns still stall after tool execution and the registered external A2A connection still does not produce confirmed runtime execution from chat.
+- Affected files or lanes: Prompt Opinion integration, fallback operator path, external A2A execution proof
+- Follow-up: Keep the blockers evidence-backed and do not collapse them into a generic “Prompt Opinion is broken” claim.
