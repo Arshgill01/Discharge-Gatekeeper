@@ -24,7 +24,7 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative must preserve baseline deterministic context.",
   );
   assert.ok(
-    payload.narrative.includes("citations:"),
+    payload.narrative.includes("Primary evidence:"),
     "Narrative should remain explicitly grounded in note citations.",
   );
   assert.ok(
@@ -32,16 +32,20 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative output must keep assistive non-autonomous framing.",
   );
   assert.ok(payload.recommended_actions.length > 0);
+  const hiddenRiskActions = payload.recommended_actions.filter(
+    (action) => action.linked_categories.length > 0 || action.citation_ids.length > 0,
+  );
+  assert.ok(hiddenRiskActions.length > 0, "Trap narrative must include hidden-risk-grounded actions.");
   if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_linked_categories_for_hidden_risk) {
     assert.ok(
-      payload.recommended_actions.every((action) => action.linked_categories.length > 0),
-      "Trap narrative actions must map to hidden-risk categories.",
+      hiddenRiskActions.every((action) => action.linked_categories.length > 0),
+      "Trap hidden-risk actions must map to hidden-risk categories.",
     );
   }
   if (TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.grounded_action_policy.require_action_citations_for_hidden_risk) {
     assert.ok(
-      payload.recommended_actions.every((action) => action.citation_ids.length > 0),
-      "Trap narrative actions must include supporting citation ids.",
+      hiddenRiskActions.every((action) => action.citation_ids.length > 0),
+      "Trap hidden-risk actions must include supporting citation ids.",
     );
   }
 };

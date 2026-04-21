@@ -251,12 +251,150 @@ const assertCitationFailuresAreSuppressed = async (): Promise<void> => {
   assert.equal(payload.review_metadata.weak_findings_suppressed > 0, true);
 };
 
+const assertDuplicateFindingsAreSuppressedAgainstDeterministicBlockers = async (): Promise<void> => {
+  const duplicateClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: JSON.stringify({
+        contract_version: "phase0_hidden_risk_v1",
+        status: "ok",
+        patient_id: "phase0-test",
+        encounter_id: "enc-phase0-test",
+        baseline_verdict: "ready",
+        hidden_risk_summary: {
+          result: "hidden_risk_present",
+          overall_disposition_impact: "not_ready",
+          confidence: "medium",
+          summary: "Duplicate should be filtered.",
+          manual_review_required: false,
+          false_positive_guardrail: "test",
+        },
+        hidden_risk_findings: [
+          {
+            finding_id: "hr_dup",
+            title: "Overnight oxygen setup still unconfirmed",
+            category: "equipment_and_transport",
+            disposition_impact: "not_ready",
+            confidence: "medium",
+            is_duplicate_of_blocker_id: "det_blocker_001",
+            rationale: "Home oxygen concentrator unavailable tonight and logistics incomplete.",
+            recommended_orchestrator_action: "add_blocker",
+            citation_ids: ["cit_001"],
+          },
+        ],
+        citations: [
+          {
+            citation_id: "cit_001",
+            source_type: "case_management_note",
+            source_label: "Case Management Note",
+            locator: "line 1",
+            excerpt: "Home oxygen concentrator unavailable tonight.",
+          },
+        ],
+        review_metadata: {
+          narrative_sources_reviewed: 1,
+          duplicate_findings_suppressed: 0,
+          weak_findings_suppressed: 0,
+        },
+      }),
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(
+    {
+      ...PHASE0_TRAP_PATIENT_INPUT,
+      deterministic_snapshot: {
+        ...PHASE0_TRAP_PATIENT_INPUT.deterministic_snapshot,
+        deterministic_blockers: [
+          {
+            blocker_id: "det_blocker_001",
+            category: "equipment_and_transport",
+            description: "Home oxygen concentrator unavailable tonight; discharge transport not safe.",
+            severity: "high",
+          },
+        ],
+      },
+    },
+    {
+      llmClientOverride: duplicateClient,
+    },
+  );
+
+  const payload = result.payload;
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.hidden_risk_summary.result, "no_hidden_risk");
+  assert.equal(payload.hidden_risk_findings.length, 0);
+  assert.equal(payload.review_metadata.duplicate_findings_suppressed > 0, true);
+};
+
+const assertLowConfidenceEscalationIsDowngradedToInconclusive = async (): Promise<void> => {
+  const lowConfidenceClient: HiddenRiskLlmClient = {
+    generateHiddenRiskResponse: async () => ({
+      provider: "heuristic",
+      rawText: JSON.stringify({
+        contract_version: "phase0_hidden_risk_v1",
+        status: "ok",
+        patient_id: "phase0-test",
+        encounter_id: "enc-phase0-test",
+        baseline_verdict: "ready",
+        hidden_risk_summary: {
+          result: "hidden_risk_present",
+          overall_disposition_impact: "not_ready",
+          confidence: "low",
+          summary: "Single weak source claimed escalation.",
+          manual_review_required: false,
+          false_positive_guardrail: "test",
+        },
+        hidden_risk_findings: [
+          {
+            finding_id: "hr_weak",
+            title: "Possible overnight risk",
+            category: "home_support_and_services",
+            disposition_impact: "not_ready",
+            confidence: "low",
+            is_duplicate_of_blocker_id: null,
+            rationale: "Support status unclear.",
+            recommended_orchestrator_action: "add_blocker",
+            citation_ids: ["cit_weak_001"],
+          },
+        ],
+        citations: [
+          {
+            citation_id: "cit_weak_001",
+            source_type: "case_management_note",
+            source_label: "Case Management Note",
+            locator: "line 2",
+            excerpt: "Overnight support status remains uncertain and requires follow-up.",
+          },
+        ],
+        review_metadata: {
+          narrative_sources_reviewed: 1,
+          duplicate_findings_suppressed: 0,
+          weak_findings_suppressed: 0,
+        },
+      }),
+    }),
+  };
+
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+    llmClientOverride: lowConfidenceClient,
+  });
+  const payload = result.payload;
+  assert.equal(payload.status, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.result, "inconclusive");
+  assert.equal(payload.hidden_risk_summary.manual_review_required, true);
+  assert.equal(payload.hidden_risk_findings.length, 1);
+  assert.equal(payload.hidden_risk_findings[0]?.disposition_impact, "uncertain");
+  assert.equal(payload.hidden_risk_findings[0]?.recommended_orchestrator_action, "request_manual_review");
+};
+
 const assertPromptContractGuardrailsPresent = (): void => {
   const requiredPhrases = [
     "Review only the evidence provided",
     "Suppress duplicates",
     "uncited claims",
     "Return only the JSON schema",
+    "contradiction across multiple notes",
   ];
   for (const phrase of requiredPhrases) {
     assert.ok(
@@ -277,6 +415,8 @@ const main = async (): Promise<void> => {
   await assertInconclusiveContextBehavior();
   await assertMalformedModelOutputBecomesStructuredError();
   await assertCitationFailuresAreSuppressed();
+  await assertDuplicateFindingsAreSuppressedAgainstDeterministicBlockers();
+  await assertLowConfidenceEscalationIsDowngradedToInconclusive();
   console.log("SMOKE PASS: hidden-risk detection");
 };
 
