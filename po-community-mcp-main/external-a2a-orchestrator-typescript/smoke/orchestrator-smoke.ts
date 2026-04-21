@@ -128,9 +128,14 @@ const run = async (): Promise<void> => {
       "Prompt 2 should explicitly mention the hidden-risk concern, not generic escalation.",
     );
     assert.equal(
-      /(Nursing Note|Case Management Addendum)/.test(String(trapPrompt2Task.output.contradiction_summary)),
+      String(trapPrompt2Task.output.contradiction_summary).includes("Nursing Note 2026-04-18 20:40"),
       true,
-      "Prompt 2 should carry citation-grounded evidence anchors.",
+      "Prompt 2 should anchor the canonical nursing contradiction note.",
+    );
+    assert.equal(
+      String(trapPrompt2Task.output.contradiction_summary).includes("Case Management Addendum 2026-04-18 20:55"),
+      true,
+      "Prompt 2 should carry the reinforcing case-management addendum, not duplicate the same note anchor twice.",
     );
     assert.equal(
       String(trapPrompt2Task.output.contradiction_summary).includes("Before discharge, complete:"),
@@ -163,6 +168,11 @@ const run = async (): Promise<void> => {
       String(trapPrompt3Task.output.contradiction_summary).toLowerCase().includes("final posture remains not_ready"),
       true,
       "Prompt 3 package must remain aligned with escalated final posture.",
+    );
+    assert.equal(
+      String(trapPrompt3Task.output.contradiction_summary).includes("Structured baseline 'ready' changed by narrative contradiction"),
+      true,
+      "Prompt 3 should preserve readable contradiction phrasing without mangled casing.",
     );
     assertAssistiveFraming(String(trapPrompt3Task.output.contradiction_summary), "Prompt 3");
 
