@@ -44,6 +44,7 @@ Must expose:
 
 ## 2. Common prerequisites
 - Prompt Opinion workspace access with permission to register external tools/agents
+- authenticated Prompt Opinion browser session at `https://app.promptopinion.ai/`
 - one reachable public URL per component being registered
 - one trap-patient bundle available for demo fallback
 - one operator note that maps each public URL to the correct identity
@@ -57,6 +58,10 @@ Before registration, verify for every component:
 - identity string matches the frozen name
 - health check passes
 - logs show requests clearly enough to debug discovery failures
+
+Observed browser gate from the Phase 4 validation pass:
+- an unauthenticated browser reaches `https://app.promptopinion.ai/` but stops at the login screen
+- do not claim Prompt Opinion registration validation unless the workspace UI itself was reached after login
 
 ### Validated local boot order
 
@@ -150,14 +155,14 @@ In Phase 2, this path is sufficient for demo-readiness; A2A is preferred archite
 ### Prompt Opinion manual call sequence
 1. Prompt 1 goes to `Discharge Gatekeeper MCP` for the deterministic baseline verdict
 2. Prompt 2 goes to `Clinical Intelligence MCP` for hidden-risk contradiction review with citations
-3. Prompt 3 goes back to `Discharge Gatekeeper MCP` for transition plan output while the operator narrates hidden-risk escalation
+3. Prompt 3 goes to `Clinical Intelligence MCP` via `synthesize_transition_narrative` for the fallback transition package grounded in the hidden-risk findings
 
 ### Pass criteria
 - both MCPs are discoverable in the same Prompt Opinion workspace
 - tool surfaces stay separated by role (deterministic vs hidden-risk)
 - trap-patient path shows baseline `ready` posture before hidden-risk review
 - hidden-risk review shows cited contradiction and disposition impact `not_ready`
-- deterministic transition plan remains callable after hidden-risk escalation
+- fallback Prompt 3 returns a usable transition package even when deterministic `generate_transition_plan` stays empty on a structured `ready` baseline
 - trap contradiction remains note-dependent (removing contradiction notes prevents escalation)
 - clean control path remains explicit `no_hidden_risk` with no fabricated escalation
 
@@ -241,6 +246,7 @@ Do not register A2A in Prompt Opinion until these checks are green.
 2. Prompt 2 contradiction follow-up returns cited narrative contradiction evidence.
 3. Prompt 3 transition-package follow-up returns prioritized actionable next steps.
 4. clean control check returns bounded `no_hidden_risk` behavior.
+5. Prompt Opinion workspace is already authenticated before rehearsal starts; login is not a live-demo step.
 
 ### Failure handling
 - if A2A registration or invocation fails, stop using it for the judge path
@@ -283,16 +289,17 @@ For Phase 3, keep this path rehearsal-ready in case A2A discovery/task invocatio
 - keep both MCPs registered even when using the A2A path
 - prepare one Prompt Opinion workspace view where both MCP tool surfaces are available
 - prepare the trap-patient bundle or deterministic synthetic context
+- keep the workspace logged in before starting the rehearsal or recording
 
 ### Execution
 1. use `Discharge Gatekeeper MCP` for the baseline verdict
 2. use `Clinical Intelligence MCP` for the hidden-risk/contradiction follow-up
-3. use the deterministic next-step output for the discharge-action prompt
+3. use `Clinical Intelligence MCP.synthesize_transition_narrative` for the discharge-action prompt
 
 ### Acceptable fallback story
 - Prompt 1: deterministic readiness answer
 - Prompt 2: hidden-risk review with citations
-- Prompt 3: final next-step checklist driven by the deterministic spine, verbally noting any hidden-risk escalation if the UI does not merge them
+- Prompt 3: final transition package from `synthesize_transition_narrative`, grounded in the hidden-risk findings and proposed disposition
 
 What must be shown on screen in fallback mode:
 - Prompt 1: baseline structured posture and final manual two-MCP interpretation
@@ -303,6 +310,7 @@ What must be shown on screen in fallback mode:
 Run before recording/live demo when fallback is active:
 1. `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
 2. `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+3. `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal`
 
 Expected fallback behavior:
 - trap path escalates from structured `ready` to final `not_ready` with citation-backed contradiction

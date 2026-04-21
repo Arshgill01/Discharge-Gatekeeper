@@ -102,7 +102,7 @@ Judge should notice at Prompt 3:
 Use this direct two-MCP order when A2A discovery or `/tasks` invocation fails:
 1. Prompt 1 via `Discharge Gatekeeper MCP` baseline + manual two-MCP verdict narration
 2. Prompt 2 via `Clinical Intelligence MCP` contradiction and citations
-3. Prompt 3 via `Discharge Gatekeeper MCP` transition package with cited escalation context narrated by operator
+3. Prompt 3 via `Clinical Intelligence MCP.synthesize_transition_narrative` so the fallback path still returns a concrete transition package after the hidden-risk escalation
 
 Quality gates for this fallback path:
 - trap patient: baseline `ready` then final `not_ready` after contradiction review
