@@ -1,0 +1,13 @@
+=== LOCAL READINESS EVIDENCE ===
+Timestamp: 2026-04-21T05:04:13Z
+
+--- Discharge Gatekeeper MCP /readyz ---
+{"status":"ok","server_name":"Discharge Gatekeeper MCP","server_version":"1.0.0","po_env":"local","tool_count":5,"tools":["assess_discharge_readiness","extract_discharge_blockers","generate_transition_plan","build_clinician_handoff_brief","draft_patient_discharge_instructions"],"allowed_hosts":["localhost","127.0.0.1"],"endpoints":{"mcp":"/mcp","healthz":"/healthz","readyz":"/readyz"},"uptime_seconds":25}
+--- Clinical Intelligence MCP /readyz ---
+{"status":"ok","server_name":"Clinical Intelligence MCP","server_version":"1.0.0","po_env":"local","tool_count":2,"tools":["surface_hidden_risks","synthesize_transition_narrative"],"allowed_hosts":["localhost","127.0.0.1"],"endpoints":{"mcp":"/mcp","healthz":"/healthz","readyz":"/readyz"},"uptime_seconds":25}
+--- external A2A orchestrator /readyz ---
+{"status":"ok","server_name":"external A2A orchestrator","server_version":"1.0.0","po_env":"local","endpoints":{"healthz":"/healthz","readyz":"/readyz","agent_card":"/.well-known/agent-card.json","tasks":"/tasks"},"task_count":0,"dependencies":{"discharge_gatekeeper_mcp_url":"http://127.0.0.1:5055/mcp","clinical_intelligence_mcp_url":"http://127.0.0.1:5056/mcp"},"uptime_seconds":24}
+--- external A2A agent card ---
+{"schema_version":"a2a_card_v1","agent_identity":{"name":"external A2A orchestrator","version":"1.0.0","system":"Care Transitions Command","role":"Synchronous external orchestrator for Discharge Gatekeeper MCP + Clinical Intelligence MCP"},"capabilities":{"task_lifecycle":{"mode":"synchronous","streaming":false,"endpoints":{"create_task":"/tasks","get_task":"/tasks/:taskId","list_tasks":"/tasks"}},"dependencies":[{"identity":"Discharge Gatekeeper MCP","mcp_endpoint":"http://127.0.0.1:5055/mcp","required":true},{"identity":"Clinical Intelligence MCP","mcp_endpoint":"http://127.0.0.1:5056/mcp","required":true}]},"safety":{"autonomous_discharge_authority":false,"citation_required_for_hidden_risk":true,"fallback":"If Clinical Intelligence MCP is unavailable, preserve deterministic posture and expose hidden-risk review unavailable status."}}
+--- Full system validation: PASS ---
+All smoke gates passed: release-gate, two-mcp-integration, a2a-orchestration
