@@ -37,6 +37,8 @@ const deterministicResponseSchema = z.object({
       owner: z.string(),
       linked_blockers: z.array(z.string()),
       linked_evidence: z.array(z.string()),
+      blocker_trust_state: z.string(),
+      trace_summary: z.string(),
     }),
   ),
   summary: z.string(),

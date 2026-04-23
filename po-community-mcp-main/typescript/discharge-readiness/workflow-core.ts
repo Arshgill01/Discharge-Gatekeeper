@@ -19,6 +19,11 @@ import {
   buildNormalizedEvidenceBundle,
   getEvidenceIdsForCategory,
 } from "./evidence-layer";
+import {
+  buildTransitionActionText,
+  CATEGORY_LABEL,
+  OWNER_BY_CATEGORY,
+} from "./transition-scaffolding";
 
 const PRIORITY_WEIGHT: Record<BlockerPriority, number> = {
   high: 3,
@@ -47,53 +52,6 @@ const CATEGORY_ORDER: Record<BlockerCategory, number> = {
   home_support_and_services: 6,
   equipment_and_transport: 7,
   administrative_and_documentation: 8,
-};
-
-const CATEGORY_LABEL: Record<BlockerCategory, string> = {
-  clinical_stability: "clinical stability",
-  pending_diagnostics: "pending diagnostics",
-  medication_reconciliation: "medication reconciliation",
-  follow_up_and_referrals: "follow-up and referrals",
-  patient_education: "patient education",
-  home_support_and_services: "home support and services",
-  equipment_and_transport: "equipment and transport",
-  administrative_and_documentation: "administrative and documentation",
-};
-
-const OWNER_BY_CATEGORY: Record<BlockerCategory, string> = {
-  clinical_stability: "Primary team",
-  pending_diagnostics: "Primary team / Diagnostics",
-  medication_reconciliation: "Pharmacy / Primary team",
-  follow_up_and_referrals: "Case management",
-  patient_education: "Nursing",
-  home_support_and_services: "Case management / Social work",
-  equipment_and_transport: "Care coordination",
-  administrative_and_documentation: "Primary team / Case management",
-};
-
-const TIMING_HINT_BY_PRIORITY: Record<BlockerPriority, string> = {
-  high: "Immediate discharge hold action:",
-  medium: "Before final discharge order:",
-  low: "Before packet finalization:",
-};
-
-const COMPLETION_SIGNAL_BY_CATEGORY: Record<BlockerCategory, string> = {
-  clinical_stability:
-    "Primary team documents exertion-aware stability and explicit discharge clearance.",
-  pending_diagnostics:
-    "All discharge-critical diagnostics are resulted or explicitly cleared in the chart.",
-  medication_reconciliation:
-    "A single reconciled discharge medication list is signed and reviewed with the patient.",
-  follow_up_and_referrals:
-    "Follow-up/referral dates, locations, and contacts are documented in the packet.",
-  patient_education:
-    "Teach-back completion and escalation instructions are documented as understood.",
-  home_support_and_services:
-    "Overnight caregiver/home-service plan is confirmed with named contact and timing.",
-  equipment_and_transport:
-    "Required equipment and transport have confirmed delivery/pickup windows.",
-  administrative_and_documentation:
-    "Required discharge summary, AVS, and sign-offs are finalized in the packet.",
 };
 
 const BLOCKER_ID_BY_CATEGORY: Record<BlockerCategory, string> = {
@@ -336,16 +294,15 @@ const buildEvidenceTrace = (
   });
 };
 
-const buildTransitionAction = (blocker: DischargeBlocker): string => {
-  return `${TIMING_HINT_BY_PRIORITY[blocker.priority]} ${blocker.actionability} ` +
-    `Completion signal: ${COMPLETION_SIGNAL_BY_CATEGORY[blocker.category]}`;
-};
-
 const buildTransitionTasks = (blockers: DischargeBlocker[]): TransitionTask[] => {
   return sortedByPriority(blockers).map((blocker, index) => ({
     id: `step-${index + 1}`,
     priority: blocker.priority,
-    action: buildTransitionAction(blocker),
+    action: buildTransitionActionText(
+      blocker.priority,
+      blocker.category,
+      blocker.actionability,
+    ),
     owner: OWNER_BY_CATEGORY[blocker.category],
     linked_blockers: [blocker.id],
     linked_evidence: blocker.evidence,
