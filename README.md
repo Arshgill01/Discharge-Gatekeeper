@@ -48,6 +48,7 @@ The point is that **Care Transitions Command prevents an unsafe discharge that w
 - architecture stays `2 MCPs + 1 external A2A`
 - no custom frontend
 - no third MCP
+- synchronous external A2A request/response surface
 - no A2A streaming
 - Prompt Opinion is the user-facing surface
 
@@ -62,15 +63,18 @@ The point is that **Care Transitions Command prevents an unsafe discharge that w
 - [Data plan](docs/data-plan.md)
 - [Live plan](PLAN.md)
 
-## Execution-ready next steps
-1. Phase 1: build **Clinical Intelligence MCP** first around the hidden-risk prompt contract, citations, and false-positive controls.
-2. Phase 2: prove the two-MCP integrated story by reconciling **Clinical Intelligence MCP** with the existing **Discharge Gatekeeper MCP** structured spine.
-3. Phase 3: add the **external A2A orchestrator** as the preferred synchronous Prompt Opinion path.
-4. Phase 4: collapse the judge path into the final 3-prompt demo, while preserving the direct-MCP fallback.
+## Current release sequence
+1. Phase 7: restore the synchronous contract, remove stale streaming-oriented planning drift, and lock the live demo rules.
+2. Phase 8: freeze submission packaging only after the current run-folder evidence marks the primary and backup lanes correctly.
 
 ## Current implementation note
-The repo already contains a TypeScript runtime substrate under `po-community-mcp-main/typescript` for **Discharge Gatekeeper MCP**.
-Phase 0 now locks the broader system story so Phase 1 can start with **Clinical Intelligence MCP**, then integrate back into the existing structured spine before orchestration.
+The repo already contains the implemented runtime surfaces for:
+- **Discharge Gatekeeper MCP**
+- **Clinical Intelligence MCP**
+- **external A2A orchestrator**
+
+The current repo-level task is not foundational architecture invention.
+It is keeping the docs, operator rules, and submission surfaces aligned to the locked synchronous contract and the real Phase 7/8 state.
 
 ## Non-goals
 - custom frontend work

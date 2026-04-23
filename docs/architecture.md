@@ -10,6 +10,7 @@ Freeze these constraints:
 - architecture stays `2 MCPs + 1 external A2A`
 - no custom frontend
 - no third MCP
+- external A2A surface is synchronous request/response
 - no A2A streaming
 - Prompt Opinion is the user-facing surface
 
@@ -84,7 +85,8 @@ Outputs:
 - transition package responses that preserve evidence lineage
 
 Rules:
-- no streaming
+- synchronous request/response only
+- explicit non-streaming agent-card/task-lifecycle contract
 - no custom frontend dependency
 - no speculative multi-agent sprawl
 

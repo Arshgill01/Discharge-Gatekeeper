@@ -142,3 +142,27 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: The continuation pass proved single-tool Clinical Intelligence MCP turns can complete, while dual-tool BYO turns still stall after tool execution and the registered external A2A connection still does not produce confirmed runtime execution from chat.
 - Affected files or lanes: Prompt Opinion integration, fallback operator path, external A2A execution proof
 - Follow-up: Keep the blockers evidence-backed and do not collapse them into a generic “Prompt Opinion is broken” claim.
+
+- Date: 2026-04-23
+- Decision: Restore the shared contract language to the locked synchronous external A2A surface and remove stale streaming-oriented planning drift from repo-map docs.
+- Why: The runtime and smoke surfaces are synchronous today, but several planning/operator docs still read like earlier architecture exploration and invite avoidable confusion.
+- Affected files or lanes: `AGENTS.md`, `README.md`, `PLAN.md`, architecture/demo/eval/operator/submission docs
+- Follow-up: Describe the A2A layer as synchronous request/response plus explicit no-streaming behavior, not as speculative streaming choreography.
+
+- Date: 2026-04-23
+- Decision: Standardize lane-status definitions across the repo: `green` means current run-folder evidence proves the lane end-to-end and it is eligible to be primary; `yellow` means only partial proof exists and the lane cannot be primary; `red` means a blocking defect, failed required validation, or missing required evidence.
+- Why: Demo, submission, and operator docs were using similar but not identical status language, which weakens go/no-go decisions under time pressure.
+- Affected files or lanes: demo script, Prompt Opinion runbooks, submission checklist, evidence templates, evaluation docs
+- Follow-up: Keep these exact definitions aligned in future docs and rehearsal artifacts.
+
+- Date: 2026-04-23
+- Decision: Tighten the operator promotion rule so `A2A-main` can be the live primary lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`; if `A2A-main` is `yellow` or `red` and fallback is `green`, run the fallback lane instead.
+- Why: The preferred architecture should not become the live lane without current proof, and the backup lane must remain truly usable rather than rhetorical.
+- Affected files or lanes: Prompt Opinion integration runbook, demo script, submission checklist, verification guide, rehearsal artifacts
+- Follow-up: Do not record, publish, or rehearse a primary-lane claim that is stronger than the current run-folder evidence.
+
+- Date: 2026-04-23
+- Decision: Sequence the current repo work as Phase 7 `contract restore and demo lock` followed by Phase 8 `submission freeze`.
+- Why: Foundational build and rehearsal work from Phases 0-6 already landed in repo history, so top-level docs should reflect the actual current release stage instead of restarting the project narrative at Phase 0.
+- Affected files or lanes: `AGENTS.md`, `README.md`, `PLAN.md`, demo/submission/operator docs
+- Follow-up: Keep future sequencing updates grounded in the actual repo state and branch history.

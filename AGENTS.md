@@ -34,6 +34,7 @@ Freeze these unless an explicit decision changes them:
 - `2 MCPs + 1 external A2A`
 - no custom frontend
 - no third MCP
+- synchronous external A2A request/response surface
 - no A2A streaming
 - Prompt Opinion is the demo surface
 - deterministic structured discharge spine remains foundational
@@ -65,9 +66,12 @@ Owns prompt-level coordination:
 1. Phase 0: vision lock, trap-patient lock, repo scaffold reset
 2. Phase 1: Clinical Intelligence MCP hidden-risk contract and contradiction detection
 3. Phase 2: two-MCP integrated story on top of the existing Discharge Gatekeeper MCP structured spine
-4. Phase 3: external A2A orchestrator integration
+4. Phase 3: synchronous external A2A orchestrator integration
 5. Phase 4: 3-prompt demo collapse and Prompt Opinion operator hardening
 6. Phase 5: Marketplace and judging packaging
+7. Phase 6: synthetic scenario pack, rehearsal evidence, and prize-convergence quality work
+8. Phase 7: synchronous contract restore and demo-lock cleanup
+9. Phase 8: submission freeze, operator lane lock, and judge packaging
 
 ## Canonical demo shape
 The final demo is 3 prompts:
@@ -166,7 +170,7 @@ If it improves none of these, question it.
 Do not drift into:
 - a custom frontend
 - a third MCP
-- streaming A2A orchestration
+- streaming-oriented A2A orchestration plans
 - diagnosis generation
 - generic hospital operations dashboards
 - open-ended care-management scope

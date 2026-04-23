@@ -13,6 +13,7 @@ The demo story assumes:
 - Discharge Gatekeeper MCP produces the structured posture
 - Clinical Intelligence MCP surfaces the hidden contradiction
 - the external A2A orchestrator fuses both into one answer
+- the A2A layer is synchronous request/response, not streaming
 - Prompt Opinion is the only user-facing surface
 
 Primary demo path:
@@ -152,8 +153,9 @@ If the richer display degrades, preserve the story in this order:
 4. top next steps
 
 Switch to direct two-MCP fallback immediately when:
+- the current run folder does not mark `A2A-main` as `green`, or
 - A2A agent card discovery fails, or
-- `POST /tasks` does not return a clean synchronous response in rehearsal
+- `POST /tasks` does not return one clean synchronous response in rehearsal
 
 ## Done check
 A judge should be able to explain the product in one sentence:
@@ -164,6 +166,10 @@ Judge feeling target at the contradiction moment:
 
 ## Operator status lock
 Do not go live until status is explicit:
-- `green`: local automated checks and selected demo lane are proven with run-folder evidence
-- `yellow`: lane is partially proven and only acceptable if the backup lane is `green`
-- `red`: lane is blocked and cannot be the live/demo lane
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable
+
+Promotion rule:
+- use `A2A-main` as the live lane only when both `A2A-main` and `Direct-MCP fallback` are `green` in the current run folder
+- if `A2A-main` is `yellow` or `red` and `Direct-MCP fallback` is `green`, run the fallback lane and keep the architecture narration accurate
