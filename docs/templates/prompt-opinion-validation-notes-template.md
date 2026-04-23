@@ -1,13 +1,24 @@
 # Prompt Opinion Validation Notes Template
 
-## Run metadata
-- Run ID:
-- Date (UTC):
-- Branch:
-- Commit:
+## Operator
 - Operator:
+- Prompt Opinion org:
+- Browser session window:
+
+## Decisive validation commands
+Record the exact command result from this run folder before calling any lane `green`.
+
+| Command | Status (`green`/`yellow`/`red`) | Evidence |
+| --- | --- | --- |
+| `./po-community-mcp-main/scripts/run-full-system-validation.sh` |  |  |
+| `./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh` |  |  |
+| `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` |  |  |
+| `./po-community-mcp-main/scripts/check-a2a-readiness.sh` |  |  |
+| `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` |  |  |
 
 ## Automated check status board
+Copy the machine-generated status lines from `reports/command-results.json`.
+
 | Check | Command | Status (`green`/`yellow`/`red`) | Duration (ms) | Evidence log |
 | --- | --- | --- | --- | --- |
 | Full system validation | `./po-community-mcp-main/scripts/run-full-system-validation.sh` |  |  |  |
@@ -15,22 +26,27 @@
 | A2A readiness check | `./po-community-mcp-main/scripts/check-a2a-readiness.sh` |  |  |  |
 | Prompt Opinion rehearsal smoke | `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` |  |  |  |
 
-## Local timing summary
-- Prompt 1:
-- Prompt 2:
-- Prompt 3:
-- Total run time:
+## Local artifact cross-check
+| Artifact | Status (`green`/`yellow`/`red`) | Evidence |
+| --- | --- | --- |
+| `reports/status-summary.md` updated for this run |  |  |
+| `reports/request-id-correlation.md` present |  |  |
+| `notes/experiment-matrix.md` completed |  |  |
+| `notes/request-id-correlation.md` completed |  |  |
+| `notes/workspace-evidence.md` completed |  |  |
 
-## Local automated verdict
-- Overall local lane status (`green`/`yellow`/`red`):
-- Blocking failures:
-
-## Manual workspace lane status
+## Lane status board
 | Lane | Status (`green`/`yellow`/`red`) | Evidence |
 | --- | --- | --- |
-| Prompt Opinion A2A chat execution |  |  |
-| Dual-tool BYO Prompt 2 transcript persistence |  |  |
-| Dual-tool BYO Prompt 3 transcript persistence |  |  |
+| Local automated rehearsal lane |  |  |
+| Prompt Opinion A2A-main workspace lane |  |  |
+| Prompt Opinion Direct-MCP fallback workspace lane |  |  |
+| Current blocker-isolation conclusion |  |  |
+
+## Request-id conclusion
+- A2A runtime hit proven:
+- Matching request/task IDs:
+- If not proven, narrowest blocker:
 
 ## Green/yellow/red rationale
 - Green: the current run folder proves the lane end-to-end and the lane is eligible to be primary.

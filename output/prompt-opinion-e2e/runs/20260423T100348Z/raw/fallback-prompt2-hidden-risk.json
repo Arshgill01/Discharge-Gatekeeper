@@ -1,0 +1,87 @@
+{
+  "contract_version": "phase0_hidden_risk_v1",
+  "status": "ok",
+  "patient_id": "phase0-trap-maria-alvarez",
+  "encounter_id": "enc-phase0-trap-001",
+  "baseline_verdict": "ready",
+  "hidden_risk_summary": {
+    "result": "hidden_risk_present",
+    "overall_disposition_impact": "not_ready",
+    "confidence": "medium",
+    "summary": "Structured baseline was ready, but narrative evidence contradicted that posture: clinical_stability: Exertional oxygen instability not visible in resting structured data via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002] | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003] | home_support_and_services: No confirmed overnight support for high-friction home environment via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003].",
+    "manual_review_required": true,
+    "false_positive_guardrail": "Duplicate deterministic blockers, uncited findings, and low-confidence escalations are suppressed or downgraded before hidden-risk output is returned."
+  },
+  "hidden_risk_findings": [
+    {
+      "finding_id": "hr_001",
+      "title": "Exertional oxygen instability not visible in resting structured data",
+      "category": "clinical_stability",
+      "disposition_impact": "uncertain",
+      "confidence": "low",
+      "is_duplicate_of_blocker_id": null,
+      "rationale": "Narrative evidence documents exertional desaturation and dyspnea, materially conflicting with resting-only stability assumptions. Contradiction was identified between reassuring narrative context (Hospitalist Progress Note 2026-04-18 08:10) and discharge-risk evidence (Nursing Note 2026-04-18 20:40).",
+      "recommended_orchestrator_action": "request_manual_review",
+      "citation_ids": [
+        "cit_001",
+        "cit_002"
+      ]
+    },
+    {
+      "finding_id": "hr_002",
+      "title": "Required home oxygen or discharge equipment unavailable tonight",
+      "category": "equipment_and_transport",
+      "disposition_impact": "not_ready",
+      "confidence": "high",
+      "is_duplicate_of_blocker_id": null,
+      "rationale": "Narrative evidence indicates oxygen delivery or discharge equipment logistics are delayed, making planned support unavailable.",
+      "recommended_orchestrator_action": "add_blocker",
+      "citation_ids": [
+        "cit_001",
+        "cit_003"
+      ]
+    },
+    {
+      "finding_id": "hr_003",
+      "title": "No confirmed overnight support for high-friction home environment",
+      "category": "home_support_and_services",
+      "disposition_impact": "not_ready",
+      "confidence": "high",
+      "is_duplicate_of_blocker_id": null,
+      "rationale": "Narrative evidence indicates the patient is alone overnight without expected caregiver support or fallback coverage.",
+      "recommended_orchestrator_action": "add_blocker",
+      "citation_ids": [
+        "cit_001",
+        "cit_003"
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "citation_id": "cit_001",
+      "source_type": "nursing_note",
+      "source_label": "Nursing Note 2026-04-18 20:40",
+      "locator": "full note",
+      "excerpt": "O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic. Patient stated, \"I do not have oxygen at home tonight and my daughter cannot stay.\" Oxygen vendor cannot deliver concentrator until tomorrow morning. Patient lives alone o"
+    },
+    {
+      "citation_id": "cit_002",
+      "source_type": "hospitalist_note",
+      "source_label": "Hospitalist Progress Note 2026-04-18 08:10",
+      "locator": "summary",
+      "excerpt": "Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on room air."
+    },
+    {
+      "citation_id": "cit_003",
+      "source_type": "case_management_note",
+      "source_label": "Case Management Addendum 2026-04-18 20:55",
+      "locator": "summary",
+      "excerpt": "Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no alternate caregiver for first night home."
+    }
+  ],
+  "review_metadata": {
+    "narrative_sources_reviewed": 3,
+    "duplicate_findings_suppressed": 0,
+    "weak_findings_suppressed": 0
+  }
+}

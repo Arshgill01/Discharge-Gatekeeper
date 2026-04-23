@@ -82,16 +82,31 @@ Use the capture wrapper for reproducible local evidence bundles:
 2. open `output/prompt-opinion-e2e/latest/reports/status-summary.md`
 3. complete:
    - `output/prompt-opinion-e2e/latest/notes/validation-notes.md`
+   - `output/prompt-opinion-e2e/latest/notes/experiment-matrix.md`
+   - `output/prompt-opinion-e2e/latest/notes/request-id-correlation.md`
    - `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
 4. add Prompt Opinion screenshots into `output/prompt-opinion-e2e/latest/screenshots/`
+5. update `output/prompt-opinion-e2e/latest/reports/status-summary.md` after the manual lane verdict is final
 
 Artifact bundle contract:
 - one run per folder: `output/prompt-opinion-e2e/runs/<run-id>/`
 - command logs in `logs/`
 - machine-readable command results in `reports/command-results.json`
 - local automated status board in `reports/status-summary.md`
+- local A2A request/task correlation in `reports/request-id-correlation.md`
 - raw per-prompt local outputs in `raw/`
+- workspace attempt matrix in `notes/experiment-matrix.md`
+- workspace request/task correlation in `notes/request-id-correlation.md`
+- final lane write-up in `notes/validation-notes.md`
 - dependency bootstrap via `npm ci` runs automatically for all three runtimes unless `PROMPT_OPINION_SKIP_NPM_CI=1` is set
+
+Run-folder operator workflow:
+1. use `reports/status-summary.md` to confirm the local prerequisite lane is still green
+2. use `reports/request-id-correlation.md` to anchor the local A2A request/task IDs before any workspace attempt
+3. record every workspace attempt in `notes/experiment-matrix.md`
+4. record every A2A request/task correlation clue, or the exact absence of a runtime hit, in `notes/request-id-correlation.md`
+5. update `notes/workspace-evidence.md` with screenshots, registrations, and prompt outcomes
+6. write the final lane decision in `notes/validation-notes.md` and mirror it into `reports/status-summary.md`
 
 Status color contract:
 - `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
@@ -304,10 +319,19 @@ Before going live:
 1. run `./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh`
 2. confirm all automated checks are `GREEN` in `output/prompt-opinion-e2e/latest/reports/status-summary.md`
 3. confirm trap Prompt 2 still shows contradiction evidence anchors (not transition-package action-list output)
-4. update manual workspace statuses to `GREEN/YELLOW/RED` in `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
-5. promote A2A-main only if the current run folder records:
+4. confirm `output/prompt-opinion-e2e/latest/reports/request-id-correlation.md` shows the expected local request/task propagation
+5. update:
+   - `output/prompt-opinion-e2e/latest/notes/experiment-matrix.md`
+   - `output/prompt-opinion-e2e/latest/notes/request-id-correlation.md`
+   - `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
+6. promote A2A-main only if the current run folder records:
    - `A2A-main lane: green`
    - `Direct-MCP fallback lane: green`
+7. if A2A-main is not green, the request-id correlation note must say whether the blocker was:
+   - `registration_only`
+   - `chat_path_not_routed`
+   - `runtime_hit_but_no_transcript`
+   - `runtime_hit_but_downstream_failure`
 
 ## 7. Fallback direct-MCP demo path
 

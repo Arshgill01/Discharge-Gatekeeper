@@ -166,3 +166,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Foundational build and rehearsal work from Phases 0-6 already landed in repo history, so top-level docs should reflect the actual current release stage instead of restarting the project narrative at Phase 0.
 - Affected files or lanes: `AGENTS.md`, `README.md`, `PLAN.md`, demo/submission/operator docs
 - Follow-up: Keep future sequencing updates grounded in the actual repo state and branch history.
+
+- Date: 2026-04-23
+- Decision: Require every decisive Prompt Opinion proof run to carry an explicit experiment matrix plus request-id correlation notes in the run folder before `A2A-main` can be called `green`.
+- Why: Local smoke success alone does not prove Prompt Opinion routed a chat turn into the external runtime; the lane decision needs reproducible attempt records and precise blocker isolation when the runtime is not hit.
+- Affected files or lanes: Prompt Opinion runbooks, rehearsal capture script, evidence templates, demo go/no-go
+- Follow-up: Keep `reports/request-id-correlation.md`, `notes/experiment-matrix.md`, and `notes/request-id-correlation.md` present and updated in the current run folder before any primary-lane claim.
