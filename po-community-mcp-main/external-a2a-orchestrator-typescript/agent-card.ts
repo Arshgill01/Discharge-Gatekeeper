@@ -1,6 +1,7 @@
 import { RuntimeConfig } from "./runtime-config";
 
 export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => {
+  const contentModes = ["text/plain", "application/json"];
   const taskEndpoints = {
     create_task: "/tasks",
     get_task: "/tasks/:taskId",
@@ -51,12 +52,12 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
           "What hidden risk changed that answer? Show me the contradiction and the evidence.",
           "What exactly must happen before discharge, and prepare the transition package.",
         ],
-        inputModes: ["text/plain"],
-        outputModes: ["text/plain"],
+        inputModes: contentModes,
+        outputModes: contentModes,
       },
     ],
-    defaultInputModes: ["text/plain"],
-    defaultOutputModes: ["text/plain"],
+    defaultInputModes: contentModes,
+    defaultOutputModes: contentModes,
     supportsAuthenticatedExtendedCard: false,
     provider: {
       organization: "Care Transitions Command",
@@ -73,16 +74,27 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       healthz: `${publicBaseUrl}/healthz`,
       agent_card: `${publicBaseUrl}/.well-known/agent-card.json`,
       ...absoluteTaskEndpoints,
+      createTask: `${publicBaseUrl}/tasks`,
+      getTask: `${publicBaseUrl}/tasks/:taskId`,
+      listTasks: `${publicBaseUrl}/tasks`,
     },
     task_surface: {
       mode: "synchronous",
       supports_streaming: false,
-      accepted_content_types: ["application/json"],
+      accepted_content_types: ["application/json", "application/*+json", "text/plain"],
+      response_content_types: ["application/json"],
       accepted_task_shapes: [
         "POST /tasks with {prompt, patient_context?}",
         "POST /tasks with {input: {prompt, patient_context?}}",
+        "POST /tasks with {task|task_input|taskInput|request|payload: {prompt|messages, patient_context|patientContext?}}",
+        "POST /tasks with text/plain body containing the prompt",
+      ],
+      response_task_shapes: [
+        "completed task record with output + diagnostics",
+        "snake_case core fields plus camelCase aliases for task id, request id, and timestamps",
       ],
       request_id_header: "x-request-id",
+      request_id_headers: ["x-request-id", "request-id", "x-correlation-id"],
       timeout_ms: config.taskTimeoutMs,
     },
     capabilities: {
@@ -93,6 +105,9 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
         mode: "synchronous",
         streaming: false,
         endpoints: taskEndpoints,
+        absolute_endpoints: absoluteTaskEndpoints,
+        terminal_states: ["completed", "failed"],
+        request_id_headers: ["x-request-id", "request-id", "x-correlation-id"],
       },
       dependencies: [
         {

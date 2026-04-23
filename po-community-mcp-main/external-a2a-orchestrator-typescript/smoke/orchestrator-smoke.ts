@@ -50,13 +50,21 @@ const spawnService = (
   return child;
 };
 
-const createTask = async (baseUrl: string, payload: unknown): Promise<any> => {
+const createTask = async (
+  baseUrl: string,
+  payload: unknown,
+  options?: {
+    headers?: Record<string, string>;
+    rawBody?: boolean;
+  },
+): Promise<any> => {
   const response = await fetch(`${baseUrl}/tasks`, {
     method: "POST",
     headers: {
-      "content-type": "application/json",
+      "content-type": options?.rawBody ? "text/plain" : "application/json",
+      ...options?.headers,
     },
-    body: JSON.stringify(payload),
+    body: options?.rawBody ? String(payload) : JSON.stringify(payload),
   });
   assert.equal(response.status, 201);
   return response.json();
@@ -109,12 +117,54 @@ const run = async (): Promise<void> => {
     await waitForReady(`http://127.0.0.1:${a2aPort}/readyz`, 20000);
 
     const a2aBaseUrl = `http://127.0.0.1:${a2aPort}`;
-    const trapPrompt1Task = await createTask(a2aBaseUrl, TRAP_PATIENT_TASK_INPUT);
+    const trapPrompt1Task = await createTask(
+      a2aBaseUrl,
+      {
+        requestId: "po-json-compat-request",
+        input: {
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: TRAP_PATIENT_TASK_INPUT.prompt,
+                },
+              ],
+            },
+          ],
+          patientContext: TRAP_PATIENT_TASK_INPUT.patient_context,
+        },
+      },
+      {
+        headers: {
+          "x-request-id": "po-header-request-id",
+        },
+      },
+    );
 
     assert.equal(trapPrompt1Task.status, "completed");
+    assert.equal(trapPrompt1Task.id, trapPrompt1Task.task_id);
+    assert.equal(trapPrompt1Task.taskId, trapPrompt1Task.task_id);
     assert.equal(typeof trapPrompt1Task.request_id, "string");
+    assert.equal(trapPrompt1Task.request_id, "po-header-request-id");
+    assert.equal(trapPrompt1Task.requestId, "po-header-request-id");
     assert.equal(typeof trapPrompt1Task.diagnostics?.task_duration_ms, "number");
     assert.equal(Array.isArray(trapPrompt1Task.diagnostics?.downstream_calls), true);
+    assert.equal(trapPrompt1Task.state, "completed");
+    assert.equal(trapPrompt1Task.terminal, true);
+    assert.equal(trapPrompt1Task.lifecycle.current_status, "completed");
+    assert.equal(trapPrompt1Task.lifecycle.history.length >= 3, true);
+    assert.equal(trapPrompt1Task.output.runtime_diagnostics?.task_id, trapPrompt1Task.task_id);
+    assert.equal(trapPrompt1Task.output.runtime_diagnostics?.incoming_request.input_surface, "input_envelope");
+    assert.equal(
+      trapPrompt1Task.output.runtime_diagnostics?.incoming_request.content_type?.includes("application/json"),
+      true,
+    );
+    assert.equal(
+      trapPrompt1Task.output.runtime_diagnostics?.incoming_request.request_headers["x-request-id"],
+      "po-header-request-id",
+    );
     assert.equal(trapPrompt1Task.output.deterministic.verdict, "ready");
     assert.equal(trapPrompt1Task.output.final_verdict, "not_ready");
     assert.equal(trapPrompt1Task.output.hidden_risk_run_status, "used");
@@ -138,6 +188,42 @@ const run = async (): Promise<void> => {
       trapPrompt1Task.output.prompt_payload.evidence_anchors.length > 0,
       true,
       "Prompt 1 payload should keep hidden-risk evidence anchors visible.",
+    );
+    assert.equal(
+      trapPrompt1Task.output.runtime_diagnostics?.downstream_calls.every(
+        (call: {
+          request_id: string;
+          task_id: string;
+          propagated_headers: Record<string, string>;
+          http_exchanges: unknown[];
+        }) =>
+          call.request_id === "po-header-request-id" &&
+          call.task_id === trapPrompt1Task.task_id &&
+          call.propagated_headers["x-request-id"] === "po-header-request-id" &&
+          call.propagated_headers["x-correlation-id"] === trapPrompt1Task.task_id &&
+          Array.isArray(call.http_exchanges) &&
+          call.http_exchanges.length > 0,
+      ),
+      true,
+    );
+
+    const textPlainTask = await createTask(
+      a2aBaseUrl,
+      "Is this patient safe to discharge today?",
+      {
+        rawBody: true,
+        headers: {
+          "x-request-id": "po-text-request-id",
+        },
+      },
+    );
+    assert.equal(textPlainTask.status, "completed");
+    assert.equal(textPlainTask.request_id, "po-text-request-id");
+    assert.equal(textPlainTask.input.prompt, "Is this patient safe to discharge today?");
+    assert.equal(textPlainTask.output.runtime_diagnostics?.incoming_request.input_surface, "raw_text");
+    assert.equal(
+      textPlainTask.output.runtime_diagnostics?.incoming_request.content_type?.includes("text/plain"),
+      true,
     );
 
     const ablationTask = await createTask(a2aBaseUrl, ABLATION_TASK_INPUT);
