@@ -5,6 +5,41 @@ import {
   ReconciliationResult,
 } from "../types";
 import { applyDecisionMatrix } from "./decision-matrix";
+import { BlockerCategory, BlockerPriority } from "../../typescript/discharge-readiness/contract";
+import {
+  buildHiddenRiskTransitionAction,
+  CATEGORY_LABEL,
+  getTransitionTimingHint,
+  OWNER_BY_CATEGORY,
+} from "../../typescript/discharge-readiness/transition-scaffolding";
+
+const detectPromptMode = (prompt: string): ReconciliationResult["prompt_payload"]["prompt_mode"] => {
+  const normalized = prompt.toLowerCase();
+  if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
+    return "prompt_2";
+  }
+  if (
+    normalized.includes("must happen before discharge") ||
+    normalized.includes("transition package")
+  ) {
+    return "prompt_3";
+  }
+  return "prompt_1";
+};
+
+const isCanonicalBlockerCategory = (value: string): value is BlockerCategory => {
+  return value in CATEGORY_LABEL;
+};
+
+const toBlockerPriority = (value: string): BlockerPriority => {
+  if (value === "low") {
+    return "low";
+  }
+  if (value === "medium") {
+    return "medium";
+  }
+  return "high";
+};
 
 const toHiddenRiskResult = (
   hiddenRisk: HiddenRiskResponse | null,
@@ -75,11 +110,38 @@ const buildMergedNextSteps = (
   deterministic: DeterministicResponse,
   hiddenRisk: HiddenRiskResponse | null,
 ): ReconciliationResult["merged_next_steps"] => {
+  const deterministicBlockerById = new Map(
+    deterministic.blockers.map((blocker) => [blocker.id, blocker]),
+  );
+  const deterministicEvidenceById = new Map(
+    deterministic.evidence.map((evidence) => [evidence.id, evidence]),
+  );
+  const hiddenRiskCitationById = new Map(
+    (hiddenRisk?.citations || []).map((citation) => [citation.citation_id, citation]),
+  );
+
   const deterministicSteps = deterministic.next_steps.map((step) => ({
     id: step.id,
     source: "deterministic" as const,
     priority: step.priority,
+    category:
+      deterministicBlockerById.get(step.linked_blockers[0] || "")?.category ||
+      "administrative_and_documentation",
+    timing: getTransitionTimingHint(toBlockerPriority(step.priority)),
+    owner: step.owner,
     action: step.action,
+    rationale: step.trace_summary,
+    linked_blockers: step.linked_blockers,
+    linked_evidence: step.linked_evidence,
+    citation_anchors: step.linked_evidence
+      .map((evidenceId) => deterministicEvidenceById.get(evidenceId))
+      .filter((evidence): evidence is DeterministicResponse["evidence"][number] => Boolean(evidence))
+      .map((evidence) => ({
+        id: evidence.id,
+        source: "deterministic" as const,
+        source_label: evidence.source_label,
+        detail: evidence.detail,
+      })),
   }));
 
   if (!hiddenRisk || hiddenRisk.status !== "ok") {
@@ -92,7 +154,32 @@ const buildMergedNextSteps = (
       id: `${finding.finding_id}_action`,
       source: "hidden_risk" as const,
       priority: finding.disposition_impact === "not_ready" ? "high" : "medium",
-      action: `Resolve hidden risk: ${finding.title}`,
+      category: finding.category,
+      timing: getTransitionTimingHint(
+        finding.disposition_impact === "not_ready" ? "high" : "medium",
+      ),
+      owner: isCanonicalBlockerCategory(finding.category)
+        ? OWNER_BY_CATEGORY[finding.category]
+        : "Care team",
+      action: isCanonicalBlockerCategory(finding.category)
+        ? buildHiddenRiskTransitionAction(
+            finding.category,
+            finding.disposition_impact === "not_ready" ? "high" : "medium",
+          )
+        : `Resolve hidden risk before discharge: ${finding.title}`,
+      rationale: finding.rationale,
+      linked_blockers: [finding.finding_id],
+      linked_evidence: finding.citation_ids,
+      citation_anchors: finding.citation_ids
+        .map((citationId) => hiddenRiskCitationById.get(citationId))
+        .filter((citation): citation is HiddenRiskResponse["citations"][number] => Boolean(citation))
+        .map((citation) => ({
+          id: citation.citation_id,
+          source: "hidden_risk" as const,
+          source_label: citation.source_label,
+          locator: citation.locator,
+          detail: citation.excerpt,
+        })),
     }));
 
   return [...deterministicSteps, ...hiddenRiskSteps];
@@ -145,19 +232,32 @@ export const reconcileOutputs = (
     hiddenRisk && hiddenRisk.status === "error"
       ? hiddenRisk.hidden_risk_summary.summary
       : undefined;
+  const promptMode = detectPromptMode(taskInput.prompt);
+  const contradictionSummary = buildContradictionSummary(deterministic, hiddenRisk);
+  const mergedNextSteps = buildMergedNextSteps(deterministic, hiddenRisk);
+  const mergedBlockers = buildMergedBlockers(deterministic, hiddenRisk);
+  const impactedBlockerCategories = [...new Set(mergedBlockers.map((blocker) => blocker.category))];
+  const lastDispositionDowngradeBy = deterministic.verdict === "ready"
+    ? decision.finalVerdict === "ready"
+      ? "none"
+      : "clinical_intelligence_mcp"
+    : deterministic.verdict === "ready_with_caveats" && decision.finalVerdict === "not_ready"
+    ? "clinical_intelligence_mcp"
+    : "discharge_gatekeeper_mcp";
 
   return {
     final_verdict: decision.finalVerdict,
     manual_review_required: manualReviewRequired,
     decision_matrix_row: decision.row,
     decision_matrix_action: decision.action,
+    last_disposition_downgrade_by: lastDispositionDowngradeBy,
     hidden_risk_run_status: hiddenRiskState.runStatus,
     hidden_risk_result: hiddenRiskState.result,
     hidden_risk_disposition_impact: hiddenRiskState.impact,
     deterministic,
     hidden_risk: hiddenRisk,
-    merged_blockers: buildMergedBlockers(deterministic, hiddenRisk),
-    merged_next_steps: buildMergedNextSteps(deterministic, hiddenRisk),
+    merged_blockers: mergedBlockers,
+    merged_next_steps: mergedNextSteps,
     citations: {
       deterministic: deterministic.evidence.map((evidence) => ({
         id: evidence.id,
@@ -166,7 +266,18 @@ export const reconcileOutputs = (
       })),
       hidden_risk: hiddenRisk?.citations || [],
     },
-    contradiction_summary: buildContradictionSummary(deterministic, hiddenRisk),
+    contradiction_summary: contradictionSummary,
+    prompt_payload: {
+      prompt_mode: promptMode,
+      headline: `Structured baseline ${deterministic.verdict}; final verdict ${decision.finalVerdict}.`,
+      baseline_structured_verdict: deterministic.verdict,
+      final_verdict: decision.finalVerdict,
+      structured_baseline_summary: deterministic.summary,
+      reconciliation_summary: contradictionSummary,
+      evidence_anchors: [],
+      impacted_blocker_categories: impactedBlockerCategories,
+      action_plan: promptMode === "prompt_3" ? mergedNextSteps.slice(0, 3) : [],
+    },
     hidden_risk_unavailable_reason: unavailableReason,
   };
 };

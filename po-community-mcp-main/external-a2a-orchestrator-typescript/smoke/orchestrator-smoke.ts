@@ -121,6 +121,24 @@ const run = async (): Promise<void> => {
     assert.equal(trapPrompt1Task.output.hidden_risk_result, "hidden_risk_present");
     assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
     assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
+    assert.equal(trapPrompt1Task.output.prompt_payload.prompt_mode, "prompt_1");
+    assert.equal(trapPrompt1Task.output.prompt_payload.baseline_structured_verdict, "ready");
+    assert.equal(trapPrompt1Task.output.prompt_payload.final_verdict, "not_ready");
+    assert.equal(
+      String(trapPrompt1Task.output.prompt_payload.headline).includes("Structured baseline ready"),
+      true,
+      "Prompt 1 payload should keep the deterministic baseline visible.",
+    );
+    assert.equal(
+      String(trapPrompt1Task.output.prompt_payload.headline).includes("final verdict not_ready"),
+      true,
+      "Prompt 1 payload should land on the final fused verdict in the same headline.",
+    );
+    assert.equal(
+      trapPrompt1Task.output.prompt_payload.evidence_anchors.length > 0,
+      true,
+      "Prompt 1 payload should keep hidden-risk evidence anchors visible.",
+    );
 
     const ablationTask = await createTask(a2aBaseUrl, ABLATION_TASK_INPUT);
     assert.equal(ablationTask.output.deterministic.verdict, "ready");
@@ -140,15 +158,27 @@ const run = async (): Promise<void> => {
     });
     assert.equal(trapPrompt2Task.output.final_verdict, "not_ready");
     assert.equal(trapPrompt2Task.output.hidden_risk_run_status, "used");
+    assert.equal(trapPrompt2Task.output.prompt_payload.prompt_mode, "prompt_2");
+    assert.equal(trapPrompt2Task.output.prompt_payload.baseline_structured_verdict, "ready");
+    assert.equal(
+      String(trapPrompt2Task.output.prompt_payload.headline).includes("Contradiction:"),
+      true,
+      "Prompt 2 payload headline should stay contradiction-first.",
+    );
     assert.equal(
       String(trapPrompt2Task.output.contradiction_summary).toLowerCase().includes("contradiction"),
       true,
     );
     assert.equal(trapPrompt2Task.output.citations.hidden_risk.length > 0, true);
     assert.equal(
-      String(trapPrompt2Task.output.contradiction_summary).toLowerCase().includes("from ready to not_ready"),
+      String(trapPrompt2Task.output.prompt_payload.headline).includes("ready changed to not_ready"),
       true,
       "Prompt 2 should make the structured-to-final posture change explicit.",
+    );
+    assert.equal(
+      trapPrompt2Task.output.prompt_payload.action_plan.length,
+      0,
+      "Prompt 2 payload should not drift into Prompt 3 action-plan output.",
     );
     assert.equal(
       /(oxygen|desaturation|dyspneic|caregiver)/i.test(String(trapPrompt2Task.output.contradiction_summary)),
@@ -156,12 +186,14 @@ const run = async (): Promise<void> => {
       "Prompt 2 should explicitly mention the hidden-risk concern, not generic escalation.",
     );
     assert.equal(
-      String(trapPrompt2Task.output.contradiction_summary).includes("Nursing Note 2026-04-18 20:40"),
+      trapPrompt2Task.output.prompt_payload.evidence_anchors.some((anchor: { source_label: string }) =>
+        anchor.source_label.includes("Nursing Note 2026-04-18 20:40")),
       true,
       "Prompt 2 should anchor the canonical nursing contradiction note.",
     );
     assert.equal(
-      String(trapPrompt2Task.output.contradiction_summary).includes("Case Management Addendum 2026-04-18 20:55"),
+      trapPrompt2Task.output.prompt_payload.evidence_anchors.some((anchor: { source_label: string }) =>
+        anchor.source_label.includes("Case Management Addendum 2026-04-18 20:55")),
       true,
       "Prompt 2 should carry the reinforcing case-management addendum, not duplicate the same note anchor twice.",
     );
@@ -183,9 +215,36 @@ const run = async (): Promise<void> => {
     });
     assert.equal(trapPrompt3Task.output.final_verdict, "not_ready");
     assert.equal(trapPrompt3Task.output.hidden_risk_run_status, "used");
+    assert.equal(trapPrompt3Task.output.prompt_payload.prompt_mode, "prompt_3");
     assert.equal(
       trapPrompt3Task.output.merged_next_steps.some((step: { source: string }) => step.source === "hidden_risk"),
       true,
+    );
+    assert.equal(
+      trapPrompt3Task.output.prompt_payload.action_plan.length > 0,
+      true,
+      "Prompt 3 payload should include a concrete action plan.",
+    );
+    assert.equal(
+      trapPrompt3Task.output.prompt_payload.action_plan.every(
+        (step: { owner: string; timing: string; linked_evidence: string[]; citation_anchors: unknown[] }) =>
+          step.owner.trim().length > 0 &&
+          step.timing.trim().length > 0 &&
+          step.linked_evidence.length > 0 &&
+          step.citation_anchors.length > 0,
+      ),
+      true,
+      "Prompt 3 action plan should preserve owner, timing, and citation lineage per step.",
+    );
+    assert.equal(
+      typeof trapPrompt3Task.output.prompt_payload.clinician_handoff_brief,
+      "string",
+      "Prompt 3 payload should keep a clinician handoff brief.",
+    );
+    assert.equal(
+      typeof trapPrompt3Task.output.prompt_payload.patient_discharge_guidance,
+      "string",
+      "Prompt 3 payload should keep patient-facing hold guidance.",
     );
     assert.equal(
       String(trapPrompt3Task.output.contradiction_summary).includes("Before discharge, complete:"),
@@ -200,11 +259,11 @@ const run = async (): Promise<void> => {
       "Prompt 3 package must remain aligned with escalated final posture.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).includes(
-        "Structured baseline 'ready' changed by narrative contradiction",
+      String(trapPrompt3Task.output.prompt_payload.headline).includes(
+        "complete the cited owner-assigned actions before discharge proceeds",
       ),
       true,
-      "Prompt 3 should preserve readable contradiction phrasing without mangled casing.",
+      "Prompt 3 payload headline should stay action-oriented for the transition package.",
     );
     assertAssistiveFraming(String(trapPrompt3Task.output.contradiction_summary), "Prompt 3");
 
@@ -256,6 +315,7 @@ const run = async (): Promise<void> => {
     assert.equal(inconclusiveTask.output.decision_matrix_row, 10);
     assert.equal(inconclusiveTask.output.final_verdict, "ready_with_caveats");
     assert.equal(inconclusiveTask.output.manual_review_required, true);
+    assert.equal(inconclusiveTask.output.prompt_payload.final_verdict, "ready_with_caveats");
     assert.equal(
       inconclusiveTask.output.runtime_diagnostics?.hidden_risk_invoked,
       true,
@@ -274,9 +334,9 @@ const run = async (): Promise<void> => {
       "Inconclusive hidden-risk path should defer with explicit manual review requirement.",
     );
     assert.equal(
-      String(inconclusiveTask.output.contradiction_summary)
+      String(inconclusiveTask.output.prompt_payload.headline)
         .toLowerCase()
-        .includes("posture remains ready_with_caveats"),
+        .includes("reconciled verdict is ready_with_caveats"),
       true,
       "Inconclusive hidden-risk path should remain bounded to structured posture policy.",
     );

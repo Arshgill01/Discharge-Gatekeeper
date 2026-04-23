@@ -12,7 +12,7 @@ import {
 } from "./types";
 import { McpInvocationError, McpToolInvoker } from "./mcp/invoker";
 import { reconcileOutputs } from "./orchestrator/reconcile";
-import { renderBoundedSynthesis } from "./orchestrator/synthesis";
+import { buildPromptPayload, renderBoundedSynthesis } from "./orchestrator/synthesis";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const app = express();
@@ -274,12 +274,19 @@ const runTask = async (
     return {
       diagnostics,
       result: withRuntimeDiagnostics(
-        {
-          ...reconciled,
-          hidden_risk_run_status: "skipped",
-          contradiction_summary:
-            "Narrative review was skipped because no narrative bundle was provided and prompt did not require contradiction analysis.",
-        },
+        (() => {
+          const presented: ReconciliationResult = {
+            ...reconciled,
+            hidden_risk_run_status: "skipped",
+            contradiction_summary:
+              "Narrative review was skipped because no narrative bundle was provided and prompt did not require contradiction analysis.",
+          };
+
+          return {
+            ...presented,
+            prompt_payload: buildPromptPayload(taskInput, presented),
+          };
+        })(),
         diagnostics,
       ),
     };
@@ -309,7 +316,13 @@ const runTask = async (
 
     return {
       diagnostics,
-      result: withRuntimeDiagnostics(fallback, diagnostics),
+      result: withRuntimeDiagnostics(
+        {
+          ...fallback,
+          prompt_payload: buildPromptPayload(taskInput, fallback),
+        },
+        diagnostics,
+      ),
     };
   }
 
@@ -332,6 +345,7 @@ const runTask = async (
         {
           ...reconciled,
           contradiction_summary: synthesized.narrative,
+          prompt_payload: synthesized.prompt_payload,
         },
         diagnostics,
       ),
@@ -351,10 +365,17 @@ const runTask = async (
     return {
       diagnostics,
       result: withRuntimeDiagnostics(
-        {
-          ...reconciled,
-          contradiction_summary: `${reconciled.contradiction_summary} Synthesis fallback used: ${message}.`,
-        },
+        (() => {
+          const presented: ReconciliationResult = {
+            ...reconciled,
+            contradiction_summary: `${reconciled.contradiction_summary} Synthesis fallback used: ${message}.`,
+          };
+
+          return {
+            ...presented,
+            prompt_payload: buildPromptPayload(taskInput, presented),
+          };
+        })(),
         diagnostics,
       ),
     };
