@@ -6,6 +6,16 @@ export type DispositionImpact = "none" | "caveat" | "not_ready" | "uncertain";
 
 export type HiddenRiskRunStatus = "used" | "skipped" | "unavailable" | "inconclusive";
 
+export type ParsedTaskInputSurface =
+  | "root"
+  | "input_envelope"
+  | "task_envelope"
+  | "task_input_envelope"
+  | "taskInput_envelope"
+  | "request_envelope"
+  | "payload_envelope"
+  | "raw_text";
+
 export type NarrativeSource = {
   source_id: string;
   source_type: string;
@@ -33,22 +43,46 @@ export type A2ATaskInput = {
 
 export type DownstreamCallStatus = "ok" | "error" | "skipped";
 
+export type DownstreamHttpExchange = {
+  method: string;
+  url: string;
+  status: number;
+  duration_ms: number;
+  request_content_type: string | null;
+  request_accept: string | null;
+  response_content_type: string | null;
+};
+
 export type DownstreamCallDiagnostic = {
+  call_id: string;
   component: "discharge_gatekeeper_mcp" | "clinical_intelligence_mcp";
   tool_name: string;
   mcp_url: string;
   status: DownstreamCallStatus;
+  request_id: string;
+  task_id: string;
   started_at: string;
   duration_ms: number;
+  propagated_headers: Record<string, string>;
+  http_exchanges: DownstreamHttpExchange[];
   error_message?: string;
+};
+
+export type IncomingRequestDiagnostic = {
+  input_surface: ParsedTaskInputSurface;
+  content_type: string | null;
+  accept: string | null;
+  request_headers: Record<string, string>;
 };
 
 export type TaskRuntimeDiagnostics = {
   request_id: string;
+  task_id: string;
   prompt_mode: "prompt_1" | "prompt_2" | "prompt_3";
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
   fallbacks_applied: string[];
+  incoming_request: IncomingRequestDiagnostic;
   downstream_calls: DownstreamCallDiagnostic[];
 };
 
@@ -178,6 +212,10 @@ export type A2ATaskRecord = {
   status: A2ATaskStatus;
   created_at: string;
   completed_at: string | null;
+  status_history: Array<{
+    status: A2ATaskStatus;
+    at: string;
+  }>;
   input: A2ATaskInput;
   output: ReconciliationResult | null;
   error: A2ATaskError | null;

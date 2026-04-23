@@ -54,13 +54,22 @@ const run = async (): Promise<void> => {
     assert.equal(cardPayload.agent_identity.system, "Care Transitions Command");
     assert.equal(cardPayload.endpoints.readyz, `http://127.0.0.1:${port}/readyz`);
     assert.equal(cardPayload.endpoints.create_task, `http://127.0.0.1:${port}/tasks`);
+    assert.equal(cardPayload.endpoints.createTask, `http://127.0.0.1:${port}/tasks`);
     assert.equal(cardPayload.task_surface.mode, "synchronous");
     assert.equal(cardPayload.task_surface.supports_streaming, false);
+    assert.equal(cardPayload.task_surface.accepted_content_types.includes("text/plain"), true);
+    assert.equal(cardPayload.task_surface.accepted_content_types.includes("application/json"), true);
+    assert.equal(cardPayload.task_surface.request_id_headers.includes("x-request-id"), true);
     assert.equal(cardPayload.capabilities.task_lifecycle.streaming, false);
     assert.equal(cardPayload.capabilities.task_lifecycle.mode, "synchronous");
     assert.equal(cardPayload.capabilities.task_lifecycle.endpoints.create_task, "/tasks");
     assert.equal(cardPayload.capabilities.task_lifecycle.endpoints.get_task, "/tasks/:taskId");
     assert.equal(cardPayload.capabilities.task_lifecycle.endpoints.list_tasks, "/tasks");
+    assert.equal(
+      cardPayload.capabilities.task_lifecycle.absolute_endpoints.create_task,
+      `http://127.0.0.1:${port}/tasks`,
+    );
+    assert.deepEqual(cardPayload.capabilities.task_lifecycle.terminal_states, ["completed", "failed"]);
     assert.equal(cardPayload.capabilities.dependencies.length, 2);
     assert.equal(cardPayload.capabilities.dependencies[0].identity, "Discharge Gatekeeper MCP");
     assert.equal(cardPayload.capabilities.dependencies[1].identity, "Clinical Intelligence MCP");
