@@ -81,7 +81,6 @@ export type TaskRuntimeDiagnostics = {
   request_id: string;
   prompt_mode: PromptMode;
   task_id: string;
-  prompt_mode: PromptMode;
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
   fallbacks_applied: string[];
