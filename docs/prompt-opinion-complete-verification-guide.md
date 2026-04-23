@@ -261,6 +261,11 @@ Capture at minimum:
   - dual-tool BYO Prompt 2/3 persistence
   - direct-MCP fallback viability
 
+Use these status definitions exactly:
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable
+
 Existing evidence from the previous pass is in:
 - [`output/playwright/`](../output/playwright)
 - [`output/prompt-opinion-e2e/`](../output/prompt-opinion-e2e)
@@ -312,6 +317,10 @@ Use this exact order:
 8. Prompt 2
 9. Prompt 3
 10. evidence capture and final status write-up
+
+Promotion rule:
+- use `A2A-main` as the live lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`
+- if `A2A-main` is `yellow` or `red` and fallback is `green`, run fallback as the live lane and keep A2A described as the preferred architecture
 
 ## Related docs
 - [Prompt Opinion integration runbook](prompt-opinion-integration-runbook.md)

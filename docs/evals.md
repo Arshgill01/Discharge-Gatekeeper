@@ -11,6 +11,7 @@ Frozen architecture assumptions for all evals:
 - orchestration agent: `external A2A orchestrator`
 - no custom frontend
 - no third MCP
+- synchronous external A2A request/response surface
 - no A2A streaming
 - final demo is 3 prompts
 - LLM use is allowed only inside `Clinical Intelligence MCP` and the `external A2A orchestrator`
@@ -175,6 +176,34 @@ Required command set:
 - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:orchestrator`
 - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
 - `./po-community-mcp-main/scripts/smoke-a2a-orchestration.sh`
+
+### Phase 7: operator lane lock
+Purpose:
+- convert the current runtime into an evidence-backed live-demo decision
+- prevent A2A-main promotion without current proof
+
+Required assertions:
+- `green` means the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow` means proof is partial or missing a required artifact; the lane cannot be primary
+- `red` means a blocking defect, failed required validation, or missing required evidence makes the lane unusable
+- `A2A-main` can be promoted to the live/demo lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`
+- if `A2A-main` is `yellow` or `red` and `Direct-MCP fallback` is `green`, the direct-MCP lane becomes the primary live/demo lane
+- if both lanes are not `green`, the repo may remain architecturally complete but is not demo-lock complete
+
+Required artifacts:
+- `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+- `output/prompt-opinion-e2e/latest/notes/validation-notes.md`
+- `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
+
+### Phase 8: submission freeze
+Purpose:
+- freeze the recording/publish package on the same contract used for operator go/no-go
+
+Required assertions:
+- submission copy describes the A2A lane as synchronous request/response and explicitly non-streaming
+- the chosen primary lane matches the current run-folder status board
+- the required backup lane is still explicitly recorded and not implied away
+- demo script, Prompt Opinion runbook, evals, and submission checklist all use the same green/yellow/red definitions
 
 ## Hidden-risk detection assertions
 These assertions apply in all three phases.

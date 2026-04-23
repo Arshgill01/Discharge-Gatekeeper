@@ -33,9 +33,9 @@
 | Dual-tool BYO Prompt 3 transcript persistence |  |  |
 
 ## Green/yellow/red rationale
-- Green:
-- Yellow:
-- Red:
+- Green: the current run folder proves the lane end-to-end and the lane is eligible to be primary.
+- Yellow: proof is partial or missing a required artifact; the lane cannot be primary.
+- Red: a blocking defect, failed required validation, or missing required evidence makes the lane unusable.
 
 ## Open risks
 1.

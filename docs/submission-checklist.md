@@ -9,6 +9,7 @@ Frozen submission assumptions:
 - orchestration identity: `external A2A orchestrator`
 - final architecture: `2 MCPs + 1 external A2A`
 - no custom frontend
+- synchronous external A2A request/response surface
 - final demo is 3 prompts
 
 ## Judge-facing message
@@ -123,13 +124,17 @@ Judge-facing cue order for recordings:
 3. show Prompt 3 actionable transition package
 
 Status color lock for submission:
-- `green`: lane is fully proven with current run-folder evidence
-- `yellow`: lane is partial; may be used only as backup with explicit narration
-- `red`: lane is blocked; cannot be labeled demo-ready
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable
 
-## Phase 3 readiness before final recording/publish
+Primary-lane promotion rule:
+- `A2A-main` may be presented as the live primary lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`
+- if `A2A-main` is `yellow` or `red` and `Direct-MCP fallback` is `green`, record and narrate the fallback lane as primary while keeping A2A as the preferred architecture
+
+## Phase 7 demo-lock readiness before final recording/publish
 Must be true before final recording/publish lock:
-- `docs/phase3-a2a-expected-output-matrix.md` is aligned with live smoke behavior
+- `docs/phase3-a2a-expected-output-matrix.md` and `docs/phase4-end-to-end-expected-output-matrix.md` are aligned with live smoke behavior
 - phase-3 A2A checks pass via:
   - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:runtime`
   - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:decision-matrix`
@@ -143,15 +148,18 @@ Must be true before final recording/publish lock:
 - direct two-MCP fallback remains green and rehearsal-ready:
   - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
   - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
+- the current run folder records explicit lane statuses for:
+  - `A2A-main`
+  - `Direct-MCP fallback`
+- the chosen primary lane matches those statuses
 
-## Phase 2 readiness before A2A phase
-Must be true before moving to A2A implementation as the primary quality lane:
-- `docs/phase2-two-mcp-expected-output-matrix.md` is aligned with runtime smoke behavior
-- phase-2 trap and control checks pass via:
-  - `npm --prefix po-community-mcp-main/clinical-intelligence-typescript run smoke:phase2-two-mcp`
-  - `./po-community-mcp-main/scripts/smoke-two-mcp-integration.sh`
-- Prompt 1/2/3 fallback story is documented in `docs/demo-script.md` and `docs/prompt-opinion-integration-runbook.md`
-- citation and parseability failure behavior remains catchable by smoke gates
+## Phase 8 submission-freeze readiness
+Must be true before final submission/publish claims are frozen:
+- submission copy describes the A2A lane as synchronous request/response and explicitly non-streaming
+- the same green/yellow/red definitions appear in demo, runbook, submission, and evidence-template docs
+- the run-folder evidence bundle at `output/prompt-opinion-e2e/latest/` contains the current status board and workspace evidence
+- the required backup lane remains explicitly documented even if A2A-main is primary
+- no submission artifact claims a greener lane than the current evidence proves
 
 ## Last-minute cut order
 Protect these in order:

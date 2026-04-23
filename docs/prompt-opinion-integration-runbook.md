@@ -7,10 +7,10 @@ If you want the exact manual verification order for re-checking what is already 
 
 Use this document to separate what must be registered, what may be published, and what the demo should do when a layer fails.
 
-Phase 4 operating stance:
+Phase 7 operating stance:
 - primary lane: A2A-main (`external A2A orchestrator`)
 - required backup lane: direct-MCP fallback (separate Prompt Opinion calls to both MCPs)
-- promotion rule: use A2A-main only after same-day clean rehearsal; otherwise run fallback
+- promotion rule: use A2A-main only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`; otherwise run fallback if it is `green`
 
 ## 1. Registration surfaces
 
@@ -94,9 +94,9 @@ Artifact bundle contract:
 - dependency bootstrap via `npm ci` runs automatically for all three runtimes unless `PROMPT_OPINION_SKIP_NPM_CI=1` is set
 
 Status color contract:
-- `green`: lane is proven and evidence is captured in the run folder
-- `yellow`: lane is partially proven or awaiting manual workspace evidence
-- `red`: lane failed with a blocking defect or missing required artifact
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable
 
 Local port map:
 - `Discharge Gatekeeper MCP`: `http://127.0.0.1:5055/mcp`
@@ -222,7 +222,7 @@ Register the A2A layer only after both MCPs are independently reachable.
 
 ### Required orchestrator behavior before registration
 - synchronous request/response only
-- no streaming dependencies
+- explicit non-streaming agent-card/task-lifecycle surface
 - knows the base URLs or registry IDs for both MCPs
 - applies the matrix in [phase0-orchestrator-decision-matrix.md](phase0-orchestrator-decision-matrix.md)
 - returns a single final response suitable for the 3-prompt demo
@@ -297,6 +297,7 @@ Preferred final demo:
 4. orchestrator returns one reconciled response
 
 Use this path only if all three components passed a clean-session rehearsal the same day.
+Use this path only if the current run folder also marks both `A2A-main` and `Direct-MCP fallback` as `green`.
 
 ### A2A-main operator quick-check
 Before going live:
@@ -304,6 +305,9 @@ Before going live:
 2. confirm all automated checks are `GREEN` in `output/prompt-opinion-e2e/latest/reports/status-summary.md`
 3. confirm trap Prompt 2 still shows contradiction evidence anchors (not transition-package action-list output)
 4. update manual workspace statuses to `GREEN/YELLOW/RED` in `output/prompt-opinion-e2e/latest/notes/workspace-evidence.md`
+5. promote A2A-main only if the current run folder records:
+   - `A2A-main lane: green`
+   - `Direct-MCP fallback lane: green`
 
 ## 7. Fallback direct-MCP demo path
 
@@ -395,11 +399,15 @@ Use the preferred A2A path only when all are true:
 - `external A2A orchestrator` end-to-end invocation passes
 - A2A agent-card discovery passes on the exact public URL used by Prompt Opinion
 - the 3-prompt rehearsal finishes cleanly in one session
+- the current run folder marks `A2A-main` and `Direct-MCP fallback` as `green`
 
 Otherwise:
 - disable the A2A layer for the live demo
 - use the fallback direct-MCP path
 - keep the architecture explanation accurate
+
+Do not use a `yellow` lane as the live primary path.
+If both lanes are not `green`, do not treat the repo as demo-lock complete.
 
 ### Phase 4 consistency lock
 Keep these docs aligned with runtime smoke behavior:

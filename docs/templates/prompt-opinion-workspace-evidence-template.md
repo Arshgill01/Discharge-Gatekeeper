@@ -47,3 +47,8 @@
 ## Final lane statuses
 - A2A-main lane (`green`/`yellow`/`red`):
 - Direct-MCP fallback lane (`green`/`yellow`/`red`):
+
+Status definitions:
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary.
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary.
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable.
