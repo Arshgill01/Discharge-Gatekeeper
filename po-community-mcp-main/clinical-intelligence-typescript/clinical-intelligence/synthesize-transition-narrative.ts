@@ -3,6 +3,7 @@ import {
   CANONICAL_BLOCKER_CATEGORIES,
   CANONICAL_VERDICTS,
   HiddenRiskInput,
+  HiddenRiskOutput,
   hiddenRiskInputSchema,
 } from "./contract";
 import { surfaceHiddenRisks } from "./surface-hidden-risks";
@@ -39,6 +40,7 @@ const narrativeOutputSchema = z.object({
 });
 
 export type TransitionNarrativeOutput = z.infer<typeof narrativeOutputSchema>;
+type NarrativeAction = TransitionNarrativeOutput["recommended_actions"][number];
 
 const actionTemplateByCategory: Record<
   (typeof CANONICAL_BLOCKER_CATEGORIES)[number],
@@ -46,35 +48,43 @@ const actionTemplateByCategory: Record<
 > = {
   clinical_stability: {
     priority: "high",
-    action: "Hold discharge and repeat exertional respiratory stability assessment before disposition.",
+    action:
+      "Owner now: bedside RN and covering clinician. Hold discharge and repeat exertional respiratory stability assessment before disposition.",
   },
   pending_diagnostics: {
     priority: "high",
-    action: "Complete or explicitly clear pending diagnostic items before discharge.",
+    action:
+      "Owner now: primary team. Complete or explicitly clear pending diagnostic items before discharge.",
   },
   medication_reconciliation: {
     priority: "medium",
-    action: "Resolve medication reconciliation gaps and document final discharge list.",
+    action:
+      "Owner before discharge: primary team and pharmacist. Resolve medication reconciliation gaps and document the final discharge list.",
   },
   follow_up_and_referrals: {
     priority: "medium",
-    action: "Confirm required follow-up and referral appointments before discharge release.",
+    action:
+      "Owner before discharge: case management. Confirm required follow-up and referral appointments before discharge release.",
   },
   patient_education: {
     priority: "medium",
-    action: "Reinforce discharge education with teach-back and document comprehension gaps.",
+    action:
+      "Owner before discharge: bedside RN. Reinforce discharge education with teach-back and document remaining comprehension gaps.",
   },
   home_support_and_services: {
     priority: "high",
-    action: "Confirm overnight support and safe home supervision plan before discharge.",
+    action:
+      "Owner now: case management with family confirmation. Confirm overnight support and a safe home supervision plan before discharge.",
   },
   equipment_and_transport: {
     priority: "high",
-    action: "Confirm required home equipment and transport logistics are active before discharge.",
+    action:
+      "Owner now: case management and vendor contact. Confirm required home equipment and transport logistics are active before discharge.",
   },
   administrative_and_documentation: {
     priority: "low",
-    action: "Complete required discharge documentation and handoff artifacts.",
+    action:
+      "Owner before discharge: primary team. Complete required discharge documentation and handoff artifacts.",
   },
 };
 
@@ -116,7 +126,77 @@ const getCitationLabel = (
   if (!citation) {
     return citationId;
   }
-  return `${citation.source_label} [${citation.citation_id}]`;
+  return `${citation.source_label} (${citation.locator}) [${citation.citation_id}]`;
+};
+
+const unique = <T>(values: T[]): T[] => [...new Set(values)];
+
+const sortActionsByPriority = (actions: NarrativeAction[]): NarrativeAction[] => {
+  return [...actions].sort((left, right) => rankPriority(right.priority) - rankPriority(left.priority));
+};
+
+const buildEvidenceAnchorLine = (
+  findings: HiddenRiskOutput["hidden_risk_findings"],
+  citations: TransitionNarrativeOutput["citations"],
+): string => {
+  const anchors = unique(
+    findings.flatMap((finding) =>
+      finding.citation_ids.map((citationId) => getCitationLabel(citationId, citations)),
+    ),
+  ).slice(0, 3);
+
+  return anchors.length > 0 ? anchors.join("; ") : "No citation anchors available.";
+};
+
+const buildFinalPostureLine = (
+  baselineVerdict: HiddenRiskInput["deterministic_snapshot"]["baseline_verdict"],
+  proposedDisposition: TransitionNarrativeOutput["proposed_disposition"],
+): string => {
+  return `Final posture: ${proposedDisposition}. Baseline deterministic verdict was ${baselineVerdict}.`;
+};
+
+const buildPatientGuidanceLine = (
+  proposedDisposition: TransitionNarrativeOutput["proposed_disposition"],
+  hiddenRiskOutput: HiddenRiskOutput,
+): string => {
+  if (proposedDisposition === "not_ready") {
+    return "Patient-facing guidance: Explain that discharge is on hold until the cited safety blockers are cleared and the clinical team confirms a safe transition.";
+  }
+
+  if (
+    hiddenRiskOutput.status === "inconclusive" ||
+    hiddenRiskOutput.hidden_risk_summary.manual_review_required
+  ) {
+    return "Patient-facing guidance: Explain that discharge timing remains under review until the clinical team resolves the uncertain narrative evidence.";
+  }
+
+  return "Patient-facing guidance: Continue standard discharge instructions and reinforce that final release depends on clinician sign-off.";
+};
+
+const buildHandoffBrief = (
+  input: HiddenRiskInput,
+  proposedDisposition: TransitionNarrativeOutput["proposed_disposition"],
+  hiddenRiskOutput: HiddenRiskOutput,
+): string => {
+  if (hiddenRiskOutput.hidden_risk_findings.length === 0) {
+    if (hiddenRiskOutput.hidden_risk_summary.manual_review_required) {
+      return `Clinician handoff brief: structured baseline remained ${input.deterministic_snapshot.baseline_verdict}, but hidden-risk review status was ${hiddenRiskOutput.status}. Manual review is required before discharge.`;
+    }
+
+    return `Clinician handoff brief: structured baseline remained ${input.deterministic_snapshot.baseline_verdict}; no additional discharge-changing hidden risk was identified in the reviewed narrative evidence.`;
+  }
+
+  const topCategories = unique(
+    hiddenRiskOutput.hidden_risk_findings.map((finding) => finding.category),
+  ).join(", ");
+  return `Clinician handoff brief: structured baseline was ${input.deterministic_snapshot.baseline_verdict}, but cited hidden-risk findings in ${topCategories} changed the working posture to ${proposedDisposition}.`;
+};
+
+const buildTopActionSummary = (actions: NarrativeAction[]): string => {
+  const topActions = sortActionsByPriority(actions).slice(0, 3).map((action) => action.action);
+  return topActions.length > 0
+    ? `Top pre-discharge actions: ${topActions.join(" | ")}`
+    : "Top pre-discharge actions: no additional actions generated.";
 };
 
 export const synthesizeTransitionNarrative = async (
@@ -137,14 +217,18 @@ export const synthesizeTransitionNarrative = async (
     hiddenRiskOutput.hidden_risk_summary.result,
     hiddenRiskOutput.hidden_risk_summary.overall_disposition_impact,
   );
+  const evidenceAnchorLine = buildEvidenceAnchorLine(
+    hiddenRiskOutput.hidden_risk_findings,
+    hiddenRiskOutput.citations,
+  );
 
   const keyPoints: string[] = [];
-  keyPoints.push(`Baseline deterministic verdict: ${input.deterministic_snapshot.baseline_verdict}.`);
+  keyPoints.push(buildFinalPostureLine(input.deterministic_snapshot.baseline_verdict, proposedDisposition));
   keyPoints.push(`Deterministic summary: ${input.deterministic_snapshot.deterministic_summary}`);
   keyPoints.push(
     `Hidden-risk review status: ${hiddenRiskOutput.status}; result: ${hiddenRiskOutput.hidden_risk_summary.result}; impact: ${hiddenRiskOutput.hidden_risk_summary.overall_disposition_impact}.`,
   );
-  keyPoints.push(`Hidden-risk summary: ${hiddenRiskOutput.hidden_risk_summary.summary}`);
+  keyPoints.push(`Contradiction summary: ${hiddenRiskOutput.hidden_risk_summary.summary}`);
 
   for (const finding of hiddenRiskOutput.hidden_risk_findings) {
     const evidenceRefs = finding.citation_ids
@@ -155,39 +239,61 @@ export const synthesizeTransitionNarrative = async (
     );
   }
 
-  if (hiddenRiskOutput.hidden_risk_findings.length === 0) {
+  if (
+    hiddenRiskOutput.hidden_risk_findings.length === 0 &&
+    !hiddenRiskOutput.hidden_risk_summary.manual_review_required
+  ) {
     keyPoints.push("No additional discharge-changing hidden risk was surfaced from notes.");
+  } else if (hiddenRiskOutput.hidden_risk_findings.length === 0) {
+    keyPoints.push(
+      "No hidden-risk findings were emitted because the narrative review remained unresolved and requires manual review.",
+    );
   }
 
-  const actionAccumulator = new Map<string, TransitionNarrativeOutput["recommended_actions"][number]>();
+  const actionAccumulator = new Map<string, NarrativeAction>();
+
+  if (proposedDisposition === "not_ready") {
+    actionAccumulator.set("posture_hold", {
+      action_id: "posture_hold",
+      priority: "high",
+      action:
+        "Owner now: primary team. Keep discharge on hold until the cited hidden-risk blockers are cleared and the safe transition plan is documented.",
+      linked_categories: unique(hiddenRiskOutput.hidden_risk_findings.map((finding) => finding.category)),
+      citation_ids: unique(
+        hiddenRiskOutput.hidden_risk_findings.flatMap((finding) => finding.citation_ids),
+      ).slice(0, 3),
+    });
+  }
+
   for (const finding of hiddenRiskOutput.hidden_risk_findings) {
     const template = actionTemplateByCategory[finding.category];
     const key = `hidden_${finding.category}`;
     const existing = actionAccumulator.get(key);
-    const nextAction: TransitionNarrativeOutput["recommended_actions"][number] = {
+    const nextAction: NarrativeAction = {
       action_id: key,
       priority: existing
         ? rankPriority(existing.priority) >= rankPriority(template.priority)
           ? existing.priority
           : template.priority
         : template.priority,
-      action: template.action,
-      linked_categories: [finding.category],
+      action: `${template.action} Evidence: ${finding.citation_ids
+        .map((citationId) => getCitationLabel(citationId, hiddenRiskOutput.citations))
+        .join("; ")}.`,
+      linked_categories: unique([...(existing?.linked_categories || []), finding.category]),
       citation_ids: [...new Set([...(existing?.citation_ids || []), ...finding.citation_ids])],
     };
     actionAccumulator.set(key, nextAction);
   }
 
-  const recommendedActions: TransitionNarrativeOutput["recommended_actions"] = [
-    ...actionAccumulator.values(),
-  ];
+  const recommendedActions: NarrativeAction[] = [...actionAccumulator.values()];
 
-  if (hiddenRiskOutput.status === "inconclusive") {
+  if (hiddenRiskOutput.hidden_risk_summary.manual_review_required) {
     recommendedActions.push({
       action_id: "action_manual_review",
       priority: "high",
-      action:
-        "Escalate to manual clinician review to resolve conflicting or low-confidence narrative evidence before discharge.",
+      action: hiddenRiskOutput.status === "insufficient_context"
+        ? "Owner now: primary clinician. Obtain the missing narrative evidence and complete manual review before discharge proceeds."
+        : "Owner now: primary clinician. Resolve conflicting, low-confidence, or missing narrative evidence before discharge proceeds.",
       linked_categories: [
         ...new Set(hiddenRiskOutput.hidden_risk_findings.map((finding) => finding.category)),
       ],
@@ -195,41 +301,31 @@ export const synthesizeTransitionNarrative = async (
     });
   }
 
-  if (hiddenRiskOutput.hidden_risk_findings.length > 0) {
-    for (const [index, nextStep] of input.deterministic_snapshot.deterministic_next_steps.entries()) {
-      recommendedActions.push({
-        action_id: `action_det_${String(index + 1).padStart(3, "0")}`,
-        priority: "medium",
-        action: `Deterministic transition safeguard: ${nextStep}`,
-        linked_categories: [],
-        citation_ids: [],
-      });
-      if (index >= 1) {
-        break;
-      }
-    }
-  }
+  for (const [index, nextStep] of input.deterministic_snapshot.deterministic_next_steps.entries()) {
+    recommendedActions.push({
+      action_id: `action_det_${String(index + 1).padStart(3, "0")}`,
+      priority: "medium",
+      action: `Owner before discharge: discharge workflow team. Deterministic transition safeguard: ${nextStep}`,
+      linked_categories: [],
+      citation_ids: [],
+    });
 
-  if (recommendedActions.length === 0) {
-    for (const [index, nextStep] of input.deterministic_snapshot.deterministic_next_steps.entries()) {
-      recommendedActions.push({
-        action_id: `action_${String(index + 1).padStart(3, "0")}`,
-        priority: "medium",
-        action: nextStep,
-        linked_categories: [],
-        citation_ids: [],
-      });
+    if (hiddenRiskOutput.hidden_risk_findings.length > 0 && index >= 1) {
+      break;
     }
   }
 
   const primaryFinding = hiddenRiskOutput.hidden_risk_findings[0];
   const narrative = primaryFinding
-    ? `Deterministic discharge posture was ${input.deterministic_snapshot.baseline_verdict}. Narrative review identified contradiction-backed hidden risk: ${hiddenRiskOutput.hidden_risk_summary.summary} Primary evidence: ${primaryFinding.citation_ids
-        .map((citationId) => getCitationLabel(citationId, hiddenRiskOutput.citations))
-        .join("; ")}. Pending clinician reassessment, transition posture should be treated as ${proposedDisposition}.`
-    : hiddenRiskOutput.status === "inconclusive"
-      ? `Deterministic discharge posture is ${input.deterministic_snapshot.baseline_verdict}, but hidden-risk review was inconclusive. Conflicting or low-confidence narrative evidence requires manual clinician review before final disposition.`
-      : `Deterministic discharge posture is ${input.deterministic_snapshot.baseline_verdict}. Narrative review did not surface additional discharge-changing hidden risk. Continue with deterministic transition safeguards and clinician sign-off before final disposition.`;
+    ? `Final posture is ${proposedDisposition}. Hold discharge until the cited blockers are resolved. Structured baseline was ${input.deterministic_snapshot.baseline_verdict}, but narrative contradiction changed that answer: ${hiddenRiskOutput.hidden_risk_summary.summary} Evidence anchors: ${evidenceAnchorLine}.`
+    : hiddenRiskOutput.hidden_risk_summary.manual_review_required
+      ? `Final posture is ${proposedDisposition}. Hidden-risk review status is ${hiddenRiskOutput.status}, so discharge should not advance on unresolved narrative uncertainty alone. Manual clinician review is required before final disposition.`
+      : `Final posture remains ${proposedDisposition}. Narrative review did not surface additional discharge-changing hidden risk. Continue the deterministic transition safeguards and clinician sign-off before final disposition.`;
+
+  keyPoints.push(`Evidence anchors: ${evidenceAnchorLine}`);
+  keyPoints.push(buildHandoffBrief(input, proposedDisposition, hiddenRiskOutput));
+  keyPoints.push(buildPatientGuidanceLine(proposedDisposition, hiddenRiskOutput));
+  keyPoints.push(buildTopActionSummary(recommendedActions));
 
   const output: TransitionNarrativeOutput = {
     contract_version: "phase0_transition_narrative_v1",
@@ -240,7 +336,7 @@ export const synthesizeTransitionNarrative = async (
     proposed_disposition: proposedDisposition,
     narrative,
     key_points: keyPoints,
-    recommended_actions: recommendedActions.map((action, index) => ({
+    recommended_actions: sortActionsByPriority(recommendedActions).map((action, index) => ({
       ...action,
       action_id: `action_${String(index + 1).padStart(3, "0")}`,
     })),

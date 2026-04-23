@@ -6,6 +6,9 @@ import { McpUtilities } from "../mcp-utilities";
 import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
 
+export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
+  "Use when asked what hidden risk changed the discharge answer, to show the contradiction and the evidence, or to surface narrative-only discharge blockers with citations and bounded disposition impact.";
+
 const inputSchema = {
   deterministic_snapshot: z.object({
     patient_id: z.string().nullable().optional(),
@@ -60,8 +63,7 @@ class SurfaceHiddenRisksTool implements IMcpTool {
     server.registerTool(
       "surface_hidden_risks",
       {
-        description:
-          "Surface narrative-only hidden discharge risks with citations and bounded disposition impact.",
+        description: SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION,
         inputSchema,
       },
       async (rawInput) => {

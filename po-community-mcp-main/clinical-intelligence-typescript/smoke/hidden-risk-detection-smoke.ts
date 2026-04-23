@@ -59,6 +59,14 @@ const assertTrapPatientBehavior = async (): Promise<void> => {
     TRAP_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
   );
   assert.equal(payload.hidden_risk_findings.length > 0, true);
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Structured baseline was ready"),
+    "Trap hidden-risk summary must preserve the structured baseline posture.",
+  );
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Nursing Note 2026-04-18 20:40"),
+    "Trap hidden-risk summary must anchor the contradiction to the nursing note.",
+  );
 
   const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
   for (const category of TRAP_HIDDEN_RISK_EXPECTED_MATRIX.expected_categories) {
@@ -107,6 +115,10 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
       .toLowerCase()
       .includes(CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.no_risk_behavior.summary_must_contain.toLowerCase()),
     "No-risk response must be explicit, not generic escalation.",
+  );
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Structured baseline remains ready"),
+    "No-risk response should preserve the unchanged baseline posture.",
   );
 };
 
@@ -178,6 +190,10 @@ const assertInconclusiveContextBehavior = async (): Promise<void> => {
   assert.equal(payload.hidden_risk_summary.manual_review_required, true);
   assert.equal(payload.hidden_risk_findings.length, 0);
   assert.equal(payload.citations.length, 0);
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Manual review"),
+    "Insufficient-context behavior must explicitly require manual review.",
+  );
 };
 
 const assertMalformedModelOutputBecomesStructuredError = async (): Promise<void> => {
