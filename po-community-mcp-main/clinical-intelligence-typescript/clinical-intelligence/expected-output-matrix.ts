@@ -170,3 +170,15 @@ export const ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrati
     require_action_citations_for_hidden_risk: true,
   },
 };
+
+export const INCONCLUSIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrativeExpectedMatrix = {
+  scenario_id: "phase0_inconclusive_context",
+  expected_proposed_disposition: "ready_with_caveats",
+  must_reference_baseline_verdict: true,
+  must_include_citation_refs_when_hidden_risk_present: false,
+  grounded_action_policy: {
+    require_actions: true,
+    require_linked_categories_for_hidden_risk: false,
+    require_action_citations_for_hidden_risk: false,
+  },
+};

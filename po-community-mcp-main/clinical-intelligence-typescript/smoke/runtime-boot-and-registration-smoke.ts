@@ -7,6 +7,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
+import { SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION } from "../tools/SurfaceHiddenRisksTool";
+import { SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION } from "../tools/SynthesizeTransitionNarrativeTool";
 
 const waitForServerExit = async (serverProcess: ReturnType<typeof spawn>): Promise<void> => {
   if (serverProcess.exitCode !== null) {
@@ -46,9 +48,11 @@ const assertToolRegistrationSurface = (): void => {
   );
 
   const registeredToolNames: string[] = [];
+  const descriptions = new Map<string, string>();
   const fakeServer = {
-    registerTool: (name: string) => {
+    registerTool: (name: string, config: { description?: string }) => {
       registeredToolNames.push(name);
+      descriptions.set(name, config.description || "");
     },
   } as unknown as McpServer;
 
@@ -60,6 +64,16 @@ const assertToolRegistrationSurface = (): void => {
     registeredToolNames,
     REGISTERED_TOOL_NAMES,
     `Runtime registration surface must be exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
+  );
+  assert.equal(
+    descriptions.get("surface_hidden_risks"),
+    SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION,
+    "Hidden-risk tool description should preserve the canonical Prompt 2 routing hint.",
+  );
+  assert.equal(
+    descriptions.get("synthesize_transition_narrative"),
+    SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION,
+    "Transition narrative tool description should preserve the canonical Prompt 3 routing hint.",
   );
 };
 

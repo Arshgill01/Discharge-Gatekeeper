@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
+  INCONCLUSIVE_CONTEXT_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
 import {
   ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
+  INCONCLUSIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
@@ -20,11 +22,11 @@ const assertTrapNarrative = async (): Promise<void> => {
     TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
   );
   assert.ok(
-    payload.narrative.includes("Deterministic discharge posture was ready"),
-    "Narrative must preserve baseline deterministic context.",
+    payload.narrative.includes("Final posture is not_ready"),
+    "Narrative must preserve the final escalated posture.",
   );
   assert.ok(
-    payload.narrative.includes("Primary evidence:"),
+    payload.narrative.includes("Evidence anchors:"),
     "Narrative should remain explicitly grounded in note citations.",
   );
   assert.ok(
@@ -32,6 +34,14 @@ const assertTrapNarrative = async (): Promise<void> => {
     "Narrative output must keep assistive non-autonomous framing.",
   );
   assert.ok(payload.recommended_actions.length > 0);
+  assert.ok(
+    payload.key_points.some((point) => point.includes("Clinician handoff brief:")),
+    "Trap narrative should include a clinician handoff brief.",
+  );
+  assert.ok(
+    payload.key_points.some((point) => point.includes("Patient-facing guidance:")),
+    "Trap narrative should include patient-facing hold guidance.",
+  );
   const hiddenRiskActions = payload.recommended_actions.filter(
     (action) => action.linked_categories.length > 0 || action.citation_ids.length > 0,
   );
@@ -58,12 +68,16 @@ const assertAlternativeNarrative = async (): Promise<void> => {
     ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
   );
   assert.ok(
-    payload.narrative.includes("Deterministic discharge posture was ready"),
-    "Alternative hidden-risk narrative must preserve baseline deterministic context.",
+    payload.narrative.includes("Final posture is not_ready"),
+    "Alternative hidden-risk narrative must preserve the final escalated posture.",
   );
   assert.ok(
     payload.recommended_actions.length > 0,
     "Alternative hidden-risk narrative should return actionable guidance.",
+  );
+  assert.ok(
+    payload.key_points.some((point) => point.includes("Top pre-discharge actions:")),
+    "Alternative hidden-risk narrative should summarize top pre-discharge actions.",
   );
   const hiddenRiskActions = payload.recommended_actions.filter(
     (action) => action.linked_categories.length > 0 || action.citation_ids.length > 0,
@@ -87,6 +101,10 @@ const assertControlNarrative = async (): Promise<void> => {
     CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
   );
   assert.ok(
+    payload.narrative.includes("Final posture remains ready"),
+    "Control narrative should preserve the unchanged final posture.",
+  );
+  assert.ok(
     payload.narrative.includes("did not surface additional discharge-changing hidden risk"),
     "Control narrative should avoid generic escalation when there is no hidden risk.",
   );
@@ -95,8 +113,36 @@ const assertControlNarrative = async (): Promise<void> => {
     "Control narrative must still provide deterministic next-step actions.",
   );
   assert.ok(
+    payload.key_points.some((point) => point.includes("Patient-facing guidance:")),
+    "Control narrative should still include patient-facing guidance.",
+  );
+  assert.ok(
     payload.recommended_actions.every((action) => action.citation_ids.length === 0),
     "Control narrative actions should not invent citations when no hidden risk exists.",
+  );
+};
+
+const assertInconclusiveNarrative = async (): Promise<void> => {
+  const payload = await synthesizeTransitionNarrative(INCONCLUSIVE_CONTEXT_INPUT);
+  assert.equal(payload.status, "insufficient_context");
+  assert.equal(
+    payload.proposed_disposition,
+    INCONCLUSIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
+  assert.equal(payload.manual_review_required, true);
+  assert.ok(
+    payload.narrative.includes("Manual clinician review is required"),
+    "Inconclusive narrative must require manual review explicitly.",
+  );
+  assert.ok(
+    payload.recommended_actions.some((action) =>
+      action.action.includes("manual review before discharge proceeds"),
+    ),
+    "Inconclusive narrative must include an explicit manual-review action.",
+  );
+  assert.ok(
+    payload.key_points.some((point) => point.includes("Clinician handoff brief:")),
+    "Inconclusive narrative should include a clinician handoff brief.",
   );
 };
 
@@ -104,6 +150,7 @@ const main = async (): Promise<void> => {
   await assertTrapNarrative();
   await assertAlternativeNarrative();
   await assertControlNarrative();
+  await assertInconclusiveNarrative();
   console.log("SMOKE PASS: transition narrative synthesis");
 };
 
