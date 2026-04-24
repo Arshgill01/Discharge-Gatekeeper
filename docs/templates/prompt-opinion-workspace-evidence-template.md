@@ -11,6 +11,13 @@
 - `Clinical Intelligence MCP`:
 - `external A2A orchestrator`:
 
+## Registration status
+| Surface | Existing entry reused | Current URL verified | Connection or discovery result | Notes |
+| --- | --- | --- | --- | --- |
+| `Discharge Gatekeeper MCP` |  |  |  |  |
+| `Clinical Intelligence MCP` |  |  |  |  |
+| `external A2A orchestrator` |  |  |  |  |
+
 ## Screenshot checklist
 | Screenshot | Captured | File |
 | --- | --- | --- |
@@ -24,17 +31,22 @@
 | Prompt 3 result or stall |  | `screenshots/08-po-prompt3-result-or-stall.png` |
 
 ## Prompt-by-prompt evidence
-| Prompt | Expected tool path | Conversation ID | Result (`green`/`yellow`/`red`) | Notes |
-| --- | --- | --- | --- | --- |
-| Prompt 1: `Is this patient safe to discharge today?` | `assess_discharge_readiness` |  |  |  |
-| Prompt 2: `What hidden risk changed that answer? Show me the contradiction and the evidence.` | `surface_hidden_risks` |  |  |  |
-| Prompt 3: `What exactly must happen before discharge, and prepare the transition package.` | `synthesize_transition_narrative` |  |  |  |
+| Attempt ID | Lane | Surface or agent | Prompt | Expected tool path | Conversation ID | Request or task IDs | Result (`green`/`yellow`/`red`) | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A2A-P1-01 | `A2A-main` |  | `Is this patient safe to discharge today?` | `external A2A orchestrator -> both MCPs` |  |  |  |  |
+| A2A-P2-01 | `A2A-main` |  | `What hidden risk changed that answer? Show me the contradiction and the evidence.` | `external A2A orchestrator -> both MCPs` |  |  |  |  |
+| A2A-P3-01 | `A2A-main` |  | `What exactly must happen before discharge, and prepare the transition package.` | `external A2A orchestrator -> both MCPs` |  |  |  |  |
+| FALLBACK-P1-01 | `Direct-MCP fallback` |  | `Is this patient safe to discharge today?` | `assess_discharge_readiness` |  |  |  |  |
+| FALLBACK-P2-01 | `Direct-MCP fallback` |  | `What hidden risk changed that answer? Show me the contradiction and the evidence.` | `surface_hidden_risks` |  |  |  |  |
+| FALLBACK-P3-01 | `Direct-MCP fallback` |  | `What exactly must happen before discharge, and prepare the transition package.` | `synthesize_transition_narrative` |  |  |  |  |
 
 ## A2A path evidence
 - Agent-card validation result:
 - A2A connection create result:
 - A2A prompt execution result:
 - External runtime logs:
+- Matching `request_id` / `task_id` evidence:
+- Blocker classification if not proven:
 
 ## Dual-tool BYO path evidence
 - Prompt 2 function call persisted:
@@ -47,6 +59,7 @@
 ## Final lane statuses
 - A2A-main lane (`green`/`yellow`/`red`):
 - Direct-MCP fallback lane (`green`/`yellow`/`red`):
+- Preferred live lane from this run folder:
 
 Status definitions:
 - `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary.

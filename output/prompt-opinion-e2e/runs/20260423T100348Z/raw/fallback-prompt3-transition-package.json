@@ -1,0 +1,115 @@
+{
+  "contract_version": "phase0_transition_narrative_v1",
+  "status": "ok",
+  "patient_id": "phase0-trap-maria-alvarez",
+  "encounter_id": "enc-phase0-trap-001",
+  "baseline_verdict": "ready",
+  "proposed_disposition": "not_ready",
+  "narrative": "Final posture is not_ready. Hold discharge until the cited blockers are resolved. Structured baseline was ready, but narrative contradiction changed that answer: Structured baseline was ready, but narrative evidence contradicted that posture: clinical_stability: Exertional oxygen instability not visible in resting structured data via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002] | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003] | home_support_and_services: No confirmed overnight support for high-friction home environment via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003]. Evidence anchors: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003].",
+  "key_points": [
+    "Final posture: not_ready. Baseline deterministic verdict was ready.",
+    "Deterministic summary: Verdict: READY. Structured baseline posture: 8/8 discharge domains currently clear. No active discharge blockers were detected in this assistive readiness review; continue standard transition checks with final clinician sign-off.",
+    "Hidden-risk review status: ok; result: hidden_risk_present; impact: not_ready.",
+    "Contradiction summary: Structured baseline was ready, but narrative evidence contradicted that posture: clinical_stability: Exertional oxygen instability not visible in resting structured data via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002] | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003] | home_support_and_services: No confirmed overnight support for high-friction home environment via Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003].",
+    "clinical_stability: Exertional oxygen instability not visible in resting structured data (impact=uncertain, confidence=low, evidence=Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002]).",
+    "equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight (impact=not_ready, confidence=high, evidence=Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003]).",
+    "home_support_and_services: No confirmed overnight support for high-friction home environment (impact=not_ready, confidence=high, evidence=Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003]).",
+    "Evidence anchors: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003]",
+    "Clinician handoff brief: structured baseline was ready, but cited hidden-risk findings in clinical_stability, equipment_and_transport, home_support_and_services changed the working posture to not_ready.",
+    "Patient-facing guidance: Explain that discharge is on hold until the cited safety blockers are cleared and the clinical team confirms a safe transition.",
+    "Top pre-discharge actions: Owner now: primary team. Keep discharge on hold until the cited hidden-risk blockers are cleared and the safe transition plan is documented. | Owner now: bedside RN and covering clinician. Hold discharge and repeat exertional respiratory stability assessment before disposition. Evidence: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002]. | Owner now: case management and vendor contact. Confirm required home equipment and transport logistics are active before discharge. Evidence: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003]."
+  ],
+  "recommended_actions": [
+    {
+      "action_id": "action_001",
+      "priority": "high",
+      "action": "Owner now: primary team. Keep discharge on hold until the cited hidden-risk blockers are cleared and the safe transition plan is documented.",
+      "linked_categories": [
+        "clinical_stability",
+        "equipment_and_transport",
+        "home_support_and_services"
+      ],
+      "citation_ids": [
+        "cit_001",
+        "cit_002",
+        "cit_003"
+      ]
+    },
+    {
+      "action_id": "action_002",
+      "priority": "high",
+      "action": "Owner now: bedside RN and covering clinician. Hold discharge and repeat exertional respiratory stability assessment before disposition. Evidence: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Hospitalist Progress Note 2026-04-18 08:10 (summary) [cit_002].",
+      "linked_categories": [
+        "clinical_stability"
+      ],
+      "citation_ids": [
+        "cit_001",
+        "cit_002"
+      ]
+    },
+    {
+      "action_id": "action_003",
+      "priority": "high",
+      "action": "Owner now: case management and vendor contact. Confirm required home equipment and transport logistics are active before discharge. Evidence: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003].",
+      "linked_categories": [
+        "equipment_and_transport"
+      ],
+      "citation_ids": [
+        "cit_001",
+        "cit_003"
+      ]
+    },
+    {
+      "action_id": "action_004",
+      "priority": "high",
+      "action": "Owner now: case management with family confirmation. Confirm overnight support and a safe home supervision plan before discharge. Evidence: Nursing Note 2026-04-18 20:40 (full note) [cit_001]; Case Management Addendum 2026-04-18 20:55 (summary) [cit_003].",
+      "linked_categories": [
+        "home_support_and_services"
+      ],
+      "citation_ids": [
+        "cit_001",
+        "cit_003"
+      ]
+    },
+    {
+      "action_id": "action_005",
+      "priority": "high",
+      "action": "Owner now: primary clinician. Resolve conflicting, low-confidence, or missing narrative evidence before discharge proceeds.",
+      "linked_categories": [
+        "clinical_stability",
+        "equipment_and_transport",
+        "home_support_and_services"
+      ],
+      "citation_ids": [
+        "cit_001",
+        "cit_002",
+        "cit_003"
+      ]
+    }
+  ],
+  "citations": [
+    {
+      "citation_id": "cit_001",
+      "source_type": "nursing_note",
+      "source_label": "Nursing Note 2026-04-18 20:40",
+      "locator": "full note",
+      "excerpt": "O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic. Patient stated, \"I do not have oxygen at home tonight and my daughter cannot stay.\" Oxygen vendor cannot deliver concentrator until tomorrow morning. Patient lives alone o"
+    },
+    {
+      "citation_id": "cit_002",
+      "source_type": "hospitalist_note",
+      "source_label": "Hospitalist Progress Note 2026-04-18 08:10",
+      "locator": "summary",
+      "excerpt": "Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on room air."
+    },
+    {
+      "citation_id": "cit_003",
+      "source_type": "case_management_note",
+      "source_label": "Case Management Addendum 2026-04-18 20:55",
+      "locator": "summary",
+      "excerpt": "Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no alternate caregiver for first night home."
+    }
+  ],
+  "manual_review_required": true,
+  "safety_boundary": "Assistive discharge-transition synthesis only. Final discharge authority remains with the licensed clinical team."
+}
