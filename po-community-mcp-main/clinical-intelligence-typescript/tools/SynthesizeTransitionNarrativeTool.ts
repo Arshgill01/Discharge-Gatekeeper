@@ -6,6 +6,9 @@ import { McpUtilities } from "../mcp-utilities";
 import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 
+export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
+  "Use when asked what exactly must happen before discharge, to prepare the transition package, or to produce a concrete assistive pre-discharge action plan grounded in the hidden-risk findings.";
+
 const inputSchema = {
   deterministic_snapshot: z.object({
     patient_id: z.string().nullable().optional(),
@@ -60,8 +63,7 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
     server.registerTool(
       "synthesize_transition_narrative",
       {
-        description:
-          "Synthesize a concise clinician-useful transition narrative grounded in structured and note evidence.",
+        description: SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION,
         inputSchema,
       },
       async (rawInput) => {

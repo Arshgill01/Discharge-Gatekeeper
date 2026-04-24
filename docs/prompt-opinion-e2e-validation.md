@@ -18,6 +18,13 @@ Local runtime and smoke coverage remain green, but the real BYO-agent workspace 
 - latest run bundle: `output/prompt-opinion-e2e/latest/`
 - run history: `output/prompt-opinion-e2e/runs/<run-id>/`
 
+Current reproducibility contract for the next decisive pass:
+- `reports/status-summary.md` for the lane board
+- `reports/request-id-correlation.md` for local A2A request/task propagation
+- `notes/experiment-matrix.md` for every workspace attempt that matters to the lane decision
+- `notes/request-id-correlation.md` for Prompt Opinion A2A proof or precise blocker isolation
+- `notes/workspace-evidence.md` for screenshots, registrations, and final lane calls
+
 ## What was validated
 
 ### Local prerequisite checks
@@ -34,6 +41,10 @@ Local runtime and smoke coverage remain green, but the real BYO-agent workspace 
 | Local automated rehearsal lane | `green` | `output/prompt-opinion-e2e/runs/20260421T203407Z/reports/status-summary.md` |
 | Prompt Opinion A2A chat execution lane | `yellow` | no current run proving external runtime execution from Prompt Opinion chat |
 | Prompt Opinion dual-tool BYO Prompt 2/3 lane | `red` | persistent transcript completion failures in `output/prompt-opinion-e2e/final-transcript-debug-notes.md` |
+
+For future lane promotion:
+- `A2A-main` cannot be `green` without request/task correlation that proves the Prompt Opinion attempt hit the external runtime and propagated into downstream MCP calls.
+- `Direct-MCP fallback` cannot be `green` without visible Prompt 1, Prompt 2, and Prompt 3 workspace artifacts in the same run folder.
 
 ### Prompt Opinion workspace validation
 | Check | Result |

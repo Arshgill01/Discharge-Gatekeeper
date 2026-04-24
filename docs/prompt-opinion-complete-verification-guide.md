@@ -78,6 +78,7 @@ Expected result:
   - `./po-community-mcp-main/scripts/check-a2a-readiness.sh`
   - `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal`
 - all automated checks are `GREEN` in `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+- a local request/task propagation report exists at `output/prompt-opinion-e2e/latest/reports/request-id-correlation.md`
 - both MCPs are healthy locally
 - the external A2A orchestrator is healthy locally
 - by default the wrapper performs `npm ci` in all three runtime packages; set `PROMPT_OPINION_SKIP_NPM_CI=1` only when dependencies are already known-good
@@ -256,10 +257,23 @@ Capture at minimum:
 - Prompt 2 visible result or visible failure state
 - Prompt 3 visible result or visible failure state
 - timing notes
+- an experiment matrix row for every required lane attempt
+- request/task correlation notes for every A2A attempt
 - explicit lane status (`green`/`yellow`/`red`) for:
   - A2A-main workspace execution
   - dual-tool BYO Prompt 2/3 persistence
   - direct-MCP fallback viability
+
+If an A2A attempt does not hit the external runtime, record the blocker as one of:
+- `registration_only`
+- `chat_path_not_routed`
+- `runtime_hit_but_no_transcript`
+- `runtime_hit_but_downstream_failure`
+
+Use these status definitions exactly:
+- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary
+- `yellow`: proof is partial or missing a required artifact; the lane cannot be primary
+- `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable
 
 Existing evidence from the previous pass is in:
 - [`output/playwright/`](../output/playwright)
@@ -272,7 +286,10 @@ For each new run, use the run bundle created by:
 Required run files:
 - `reports/status-summary.md`
 - `reports/command-results.json`
+- `reports/request-id-correlation.md`
 - `notes/validation-notes.md`
+- `notes/experiment-matrix.md`
+- `notes/request-id-correlation.md`
 - `notes/workspace-evidence.md`
 
 Useful existing files:
@@ -311,7 +328,12 @@ Use this exact order:
 7. Prompt 1
 8. Prompt 2
 9. Prompt 3
-10. evidence capture and final status write-up
+10. experiment matrix and request-id capture
+11. final status write-up
+
+Promotion rule:
+- use `A2A-main` as the live lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`
+- if `A2A-main` is `yellow` or `red` and fallback is `green`, run fallback as the live lane and keep A2A described as the preferred architecture
 
 ## Related docs
 - [Prompt Opinion integration runbook](prompt-opinion-integration-runbook.md)

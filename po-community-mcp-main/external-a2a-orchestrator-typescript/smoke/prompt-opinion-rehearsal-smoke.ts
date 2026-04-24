@@ -98,6 +98,49 @@ const writeJson = (filePath: string, payload: unknown): void => {
   fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
 };
 
+const renderRequestCorrelationMarkdown = (report: {
+  generated_at: string;
+  run_id: string;
+  attempts: Array<{
+    run: number;
+    prompt: string;
+    promptMode: string;
+    requestId: string;
+    taskId: string;
+    incomingHeaders: Record<string, string>;
+    deterministicCallId: string | null;
+    deterministicExchangeStatus: number | null;
+    clinicalCallId: string | null;
+    clinicalExchangeStatus: number | null;
+  }>;
+}): string => {
+  const lines = [
+    "# Local Request-ID Correlation Report",
+    "",
+    "## Generated at",
+    report.generated_at,
+    "",
+    "## Run ID",
+    `\`${report.run_id}\``,
+    "",
+    "| Attempt | Prompt | Prompt mode | Request ID | Task ID | Incoming x-request-id | Incoming x-correlation-id | Deterministic call | Clinical call |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+  ];
+
+  for (const attempt of report.attempts) {
+    lines.push(
+      `| Run ${attempt.run} | ${attempt.prompt} | ${attempt.promptMode} | \`${attempt.requestId}\` | \`${attempt.taskId}\` | \`${attempt.incomingHeaders["x-request-id"] || ""}\` | \`${attempt.incomingHeaders["x-correlation-id"] || ""}\` | \`${attempt.deterministicCallId || ""}\` (${attempt.deterministicExchangeStatus ?? "n/a"}) | \`${attempt.clinicalCallId || ""}\` (${attempt.clinicalExchangeStatus ?? "n/a"}) |`,
+    );
+  }
+
+  lines.push("");
+  lines.push(
+    "Use this report as the local baseline when you fill `notes/request-id-correlation.md` for Prompt Opinion workspace attempts.",
+  );
+  lines.push("");
+  return `${lines.join("\n")}\n`;
+};
+
 const renderTimedResultsMarkdown = (report: {
   generated_at: string;
   run_id: string;
@@ -221,6 +264,18 @@ const run = async (): Promise<void> => {
         task: any;
       }>;
     }>;
+    const requestCorrelationAttempts = [] as Array<{
+      run: number;
+      prompt: string;
+      promptMode: string;
+      requestId: string;
+      taskId: string;
+      incomingHeaders: Record<string, string>;
+      deterministicCallId: string | null;
+      deterministicExchangeStatus: number | null;
+      clinicalCallId: string | null;
+      clinicalExchangeStatus: number | null;
+    }>;
 
     for (let runIndex = 1; runIndex <= 2; runIndex += 1) {
       const runStart = Date.now();
@@ -261,7 +316,34 @@ const run = async (): Promise<void> => {
           hiddenRiskCitationCount: task.output.citations.hidden_risk.length,
         });
         assert.equal(typeof task.request_id, "string");
+        assert.equal(typeof task.task_id, "string");
+        assert.ok(task.output.runtime_diagnostics);
         assert.equal(task.output.runtime_diagnostics?.request_id, task.request_id);
+        assert.equal(task.output.runtime_diagnostics?.task_id, task.task_id);
+
+        const diagnostics = task.output.runtime_diagnostics;
+        const deterministicCall =
+          diagnostics.downstream_calls.find(
+            (call: any) => call.component === "discharge_gatekeeper_mcp",
+          ) || null;
+        const clinicalCall =
+          diagnostics.downstream_calls.find(
+            (call: any) =>
+              call.component === "clinical_intelligence_mcp" && call.status !== "skipped",
+          ) || null;
+
+        requestCorrelationAttempts.push({
+          run: runIndex,
+          prompt,
+          promptMode: diagnostics.prompt_mode,
+          requestId: task.request_id,
+          taskId: task.task_id,
+          incomingHeaders: diagnostics.incoming_request?.request_headers || {},
+          deterministicCallId: deterministicCall?.call_id || null,
+          deterministicExchangeStatus: deterministicCall?.http_exchanges?.[0]?.status ?? null,
+          clinicalCallId: clinicalCall?.call_id || null,
+          clinicalExchangeStatus: clinicalCall?.http_exchanges?.[0]?.status ?? null,
+        });
       }
 
       rehearsals.push({
@@ -416,6 +498,17 @@ const run = async (): Promise<void> => {
     });
     fs.writeFileSync(path.join(runReportsDir, "timed-rehearsal-results.md"), timedResultsMarkdown);
     fs.writeFileSync(path.join(outputDir, "timed-rehearsal-results.md"), timedResultsMarkdown);
+
+    const requestCorrelationReport = {
+      generated_at: report.generated_at,
+      run_id: report.run_id,
+      attempts: requestCorrelationAttempts,
+    };
+    writeJson(path.join(runReportsDir, "request-id-correlation.json"), requestCorrelationReport);
+    fs.writeFileSync(
+      path.join(runReportsDir, "request-id-correlation.md"),
+      renderRequestCorrelationMarkdown(requestCorrelationReport),
+    );
 
     console.log("PASS prompt opinion rehearsal smoke");
     console.log(`Run artifacts: ${runDir}`);

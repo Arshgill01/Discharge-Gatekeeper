@@ -6,6 +6,18 @@ export type DispositionImpact = "none" | "caveat" | "not_ready" | "uncertain";
 
 export type HiddenRiskRunStatus = "used" | "skipped" | "unavailable" | "inconclusive";
 
+export type PromptMode = "prompt_1" | "prompt_2" | "prompt_3";
+
+export type ParsedTaskInputSurface =
+  | "root"
+  | "input_envelope"
+  | "task_envelope"
+  | "task_input_envelope"
+  | "taskInput_envelope"
+  | "request_envelope"
+  | "payload_envelope"
+  | "raw_text";
+
 export type NarrativeSource = {
   source_id: string;
   source_type: string;
@@ -33,22 +45,46 @@ export type A2ATaskInput = {
 
 export type DownstreamCallStatus = "ok" | "error" | "skipped";
 
+export type DownstreamHttpExchange = {
+  method: string;
+  url: string;
+  status: number;
+  duration_ms: number;
+  request_content_type: string | null;
+  request_accept: string | null;
+  response_content_type: string | null;
+};
+
 export type DownstreamCallDiagnostic = {
+  call_id: string;
   component: "discharge_gatekeeper_mcp" | "clinical_intelligence_mcp";
   tool_name: string;
   mcp_url: string;
   status: DownstreamCallStatus;
+  request_id: string;
+  task_id: string;
   started_at: string;
   duration_ms: number;
+  propagated_headers: Record<string, string>;
+  http_exchanges: DownstreamHttpExchange[];
   error_message?: string;
+};
+
+export type IncomingRequestDiagnostic = {
+  input_surface: ParsedTaskInputSurface;
+  content_type: string | null;
+  accept: string | null;
+  request_headers: Record<string, string>;
 };
 
 export type TaskRuntimeDiagnostics = {
   request_id: string;
-  prompt_mode: "prompt_1" | "prompt_2" | "prompt_3";
+  prompt_mode: PromptMode;
+  task_id: string;
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
   fallbacks_applied: string[];
+  incoming_request: IncomingRequestDiagnostic;
   downstream_calls: DownstreamCallDiagnostic[];
 };
 
@@ -75,6 +111,8 @@ export type DeterministicResponse = {
     owner: string;
     linked_blockers: string[];
     linked_evidence: string[];
+    blocker_trust_state: string;
+    trace_summary: string;
   }>;
   summary: string;
 };
@@ -127,6 +165,10 @@ export type ReconciliationResult = {
   manual_review_required: boolean;
   decision_matrix_row: number;
   decision_matrix_action: string;
+  last_disposition_downgrade_by:
+    | "discharge_gatekeeper_mcp"
+    | "clinical_intelligence_mcp"
+    | "none";
   hidden_risk_run_status: HiddenRiskRunStatus;
   hidden_risk_result: HiddenRiskResult;
   hidden_risk_disposition_impact: DispositionImpact;
@@ -143,14 +185,46 @@ export type ReconciliationResult = {
   merged_next_steps: Array<{
     id: string;
     source: "deterministic" | "hidden_risk";
+    category: string;
     priority: string;
+    timing: string;
+    owner: string;
     action: string;
+    rationale: string;
+    linked_blockers: string[];
+    linked_evidence: string[];
+    citation_anchors: Array<{
+      id: string;
+      source: "deterministic" | "hidden_risk";
+      source_label: string;
+      locator?: string;
+      detail: string;
+    }>;
   }>;
   citations: {
     deterministic: Array<{ id: string; source_label: string; detail: string }>;
     hidden_risk: HiddenRiskResponse["citations"];
   };
   contradiction_summary: string;
+  prompt_payload: {
+    prompt_mode: PromptMode;
+    headline: string;
+    baseline_structured_verdict: CanonicalVerdict;
+    final_verdict: CanonicalVerdict;
+    structured_baseline_summary: string;
+    reconciliation_summary: string;
+    evidence_anchors: Array<{
+      id: string;
+      source: "deterministic" | "hidden_risk";
+      source_label: string;
+      locator?: string;
+      detail: string;
+    }>;
+    impacted_blocker_categories: string[];
+    action_plan: ReconciliationResult["merged_next_steps"];
+    clinician_handoff_brief?: string;
+    patient_discharge_guidance?: string;
+  };
   hidden_risk_unavailable_reason?: string;
   runtime_diagnostics?: TaskRuntimeDiagnostics;
 };
@@ -178,6 +252,10 @@ export type A2ATaskRecord = {
   status: A2ATaskStatus;
   created_at: string;
   completed_at: string | null;
+  status_history: Array<{
+    status: A2ATaskStatus;
+    at: string;
+  }>;
   input: A2ATaskInput;
   output: ReconciliationResult | null;
   error: A2ATaskError | null;

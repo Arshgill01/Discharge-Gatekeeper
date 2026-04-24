@@ -37,6 +37,25 @@ const normalizeCitationMap = (
   return new Map(citations.map((citation) => [citation.citation_id, citation]));
 };
 
+const formatCitationAnchor = (
+  citation: HiddenRiskOutput["citations"][number],
+): string => {
+  return `${citation.source_label}${citation.locator ? ` (${citation.locator})` : ""} [${citation.citation_id}]`;
+};
+
+const getFindingCitationAnchors = (
+  finding: HiddenRiskFinding,
+  citationMap: Map<string, HiddenRiskOutput["citations"][number]>,
+  limit = 2,
+): string[] => {
+  return [...new Set(
+    finding.citation_ids
+      .map((citationId) => citationMap.get(citationId))
+      .filter((citation): citation is HiddenRiskOutput["citations"][number] => Boolean(citation))
+      .map((citation) => formatCitationAnchor(citation)),
+  )].slice(0, limit);
+};
+
 const tokenizeMeaningful = (value: string): string[] => {
   const stopWords = new Set([
     "with",
@@ -242,20 +261,36 @@ const buildEvidenceLinkedSummary = (
   citations: HiddenRiskOutput["citations"],
 ): string => {
   if (findings.length === 0) {
-    return "No additional discharge-changing hidden risk was found in narrative evidence.";
+    return `Structured baseline remains ${baselineVerdict}. Narrative review did not find a new discharge-changing contradiction or note-only blocker.`;
   }
 
   const citationMap = normalizeCitationMap(citations);
-  const summaries = findings.slice(0, 2).map((finding) => {
-    const sourceLabels = [...new Set(finding.citation_ids
-      .map((citationId) => citationMap.get(citationId)?.source_label || "")
-      .filter((label) => label.length > 0))]
-      .slice(0, 2)
-      .join("; ");
-    return `${finding.category}: ${finding.title} (${sourceLabels || "citation-linked evidence"})`;
+  const contradictionClauses = findings.slice(0, 3).map((finding) => {
+    const anchors = getFindingCitationAnchors(finding, citationMap).join("; ");
+    return `${finding.category}: ${finding.title}${anchors ? ` via ${anchors}` : ""}`;
   });
 
-  return `Deterministic baseline was ${baselineVerdict}; narrative review found ${findings.length} discharge-relevant contradiction(s): ${summaries.join(" | ")}.`;
+  return `Structured baseline was ${baselineVerdict}, but narrative evidence contradicted that posture: ${contradictionClauses.join(" | ")}.`;
+};
+
+const buildNoHiddenRiskSummary = (
+  input: HiddenRiskInput,
+): string => {
+  return `Structured baseline remains ${input.deterministic_snapshot.baseline_verdict}. Reviewed ${input.narrative_evidence_bundle.length} narrative source(s) and found no additional discharge-changing contradiction or note-only blocker.`;
+};
+
+const buildInconclusiveSummary = (
+  input: HiddenRiskInput,
+  findings: HiddenRiskOutput["hidden_risk_findings"],
+  citations: HiddenRiskOutput["citations"],
+): string => {
+  const citationMap = normalizeCitationMap(citations);
+  const anchors = [...new Set(
+    findings.flatMap((finding) => getFindingCitationAnchors(finding, citationMap, 1)),
+  )].slice(0, 2);
+
+  const anchorSuffix = anchors.length > 0 ? ` Reviewed anchors: ${anchors.join("; ")}.` : "";
+  return `Structured baseline was ${input.deterministic_snapshot.baseline_verdict}, but the available narrative evidence could not support a discharge-changing hidden-risk escalation with enough confidence. Keep the posture bounded and require manual review before discharge.${anchorSuffix}`;
 };
 
 const determineSummaryConfidence = (
@@ -326,7 +361,7 @@ const buildInsufficientContextPayload = (input: HiddenRiskInput): HiddenRiskOutp
       overall_disposition_impact: "uncertain",
       confidence: "low",
       summary:
-        "Narrative evidence bundle is missing or empty. Hidden-risk review cannot run without note or document evidence.",
+        `Structured baseline is ${input.deterministic_snapshot.baseline_verdict}, but hidden-risk review cannot run because the narrative evidence bundle is missing or empty. Manual review is required before discharge.`,
       manual_review_required: true,
       false_positive_guardrail:
         "No hidden-risk findings emitted because required narrative evidence was not provided.",
@@ -474,8 +509,8 @@ const applySafetyGuards = (
   const summary = hasMaterialFinding
     ? buildEvidenceLinkedSummary(input.deterministic_snapshot.baseline_verdict, keptFindings, keptCitations)
     : status === "inconclusive"
-      ? "Narrative review found conflicting or low-confidence signals that could not be resolved to a discharge-changing conclusion. Manual clinical review is required before disposition."
-      : "No additional discharge-changing hidden risk was found in narrative evidence.";
+      ? buildInconclusiveSummary(input, keptFindings, keptCitations)
+      : buildNoHiddenRiskSummary(input);
 
   return buildBasePayload(input, {
     ...rawPayload,

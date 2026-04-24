@@ -1,10 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   A2ATaskInput,
   DeterministicResponse,
   DownstreamCallDiagnostic,
+  DownstreamHttpExchange,
   HiddenRiskResponse,
 } from "../types";
 import { RuntimeConfig } from "../runtime-config";
@@ -37,6 +39,8 @@ const deterministicResponseSchema = z.object({
       owner: z.string(),
       linked_blockers: z.array(z.string()),
       linked_evidence: z.array(z.string()),
+      blocker_trust_state: z.string(),
+      trace_summary: z.string(),
     }),
   ),
   summary: z.string(),
@@ -90,6 +94,18 @@ const hiddenRiskResponseSchema = z.object({
   }),
 });
 
+const toRequestUrl = (input: Parameters<typeof fetch>[0]): string => {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  return input.url;
+};
+
 const extractJsonToolResponse = (toolResult: unknown): unknown => {
   if (
     !toolResult ||
@@ -121,6 +137,12 @@ type McpInvocationResult<T> = {
   diagnostic: DownstreamCallDiagnostic;
 };
 
+type InvocationContext = {
+  requestId: string;
+  taskId: string;
+  promptMode: "prompt_1" | "prompt_2" | "prompt_3";
+};
+
 export class McpInvocationError extends Error {
   constructor(
     readonly code: "deterministic_mcp_failure" | "clinical_intelligence_mcp_failure",
@@ -135,7 +157,12 @@ export class McpInvocationError extends Error {
 export class McpToolInvoker {
   constructor(private readonly config: RuntimeConfig) {}
 
-  private async withClient<T>(mcpUrl: string, action: (client: Client) => Promise<T>): Promise<T> {
+  private async withClient<T>(
+    mcpUrl: string,
+    propagatedHeaders: Record<string, string>,
+    httpExchanges: DownstreamHttpExchange[],
+    action: (client: Client) => Promise<T>,
+  ): Promise<T> {
     const client = new Client(
       {
         name: "external-a2a-orchestrator-client",
@@ -146,7 +173,32 @@ export class McpToolInvoker {
       },
     );
 
-    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
+      fetch: async (input, init) => {
+        const headers = new Headers(init?.headers);
+        for (const [name, value] of Object.entries(propagatedHeaders)) {
+          headers.set(name, value);
+        }
+
+        const startedAtMs = Date.now();
+        const response = await fetch(input, {
+          ...init,
+          headers,
+        });
+
+        httpExchanges.push({
+          method: init?.method || "GET",
+          url: toRequestUrl(input),
+          status: response.status,
+          duration_ms: Date.now() - startedAtMs,
+          request_content_type: headers.get("content-type"),
+          request_accept: headers.get("accept"),
+          response_content_type: response.headers.get("content-type"),
+        });
+
+        return response;
+      },
+    });
 
     await client.connect(transport);
     try {
@@ -162,36 +214,57 @@ export class McpToolInvoker {
     mcpUrl: string,
     stage: McpInvocationError["stage"],
     errorCode: McpInvocationError["code"],
+    invocationContext: InvocationContext,
     action: (client: Client) => Promise<unknown>,
     parser: (payload: unknown) => T,
   ): Promise<McpInvocationResult<T>> {
+    const callId = randomUUID();
     const startedAt = new Date().toISOString();
     const startedMs = Date.now();
+    const httpExchanges: DownstreamHttpExchange[] = [];
+    const propagatedHeaders = {
+      "x-request-id": invocationContext.requestId,
+      "request-id": invocationContext.requestId,
+      "x-correlation-id": invocationContext.taskId,
+      "x-a2a-task-id": invocationContext.taskId,
+      "x-a2a-call-id": callId,
+      "x-a2a-prompt-mode": invocationContext.promptMode,
+    };
 
     try {
-      const raw = await this.withClient(mcpUrl, action);
+      const raw = await this.withClient(mcpUrl, propagatedHeaders, httpExchanges, action);
       const parsed = parser(extractJsonToolResponse(raw));
 
       return {
         payload: parsed,
         diagnostic: {
+          call_id: callId,
           component,
           tool_name: toolName,
           mcp_url: mcpUrl,
           status: "ok",
+          request_id: invocationContext.requestId,
+          task_id: invocationContext.taskId,
           started_at: startedAt,
           duration_ms: Date.now() - startedMs,
+          propagated_headers: propagatedHeaders,
+          http_exchanges: httpExchanges,
         },
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const diagnostic: DownstreamCallDiagnostic = {
+        call_id: callId,
         component,
         tool_name: toolName,
         mcp_url: mcpUrl,
         status: "error",
+        request_id: invocationContext.requestId,
+        task_id: invocationContext.taskId,
         started_at: startedAt,
         duration_ms: Date.now() - startedMs,
+        propagated_headers: propagatedHeaders,
+        http_exchanges: httpExchanges,
         error_message: message,
       };
 
@@ -199,7 +272,10 @@ export class McpToolInvoker {
     }
   }
 
-  async invokeDeterministicReadiness(input: A2ATaskInput): Promise<McpInvocationResult<DeterministicResponse>> {
+  async invokeDeterministicReadiness(
+    input: A2ATaskInput,
+    invocationContext: InvocationContext,
+  ): Promise<McpInvocationResult<DeterministicResponse>> {
     const scenarioId = input.patient_context?.scenario_id || this.config.defaultStructuredScenarioId;
 
     return this.invokeWithDiagnostics(
@@ -208,6 +284,7 @@ export class McpToolInvoker {
       this.config.dischargeGatekeeperMcpUrl,
       "deterministic_call",
       "deterministic_mcp_failure",
+      invocationContext,
       async (client) => {
         return client.callTool({
           name: "assess_discharge_readiness",
@@ -229,6 +306,7 @@ export class McpToolInvoker {
   async invokeHiddenRisk(
     deterministic: DeterministicResponse,
     input: A2ATaskInput,
+    invocationContext: InvocationContext,
   ): Promise<McpInvocationResult<HiddenRiskResponse>> {
     const narrative = input.patient_context?.narrative_evidence_bundle || [];
     return this.invokeWithDiagnostics(
@@ -237,6 +315,7 @@ export class McpToolInvoker {
       this.config.clinicalIntelligenceMcpUrl,
       "hidden_risk_call",
       "clinical_intelligence_mcp_failure",
+      invocationContext,
       async (client) => {
         return client.callTool({
           name: "surface_hidden_risks",

@@ -47,6 +47,7 @@ This contradiction moment is the core spec.
 ## In scope
 - `2 MCPs + 1 external A2A`
 - Prompt Opinion as the user-facing surface
+- synchronous external A2A request/response orchestration
 - deterministic discharge-readiness support
 - bounded note contradiction intelligence
 - blocker evidence
@@ -90,9 +91,12 @@ Use these exact blocker categories:
 1. phase-0 vision lock
 2. Clinical Intelligence MCP hidden-risk layer
 3. two-MCP integrated story on top of the existing Discharge Gatekeeper MCP structured spine
-4. external A2A orchestrator
+4. synchronous external A2A orchestrator
 5. 3-prompt demo collapse and Prompt Opinion hardening
 6. submission lock
+7. Phase 6 synthetic scenario pack and rehearsal evidence
+8. Phase 7 contract restore and demo-lock cleanup
+9. Phase 8 submission freeze
 
 ## Decision rule
 If a future proposal changes system identity, component identity, architecture count, or the contradiction-centered demo story, log a decision first before changing other docs or code.
