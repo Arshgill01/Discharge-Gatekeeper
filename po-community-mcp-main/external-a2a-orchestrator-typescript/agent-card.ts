@@ -20,19 +20,11 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     name: config.agentName,
     description: "Care Transitions Command - Synchronous external orchestrator",
     version: config.agentVersion,
-    url: publicBaseUrl,
-    preferredTransport: "JSONRPC",
     supportedInterfaces: [
       {
         url: publicBaseUrl,
         protocolBinding: "JSONRPC",
         protocolVersion: "0.2.6",
-      },
-    ],
-    additionalInterfaces: [
-      {
-        url: publicBaseUrl,
-        transport: "JSONRPC",
       },
     ],
     skills: [
@@ -100,7 +92,6 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     capabilities: {
       streaming: false,
       pushNotifications: false,
-      stateTransitionHistory: false,
       task_lifecycle: {
         mode: "synchronous",
         streaming: false,
