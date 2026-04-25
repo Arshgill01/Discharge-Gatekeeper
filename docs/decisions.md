@@ -172,3 +172,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Local smoke success alone does not prove Prompt Opinion routed a chat turn into the external runtime; the lane decision needs reproducible attempt records and precise blocker isolation when the runtime is not hit.
 - Affected files or lanes: Prompt Opinion runbooks, rehearsal capture script, evidence templates, demo go/no-go
 - Follow-up: Keep `reports/request-id-correlation.md`, `notes/experiment-matrix.md`, and `notes/request-id-correlation.md` present and updated in the current run folder before any primary-lane claim.
+
+- Date: 2026-04-25
+- Decision: Insert a new Phase 8 `workspace execution breakthrough` before submission freeze, and move submission freeze to Phase 9.
+- Why: Phase 7 restored the shared contract and proof discipline, but the two decisive workspace blockers remain the same: Prompt Opinion A2A chat execution and dual-tool BYO Prompt 2/3 completion. Freezing submission before attacking those blockers directly would lock in avoidable uncertainty.
+- Affected files or lanes: `PLAN.md`, phase planning, Prompt Opinion validation, release sequencing
+- Follow-up: Treat Phase 8 as the last focused fix pass; after spec-correct A2A transport work, dual-tool tool-surface hardening, and browser-captured validation, either promote the lane or record a platform-side blocker and stop pretending it is unproven engineering debt.
