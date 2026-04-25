@@ -7,7 +7,7 @@ import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-in
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
 
 export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
-  "Use when asked what hidden risk changed the discharge answer, to show the contradiction and the evidence, or to surface narrative-only discharge blockers with citations and bounded disposition impact.";
+  "Prompt 2 tool for contradiction-first hidden-risk review. Use when asked what hidden risk changed the discharge answer and to show note-backed evidence. Do not use this for deterministic baseline-only Prompt 1 or transition-package Prompt 3 synthesis.";
 
 const inputSchema = {
   deterministic_snapshot: z.object({
@@ -56,7 +56,15 @@ const inputSchema = {
       explicit_task_goal: z.string().optional(),
     })
     .optional(),
+  response_mode: z
+    .enum(["prompt_opinion_slim", "full"])
+    .default("prompt_opinion_slim")
+    .describe(
+      "Optional output mode. Use prompt_opinion_slim for compact transcript-safe payloads in Prompt Opinion. Use full for full-fidelity debugging.",
+    ),
 };
+
+const toolInputSchema = z.object(inputSchema);
 
 class SurfaceHiddenRisksTool implements IMcpTool {
   registerTool(server: McpServer, _req: Request): void {
@@ -68,7 +76,15 @@ class SurfaceHiddenRisksTool implements IMcpTool {
       },
       async (rawInput) => {
         try {
-          const { payload } = await surfaceHiddenRisks(rawInput);
+          const parsed = toolInputSchema.safeParse(rawInput);
+          if (!parsed.success) {
+            throw new Error(`Invalid input for surface_hidden_risks: ${parsed.error.message}`);
+          }
+
+          const { response_mode } = parsed.data;
+          const { payload } = await surfaceHiddenRisks(parsed.data, {
+            responseMode: response_mode,
+          });
           const isError = payload.status === "error";
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {

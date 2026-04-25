@@ -7,7 +7,7 @@ import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-in
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 
 export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
-  "Use when asked what exactly must happen before discharge, to prepare the transition package, or to produce a concrete assistive pre-discharge action plan grounded in the hidden-risk findings.";
+  "Prompt 3 tool for pre-discharge execution. Use when asked what must happen before discharge and to prepare the transition package grounded in hidden-risk findings. Do not use this for Prompt 1 deterministic baseline-only assessment.";
 
 const inputSchema = {
   deterministic_snapshot: z.object({
@@ -56,7 +56,15 @@ const inputSchema = {
       explicit_task_goal: z.string().optional(),
     })
     .optional(),
+  response_mode: z
+    .enum(["prompt_opinion_slim", "full"])
+    .default("prompt_opinion_slim")
+    .describe(
+      "Optional output mode. Use prompt_opinion_slim for compact transcript-safe payloads in Prompt Opinion. Use full for full-fidelity debugging.",
+    ),
 };
+
+const toolInputSchema = z.object(inputSchema);
 
 class SynthesizeTransitionNarrativeTool implements IMcpTool {
   registerTool(server: McpServer, _req: Request): void {
@@ -68,7 +76,16 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
       },
       async (rawInput) => {
         try {
-          const payload = await synthesizeTransitionNarrative(rawInput);
+          const parsed = toolInputSchema.safeParse(rawInput);
+          if (!parsed.success) {
+            throw new Error(
+              `Invalid input for synthesize_transition_narrative: ${parsed.error.message}`,
+            );
+          }
+
+          const payload = await synthesizeTransitionNarrative(parsed.data, {
+            responseMode: parsed.data.response_mode,
+          });
           const isError = payload.status === "error";
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {

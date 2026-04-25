@@ -19,12 +19,12 @@ class BuildClinicianHandoffBriefTool implements IMcpTool {
       V1_CLINICIAN_HANDOFF_TOOL_NAME,
       {
         description:
-          "Builds an assistive clinician handoff brief with unresolved risks, blocker-linked actions, and explicit review boundaries.",
+          "Deterministic clinician handoff artifact from structured blockers only. Does not reconcile hidden-risk narrative contradictions.",
         inputSchema: {
           scenario_id: z
             .string()
             .describe(
-              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1, second_synthetic_discharge_slice_ready_with_caveats_v1, and third_synthetic_discharge_slice_ready_v1.",
+              "Optional fixture scenario id. Defaults to first_synthetic_discharge_slice_v1.",
             )
             .optional(),
         },
