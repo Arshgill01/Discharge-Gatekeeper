@@ -1,7 +1,7 @@
 # PLAN.md
 
 ## Latest update
-- 2026-04-23, Agent 1: restored the repo map to the locked synchronous A2A contract, removed stale streaming-oriented planning drift, and aligned Phase 7/8 demo-lock sequencing.
+- 2026-04-25, Agent 1: inserted a focused Phase 8 execution-breakthrough pass to fix Prompt Opinion A2A chat execution and dual-tool BYO Prompt 2/3 before any submission freeze.
 
 ## Objective
 Win the Agents Assemble hackathon with **Care Transitions Command**: a Prompt Opinion system that uses **Discharge Gatekeeper MCP**, **Clinical Intelligence MCP**, and an **external A2A orchestrator** to catch a hidden discharge risk, explain the contradiction, and return the next transition actions in 3 prompts.
@@ -24,24 +24,25 @@ Care Transitions Command uses a deterministic discharge spine plus bounded note 
 - keep the final demo to 3 prompts
 
 ## Current phase
-### Phase 7: contract restore and demo lock
+### Phase 8: workspace execution breakthrough
 Goal:
-- restore the repo map to the locked synchronous architecture that already exists in runtime and validation assets
-- remove stale streaming-oriented or pre-A2A planning language from shared docs
-- lock operator promotion on explicit lane status evidence instead of narrative judgment
-- make Phase 8 submission freeze depend on the same contract and status board
+- convert local/runtime proof into real Prompt Opinion workspace execution proof
+- fix Prompt Opinion A2A chat execution against the external runtime
+- fix dual-tool BYO Prompt 2 and Prompt 3 transcript completion in the real workspace
+- use browser-driven proof and network evidence to distinguish repo-fixable defects from Prompt Opinion platform blockers
 
-Phase 7 deliverables:
-- refreshed shared-contract docs (`AGENTS.md`, `README.md`, `PLAN.md`, decisions, demo/operator/submission docs)
-- explicit synchronous A2A request/response wording across planning and operator docs
-- one green/yellow/red contract across demo, runbook, submission, and verification surfaces
-- tightened lane-promotion rule for A2A-main vs direct-MCP fallback
+Phase 8 deliverables:
+- spec-correct or Prompt Opinion-compatible external A2A transport execution path
+- browser-captured proof of whether Prompt Opinion chat actually reaches the external runtime
+- dual-tool BYO Prompt 2/3 hardening aimed at transcript persistence and canonical Prompt 3 completion
+- updated run-folder evidence with authenticated workspace screenshots, network clues, request/task correlation, and exact lane status
+- explicit go/no-go criteria for whether remaining failures are repo-side or platform-side
 
-Phase 8 entry criteria:
-- current run-folder evidence records lane statuses for A2A-main and direct-MCP fallback
-- the primary lane is explicitly selected from that evidence
+Phase 9 entry criteria:
+- current run-folder evidence records lane statuses for A2A-main and direct-MCP fallback after the execution-breakthrough pass
+- A2A-main is either proven green or explicitly downgraded with browser/network evidence that isolates a platform-side blocker
+- direct-MCP fallback is either proven green or explicitly downgraded with browser/network evidence that isolates a platform-side blocker
 - submission and recording materials match the live lane decision
-- no shared doc reintroduces streaming-oriented or collapsed-architecture wording
 
 ## Phase sequence
 ### Phase 0: vision lock
@@ -92,7 +93,13 @@ Output:
 - lane promotion depends on green/yellow/red evidence instead of ad hoc operator calls
 - demo, eval, runbook, and submission docs use the same status language
 
-### Phase 8: submission freeze
+### Phase 8: workspace execution breakthrough
+Output:
+- Prompt Opinion A2A chat execution is either green or conclusively shown platform-blocked after spec-correct transport work
+- dual-tool BYO Prompt 2/3 is either green or conclusively shown platform-blocked after tool-surface hardening
+- browser-driven evidence, request/task correlation, and local runtime diagnostics tell the same story
+
+### Phase 9: submission freeze
 Output:
 - chosen primary lane and required backup lane are frozen from current evidence
 - recording/publish materials match the locked synchronous architecture
@@ -110,48 +117,45 @@ If a workstream does not reinforce this sequence, it is not a priority.
 
 ## Active workstreams
 
-### 1) Shared contract restore
+### 1) A2A execution breakthrough
 Owner: Agent 1
 Goal:
-- keep the repo map aligned to the locked synchronous architecture
-- eliminate stale streaming-oriented, pre-A2A, or pre-Phase-7 framing
-- lock the operator and submission surfaces to the same lane rules
-
-### 2) A2A-main execution proof
-Owner: open
-Goal:
-- convert the preferred A2A architecture into current, evidence-backed Prompt Opinion execution proof
-
-Phase 7 focus:
-- same-day run-folder evidence for A2A workspace execution
-- contradiction-first Prompt 2 quality in the real chat lane
-- preserve direct-MCP fallback continuity
-
-### 3) Direct-MCP fallback proof
-Owner: open
-Goal:
-- keep the required fallback lane green and rehearsal-ready
-
-Phase 7 focus:
-- visible Prompt 1/2/3 workspace persistence
-- Prompt 3 `synthesize_transition_narrative` proof
-- no operator improvisation to bridge missing artifacts
-
-### 4) Submission freeze and packaging
-Owner: open
-Goal:
-- package the chosen primary lane plus the required backup lane without contract drift
+- make Prompt Opinion chat actually hit the external runtime instead of stopping at registration-only proof
+- align the advertised A2A binding with what the runtime really serves
+- preserve the locked synchronous architecture while fixing transport compatibility
 
 Phase 8 focus:
-- judge-facing copy
-- recording order and evidence bundle
-- Marketplace/publish wording aligned to the synchronous architecture
+- binding parity
+- request/response/task semantics
+- browser-observed runtime hits
+
+### 2) Dual-tool BYO breakthrough
+Owner: Agent 2
+Goal:
+- make Prompt 2 and Prompt 3 complete and persist in the real dual-tool BYO workspace path
+
+Phase 8 focus:
+- tool metadata clarity
+- payload size and shape discipline
+- canonical Prompt 3 completion
+- transcript persistence in the real workspace
+
+### 3) Browser proof and blocker isolation
+Owner: Agent 3
+Goal:
+- turn Prompt Opinion browser behavior into repeatable evidence instead of operator guesswork
+
+Phase 8 focus:
+- authenticated browser workflow
+- network capture and screenshots
+- run-folder evidence quality
+- final go/no-go call on repo-side vs platform-side blockers
 
 ## Immediate next tasks
-1. Keep shared docs aligned to the synchronous `external A2A orchestrator` surface and remove stale streaming-oriented planning language.
-2. Treat A2A-main as the preferred architecture, but promote it to the live lane only when the current run folder marks both A2A-main and direct-MCP fallback `green`.
-3. If A2A-main is `yellow` or `red` and direct-MCP fallback is `green`, run the fallback lane and keep the architecture explanation accurate.
-4. Freeze recording/submission materials only after the lane decision is backed by current evidence.
+1. Fix the external A2A runtime so its advertised binding, request shape, and execution path match what Prompt Opinion actually calls.
+2. Harden the dual-tool BYO path for Prompt 2 and Prompt 3 using Prompt Opinion-compatible tool metadata and slimmer transcript-safe outputs.
+3. Use authenticated browser automation and network evidence to prove runtime hits, transcript persistence, or the exact absence of both.
+4. Enter submission freeze only after this execution-breakthrough pass produces a real lane decision.
 
 ## Guardrails
 - Do not collapse the plan back to a one-surface product story.
@@ -163,13 +167,13 @@ Phase 8 focus:
 - Do not make the demo depend on vague free-form agent behavior.
 
 ## Open risks
-- Prompt Opinion still has unresolved evidence gaps between local green checks and real workspace execution proof for A2A-main.
-- The dual-tool BYO fallback remains vulnerable to Prompt Opinion transcript persistence failures for Prompt 2/3 unless current workspace evidence proves otherwise.
-- Submission claims can drift ahead of run-folder evidence unless lane status and promotion rules stay explicit.
+- Prompt Opinion may still have platform-level defects that survive all repo-side fixes.
+- The external A2A runtime may need a larger binding correction than a narrow agent-card patch.
+- The dual-tool BYO path may still fail if Prompt Opinion cannot persist assistant completions after multi-MCP execution even with smaller, clearer tool outputs.
 
-## Definition of done for phase 7
-Phase 7 is done when:
-- the shared repo docs describe the A2A layer as synchronous request/response and explicitly non-streaming
-- the green/yellow/red contract is identical across demo, eval, operator, submission, and evidence templates
-- A2A-main promotion requires current evidence instead of operator optimism
-- Phase 8 entry criteria are explicit and repo-specific
+## Definition of done for phase 8
+Phase 8 is done when:
+- Prompt Opinion A2A chat execution is `green`, or the repo has browser/network evidence that the remaining blocker is platform-side after spec-correct transport work
+- dual-tool BYO Prompt 2 and Prompt 3 are `green`, or the repo has browser/network evidence that the remaining blocker is platform-side after tool-surface hardening
+- the current run folder captures screenshots, experiment matrix, request/task correlation, and final lane calls for both lanes
+- Phase 9 entry criteria are explicit and evidence-backed
