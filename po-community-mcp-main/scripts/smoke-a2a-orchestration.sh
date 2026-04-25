@@ -28,5 +28,6 @@ echo "[a2a-smoke] checking readiness surfaces"
 echo "[a2a-smoke] running decision-matrix and orchestration checks"
 npm --prefix "${PO_COMMUNITY_ROOT}/external-a2a-orchestrator-typescript" run smoke:decision-matrix
 npm --prefix "${PO_COMMUNITY_ROOT}/external-a2a-orchestrator-typescript" run smoke:orchestrator
+npm --prefix "${PO_COMMUNITY_ROOT}/external-a2a-orchestrator-typescript" run smoke:prompt-opinion-compatibility
 
 echo "[a2a-smoke] PASS"

@@ -16,7 +16,14 @@ export type ParsedTaskInputSurface =
   | "taskInput_envelope"
   | "request_envelope"
   | "payload_envelope"
+  | "a2a_message_send"
+  | "a2a_jsonrpc_params"
   | "raw_text";
+
+export type A2AExecutionBinding =
+  | "custom_tasks"
+  | "http_json"
+  | "jsonrpc";
 
 export type NarrativeSource = {
   source_id: string;
@@ -71,6 +78,11 @@ export type DownstreamCallDiagnostic = {
 };
 
 export type IncomingRequestDiagnostic = {
+  selected_binding: A2AExecutionBinding;
+  request_method: string;
+  request_path: string;
+  protocol_request_id: string | null;
+  correlation_id: string | null;
   input_surface: ParsedTaskInputSurface;
   content_type: string | null;
   accept: string | null;
@@ -81,10 +93,18 @@ export type TaskRuntimeDiagnostics = {
   request_id: string;
   prompt_mode: PromptMode;
   task_id: string;
+  execution_started_at: string;
+  execution_finished_at: string;
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
   fallbacks_applied: string[];
   incoming_request: IncomingRequestDiagnostic;
+  downstream_correlation: Array<{
+    component: DownstreamCallDiagnostic["component"];
+    call_id: string;
+    propagated_request_id: string | null;
+    propagated_correlation_id: string | null;
+  }>;
   downstream_calls: DownstreamCallDiagnostic[];
 };
 
