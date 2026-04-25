@@ -19,10 +19,30 @@ if ! tasks_payload="$(curl -sSf "${EXTERNAL_A2A_BASE_URL}/tasks")"; then
   exit 1
 fi
 
+if ! rpc_probe_payload="$(curl -sSf \
+  -H 'content-type: application/json' \
+  -H 'x-request-id: readiness-rpc' \
+  -d '{"jsonrpc":"2.0","id":"readiness-rpc-id","method":"SendMessage","params":{"message":{"role":"ROLE_USER","parts":[{"text":"Is this patient safe to discharge today?"}]}}}' \
+  "${EXTERNAL_A2A_BASE_URL}/rpc")"; then
+  echo "READINESS FAIL: /rpc endpoint did not accept JSON-RPC SendMessage at ${EXTERNAL_A2A_BASE_URL}/rpc." >&2
+  exit 1
+fi
+
+if ! message_send_payload="$(curl -sSf \
+  -H 'content-type: application/a2a+json' \
+  -H 'x-request-id: readiness-http-json' \
+  -d '{"message":{"role":"ROLE_USER","parts":[{"text":"Is this patient safe to discharge today?"}]}}' \
+  "${EXTERNAL_A2A_BASE_URL}/message:send")"; then
+  echo "READINESS FAIL: /message:send endpoint did not accept HTTP+JSON request at ${EXTERNAL_A2A_BASE_URL}/message:send." >&2
+  exit 1
+fi
+
 node -e '
 const ready = JSON.parse(process.argv[1]);
 const card = JSON.parse(process.argv[2]);
 const tasks = JSON.parse(process.argv[3]);
+const rpcProbe = JSON.parse(process.argv[4]);
+const messageSend = JSON.parse(process.argv[5]);
 if (ready.status !== "ok") throw new Error(`readyz status must be ok, got ${ready.status}`);
 if (ready.server_name !== "external A2A orchestrator") throw new Error(`server_name mismatch: ${ready.server_name}`);
 if (!card.capabilities || !card.capabilities.task_lifecycle) throw new Error("agent card missing task_lifecycle capability");
@@ -34,5 +54,11 @@ if (!Array.isArray(card.capabilities.dependencies) || card.capabilities.dependen
   throw new Error("agent card dependency list must include both MCPs");
 }
 if (typeof tasks.count !== "number" || !Array.isArray(tasks.tasks)) throw new Error("/tasks payload must expose count and tasks[]");
+if (rpcProbe.jsonrpc !== "2.0" || !rpcProbe.result || !rpcProbe.result.task || !rpcProbe.result.task.id) {
+  throw new Error("/rpc probe must return JSON-RPC result.task with an id");
+}
+if (!messageSend.task || !messageSend.task.id) {
+  throw new Error("/message:send probe must return task with an id");
+}
 console.log("READY PASS: external A2A orchestrator");
-' "${ready_payload}" "${card_payload}" "${tasks_payload}"
+' "${ready_payload}" "${card_payload}" "${tasks_payload}" "${rpc_probe_payload}" "${message_send_payload}"

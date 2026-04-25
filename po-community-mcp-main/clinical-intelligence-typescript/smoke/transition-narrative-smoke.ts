@@ -146,11 +146,49 @@ const assertInconclusiveNarrative = async (): Promise<void> => {
   );
 };
 
+const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> => {
+  const payload = await synthesizeTransitionNarrative(PHASE0_TRAP_PATIENT_INPUT, {
+    responseMode: "prompt_opinion_slim",
+  });
+  const serialized = JSON.stringify(payload);
+
+  assert.ok(
+    serialized.length <= 4800,
+    `Prompt Opinion slim transition payload should stay compact (<=4800 bytes), saw ${serialized.length}.`,
+  );
+  assert.ok(
+    payload.narrative.includes("Before discharge, complete:"),
+    "Slim Prompt 3 narrative should stay action-explicit for transition-package rendering.",
+  );
+  assert.ok(payload.key_points.length <= 6, "Slim Prompt 3 key points should stay bounded.");
+  assert.ok(payload.recommended_actions.length <= 4, "Slim Prompt 3 actions should stay bounded.");
+  assert.ok(payload.citations.length <= 4, "Slim Prompt 3 citations should stay bounded.");
+
+  for (const action of payload.recommended_actions) {
+    assert.ok(
+      action.action.length <= 220,
+      `Slim action ${action.action_id} should stay bounded for transcript safety.`,
+    );
+    assert.ok(
+      action.citation_ids.length <= 2,
+      `Slim action ${action.action_id} should cap citation references for transcript safety.`,
+    );
+  }
+
+  for (const keyPoint of payload.key_points) {
+    assert.ok(
+      keyPoint.length <= 220,
+      "Slim key points should stay bounded for transcript safety.",
+    );
+  }
+};
+
 const main = async (): Promise<void> => {
   await assertTrapNarrative();
   await assertAlternativeNarrative();
   await assertControlNarrative();
   await assertInconclusiveNarrative();
+  await assertPromptOpinionSlimNarrativeStaysRenderSafe();
   console.log("SMOKE PASS: transition narrative synthesis");
 };
 

@@ -19,12 +19,12 @@ class GenerateTransitionPlanTool implements IMcpTool {
       GENERATE_TRANSITION_PLAN_TOOL_NAME,
       {
         description:
-          "Generate prioritized transition tasks linked to blockers and evidence on the shared discharge workflow spine.",
+          "Deterministic transition-task generator from structured blockers only. Use for structured workflow scaffolding, not Prompt 3 hidden-risk package synthesis.",
         inputSchema: {
           scenario_id: z
             .string()
             .describe(
-              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1, second_synthetic_discharge_slice_ready_with_caveats_v1, and third_synthetic_discharge_slice_ready_v1.",
+              "Optional fixture scenario id. Defaults to first_synthetic_discharge_slice_v1.",
             )
             .optional(),
         },
