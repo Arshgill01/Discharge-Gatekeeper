@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-04-28T07:40:13.964Z",
-  "run_id": "20260428T073928Z",
+  "generated_at": "2026-04-28T07:38:27.383Z",
+  "run_id": "20260428T073825Z",
   "a2a_rehearsals": [
     {
       "run": 1,
-      "totalElapsedMs": 150,
+      "totalElapsedMs": 246,
       "promptResults": [
         {
           "prompt": "Is this patient safe to discharge today?",
-          "elapsedMs": 110,
+          "elapsedMs": 198,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -17,7 +17,7 @@
         },
         {
           "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
-          "elapsedMs": 21,
+          "elapsedMs": 27,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -26,7 +26,7 @@
         },
         {
           "prompt": "What exactly must happen before discharge, and prepare the transition package.",
-          "elapsedMs": 19,
+          "elapsedMs": 21,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -41,7 +41,7 @@
       "promptResults": [
         {
           "prompt": "Is this patient safe to discharge today?",
-          "elapsedMs": 18,
+          "elapsedMs": 16,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -50,7 +50,7 @@
         },
         {
           "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
-          "elapsedMs": 16,
+          "elapsedMs": 19,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -59,7 +59,7 @@
         },
         {
           "prompt": "What exactly must happen before discharge, and prepare the transition package.",
-          "elapsedMs": 16,
+          "elapsedMs": 15,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
