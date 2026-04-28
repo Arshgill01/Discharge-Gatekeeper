@@ -122,6 +122,30 @@ const run = async (): Promise<void> => {
     const v1HttpJsonPayload = await v1HttpJsonResponse.json();
     assert.equal(typeof v1HttpJsonPayload?.task?.id, "string");
 
+    const nestedHttpJsonResponse = await fetch(`${baseUrl}/message:send/v1/message:send`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        message: {
+          role: "ROLE_USER",
+          parts: [{ text: "Is this patient safe to discharge today?" }],
+        },
+        metadata: {
+          patient_context: TRAP_PATIENT_TASK_INPUT.patient_context,
+        },
+      }),
+    });
+    assert.equal(nestedHttpJsonResponse.status, 200);
+    const nestedHttpJsonPayload = await nestedHttpJsonResponse.json();
+    assert.equal(typeof nestedHttpJsonPayload?.task?.id, "string");
+    assert.equal(typeof nestedHttpJsonPayload.task.status.message.messageId, "string");
+    assert.equal(
+      nestedHttpJsonPayload.task.metadata.diagnostics.incoming_request.selected_binding,
+      "http_json",
+    );
+
     const jsonRpcResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {

@@ -930,6 +930,7 @@ const buildA2ATaskPayload = (task: A2ATaskRecord): Record<string, unknown> => {
       state: toA2ATaskState(task.status),
       timestamp,
       message: {
+        messageId: `${task.task_id}-status-message`,
         role: "ROLE_AGENT",
         parts: [{ text }],
         metadata: {
@@ -1284,6 +1285,12 @@ app.post(/^\/(?:v1\/)?message:send$/, (req, res) => {
   void handleHttpJsonMessageSend(req, res);
 });
 app.post(/^\/(?:v1\/)?message\/send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/message:send\/v1\/message:send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/message\/send\/v1\/message\/send$/, (req, res) => {
   void handleHttpJsonMessageSend(req, res);
 });
 app.post(/^\/(?:v1\/)?message:stream$/, (_req, res) => {

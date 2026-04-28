@@ -16,6 +16,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       message_send: `${publicBaseUrl}/message:send`,
       message_send_v1: `${publicBaseUrl}/v1/message:send`,
       message_send_slash: `${publicBaseUrl}/message/send`,
+      prompt_opinion_nested_message_send: `${publicBaseUrl}/message:send/v1/message:send`,
     },
   };
 
@@ -90,6 +91,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       message_send: `${publicBaseUrl}/message:send`,
       message_send_v1: `${publicBaseUrl}/v1/message:send`,
       message_send_slash: `${publicBaseUrl}/message/send`,
+      prompt_opinion_nested_message_send: protocolEndpoints.http_json.prompt_opinion_nested_message_send,
       ...absoluteTaskEndpoints,
       createTask: `${publicBaseUrl}/tasks`,
       getTask: `${publicBaseUrl}/tasks/:taskId`,
@@ -106,7 +108,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
         "POST /tasks with {task|task_input|taskInput|request|payload: {prompt|messages, patient_context|patientContext?}}",
         "POST /tasks with text/plain body containing the prompt",
         "POST /rpc with JSON-RPC SendMessage/message/send params",
-        "POST /message:send or /v1/message:send with A2A HTTP+JSON body",
+        "POST /message:send, /v1/message:send, or /message:send/v1/message:send with A2A HTTP+JSON body",
       ],
       response_task_shapes: [
         "completed task record with output + diagnostics",
