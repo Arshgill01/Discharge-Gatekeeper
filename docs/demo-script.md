@@ -25,6 +25,7 @@ Fallback demo path:
 Current workspace note:
 - the intended fallback story remains one BYO operator path, but the 2026-04-21 continuation pass isolated a Prompt Opinion dual-MCP BYO execution problem.
 - if that blocker is still present on demo day, the narrowest stable workspace fallback is to use the dedicated single-tool Clinical Intelligence BYO agents for Prompt 2 and Prompt 3 while keeping the architecture explanation accurate.
+- until a current run folder marks `A2A-main` green, the stable A2A claim is one-turn assembled proof only, not the full 3-prompt judged lane.
 
 Run-status source of truth before any demo:
 - `output/prompt-opinion-e2e/latest/reports/status-summary.md`

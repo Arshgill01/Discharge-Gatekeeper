@@ -20,6 +20,7 @@ A2A registration and runtime reachability have improved, but the full A2A multi-
 - Primary live demo lane should stay Direct-MCP until a lane is green with run-folder evidence.
 - A2A is a proof lane in this phase, not a place to blur platform routing defects into prompt wording changes.
 - No worker should treat "one more prompt tweak" as a substitute for verified routing.
+- The stable A2A proof target is one assembled turn with end-to-end evidence, not forced 3-prompt parity.
 
 ## Non-goals
 - No custom frontend
