@@ -38,6 +38,7 @@ Copy the machine-generated status lines from `reports/command-results.json`.
 | `notes/workspace-evidence.md` completed |  |  |
 | `reports/browser-network-summary.json` present |  |  |
 | `reports/runtime-log-delta.json` present |  |  |
+| `reports/direct-mcp-status.json` present |  |  |
 | authenticated workspace screenshots present |  |  |
 
 ## Lane status board
@@ -59,10 +60,12 @@ Copy the machine-generated status lines from `reports/command-results.json`.
 - External runtime endpoint and payload shape:
 - Downstream MCP calls observed:
 - Transcript/persistence break:
+- Direct-MCP final-settle reason:
+- Direct-MCP semantic anchor result:
 
 ## Green/yellow/red rationale
-- Green: the current run folder proves the lane end-to-end and the lane is eligible to be primary.
-- Yellow: proof is partial or missing a required artifact; the lane cannot be primary.
+- Green: the current run folder proves the lane end-to-end and the lane is eligible to be primary, including final-settle transcript persistence, semantic anchors, and runtime correlation.
+- Yellow: proof is partial or missing a required artifact after the full bounded wait; the lane cannot be primary.
 - Red: a blocking defect, failed required validation, or missing required evidence makes the lane unusable.
 
 ## Open risks
