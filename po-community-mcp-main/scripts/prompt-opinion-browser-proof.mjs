@@ -113,6 +113,7 @@ const redactPatterns = [
   /(password["':=\s]+)([^"',\s]+)/gi,
   /(authorization["':=\s]+)([^"',\s]+)/gi,
   /(cookie["':=\s]+)([^"',\n]+)/gi,
+  /(apiKey["':=\s]+)([^"',\s]+)/gi,
   /(access[_-]?token["':=\s]+)([^"',\s]+)/gi,
   /(refresh[_-]?token["':=\s]+)([^"',\s]+)/gi,
   /(id[_-]?token["':=\s]+)([^"',\s]+)/gi,
