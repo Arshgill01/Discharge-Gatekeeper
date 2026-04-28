@@ -390,7 +390,7 @@
     "post_data": {
       "kind": "text",
       "shape": "text",
-      "preview": "email=arshgill6120%40gmail.com&__RequestVerificationToken=CfDJ8OeNKcqNhZBNlLa9hdTXdKvBXO7mlPrlvy2saE_GBOkszQVBtJqwPbwoMWMY1_fCYu2U3ojKGlwR-VDHykAIAFvChCXACQc9ydYP_IPejvntFwZzzVWL0sqECLwe6ZDurziV7IGtyQU3pnnKyoBpKS4"
+      "preview": "email=[redacted-email]&__RequestVerificationToken=CfDJ8OeNKcqNhZBNlLa9hdTXdKvBXO7mlPrlvy2saE_GBOkszQVBtJqwPbwoMWMY1_fCYu2U3ojKGlwR-VDHykAIAFvChCXACQc9ydYP_IPejvntFwZzzVWL0sqECLwe6ZDurziV7IGtyQU3pnnKyoBpKS4"
     }
   },
   {
@@ -781,7 +781,7 @@
     "post_data": {
       "kind": "text",
       "shape": "text",
-      "preview": "email=arshgill6120%40gmail.com&password=[redacted]"
+      "preview": "email=[redacted-email]&password=[redacted]"
     }
   },
   {

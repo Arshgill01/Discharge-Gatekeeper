@@ -106,6 +106,7 @@ const runtimeLogFiles = {
 };
 
 const redactPatterns = [
+  /(?:[A-Z0-9._%+-]+%40[A-Z0-9.-]+\.[A-Z]{2,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
   /bearer\s+[a-z0-9._~+/=-]+/gi,
   /AIza[0-9A-Za-z_-]{20,}/g,
   /(api[_-]?key["':=\s]+)([^"',\s]+)/gi,
