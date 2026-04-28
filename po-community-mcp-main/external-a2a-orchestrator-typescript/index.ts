@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
 import { buildAgentCard } from "./agent-card";
 import {
+  A2AExecutionBinding,
   A2ATaskError,
   A2ATaskInput,
   A2ATaskRecord,
@@ -30,9 +31,32 @@ class TaskTimeoutError extends Error {
   }
 }
 
+class JsonRpcRequestError extends Error {
+  constructor(
+    readonly code: number,
+    message: string,
+    readonly data?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "JsonRpcRequestError";
+  }
+}
+
 type ParsedTaskInput = {
   input: A2ATaskInput;
   inputSurface: ParsedTaskInputSurface;
+};
+
+type A2AJsonRpcRequest = {
+  jsonrpc: "2.0";
+  id: string | number | null;
+  method: string;
+  params: Record<string, unknown>;
+};
+
+type A2AJsonRpcResult = {
+  task?: Record<string, unknown>;
+  message?: Record<string, unknown>;
 };
 
 const derivePublicBaseUrl = (req: express.Request): string => {
@@ -153,6 +177,7 @@ const extractRequestIdFromBody = (value: unknown): string | null => {
   return firstNonEmptyString([
     record["request_id"],
     record["requestId"],
+    record["id"],
     extractRequestIdFromBody(record["input"]),
     extractRequestIdFromBody(record["task"]),
     extractRequestIdFromBody(record["task_input"]),
@@ -234,6 +259,162 @@ const parseTaskInput = (raw: unknown): ParsedTaskInput => {
   };
 };
 
+const toOptionalString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+};
+
+const extractA2AMessagePrompt = (message: Record<string, unknown>): string | null => {
+  return firstNonEmptyString([
+    extractPromptText(message["parts"]),
+    extractPromptText(message["content"]),
+    extractPromptText(message["message"]),
+    message["text"],
+    message["prompt"],
+  ]);
+};
+
+const extractA2APatientContext = (...values: Array<unknown>): A2ATaskInput["patient_context"] => {
+  for (const value of values) {
+    const record = asRecord(value);
+    if (!record) {
+      continue;
+    }
+
+    const nestedContext = extractPatientContext(record);
+    if (nestedContext) {
+      return nestedContext;
+    }
+
+    const metadata = asRecord(record["metadata"]);
+    if (metadata) {
+      const metadataContext = extractPatientContext(metadata);
+      if (metadataContext) {
+        return metadataContext;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const parseA2AHttpJsonMessageSend = (raw: unknown): ParsedTaskInput => {
+  const root = asRecord(raw);
+  if (!root) {
+    throw new Error("A2A HTTP+JSON message/send payload must be a JSON object.");
+  }
+
+  const message = asRecord(root["message"]);
+  if (!message) {
+    throw new Error("A2A HTTP+JSON message/send payload must include a message object.");
+  }
+
+  const prompt = extractA2AMessagePrompt(message);
+  if (!prompt) {
+    throw new Error("A2A message/send payload must include at least one text prompt part.");
+  }
+
+  return {
+    inputSurface: "a2a_message_send",
+    input: {
+      prompt,
+      patient_context: extractA2APatientContext(root, message, root["configuration"], root["metadata"]),
+    },
+  };
+};
+
+const parseA2AJsonRpcRequest = (raw: unknown): A2AJsonRpcRequest => {
+  const root = asRecord(raw);
+  if (!root) {
+    throw new JsonRpcRequestError(-32600, "Invalid Request: body must be a JSON object.");
+  }
+
+  const jsonrpc = toOptionalString(root["jsonrpc"]);
+  if (jsonrpc !== "2.0") {
+    throw new JsonRpcRequestError(-32600, "Invalid Request: jsonrpc must be '2.0'.");
+  }
+
+  const method = toOptionalString(root["method"]);
+  if (!method) {
+    throw new JsonRpcRequestError(-32600, "Invalid Request: method is required.");
+  }
+
+  const params = asRecord(root["params"]) || {};
+  const idValue = root["id"];
+  const id =
+    typeof idValue === "number" || typeof idValue === "string" || idValue === null
+      ? idValue
+      : null;
+
+  return {
+    jsonrpc: "2.0",
+    id,
+    method,
+    params,
+  };
+};
+
+const parseA2AJsonRpcMessageSend = (request: A2AJsonRpcRequest): ParsedTaskInput => {
+  const messageParams = asRecord(request.params["message"]) || request.params;
+  const prompt = extractA2AMessagePrompt(messageParams);
+
+  if (!prompt) {
+    throw new JsonRpcRequestError(
+      -32602,
+      "Invalid params: SendMessage requires a message with at least one text prompt part.",
+    );
+  }
+
+  return {
+    inputSurface: "a2a_jsonrpc_params",
+    input: {
+      prompt,
+      patient_context: extractA2APatientContext(
+        request.params,
+        request.params["configuration"],
+        request.params["metadata"],
+        messageParams,
+      ),
+    },
+  };
+};
+
+const normalizeJsonRpcMethod = (method: string): string => {
+  const normalized = method.replace(/\s+/g, "").toLowerCase();
+  switch (normalized) {
+    case "sendmessage":
+    case "message/send":
+    case "message:send":
+      return "send_message";
+    case "sendstreamingmessage":
+    case "message/stream":
+    case "message:stream":
+      return "send_streaming_message";
+    case "gettask":
+    case "tasks/get":
+      return "get_task";
+    case "listtasks":
+    case "tasks/list":
+      return "list_tasks";
+    case "canceltask":
+    case "tasks/cancel":
+      return "cancel_task";
+    case "getextendedagentcard":
+    case "agent/getauthenticatedextendedcard":
+      return "get_extended_agent_card";
+    default:
+      return "unknown";
+  }
+};
+
 const detectPromptMode = (prompt: string): TaskRuntimeDiagnostics["prompt_mode"] => {
   const normalized = prompt.toLowerCase();
   if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
@@ -262,6 +443,9 @@ const buildHealthPayload = () => {
       healthz: "/healthz",
       readyz: "/readyz",
       agent_card: "/.well-known/agent-card.json",
+      rpc: "/rpc",
+      message_send: "/message:send",
+      message_send_v1: "/v1/message:send",
       tasks: "/tasks",
     },
     task_count: tasks.size,
@@ -338,6 +522,17 @@ const withRuntimeDiagnostics = (
   };
 };
 
+const buildDownstreamCorrelation = (
+  calls: TaskRuntimeDiagnostics["downstream_calls"],
+): TaskRuntimeDiagnostics["downstream_correlation"] => {
+  return calls.map((call) => ({
+    component: call.component,
+    call_id: call.call_id,
+    propagated_request_id: call.propagated_headers["x-request-id"] || null,
+    propagated_correlation_id: call.propagated_headers["x-correlation-id"] || null,
+  }));
+};
+
 const buildSkippedClinicalDiagnostic = (
   requestId: string,
   taskId: string,
@@ -371,6 +566,7 @@ const runTask = async (
   incomingRequest: IncomingRequestDiagnostic,
 ): Promise<{ result: ReconciliationResult; diagnostics: TaskRuntimeDiagnostics }> => {
   const taskStartMs = Date.now();
+  const executionStartedAt = new Date(taskStartMs).toISOString();
   const downstreamCalls: TaskRuntimeDiagnostics["downstream_calls"] = [];
   const fallbacks: string[] = [];
   const promptMode = detectPromptMode(taskInput.prompt);
@@ -385,15 +581,22 @@ const runTask = async (
 
   if (!shouldInvokeHiddenRisk(taskInput)) {
     const reconciled = reconcileOutputs(taskInput, deterministic, null);
+    const downstreamCallsWithSkipped = [
+      ...downstreamCalls,
+      buildSkippedClinicalDiagnostic(requestId, taskId, promptMode),
+    ];
     const diagnostics: TaskRuntimeDiagnostics = {
       request_id: requestId,
       task_id: taskId,
       prompt_mode: promptMode,
+      execution_started_at: executionStartedAt,
+      execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: false,
       fallbacks_applied: ["hidden_risk_skipped"],
       incoming_request: incomingRequest,
-      downstream_calls: [...downstreamCalls, buildSkippedClinicalDiagnostic(requestId, taskId, promptMode)],
+      downstream_correlation: buildDownstreamCorrelation(downstreamCallsWithSkipped),
+      downstream_calls: downstreamCallsWithSkipped,
     };
 
     return {
@@ -438,10 +641,13 @@ const runTask = async (
       request_id: requestId,
       task_id: taskId,
       prompt_mode: promptMode,
+      execution_started_at: executionStartedAt,
+      execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
+      downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
       downstream_calls: downstreamCalls,
     };
 
@@ -465,10 +671,13 @@ const runTask = async (
       request_id: requestId,
       task_id: taskId,
       prompt_mode: promptMode,
+      execution_started_at: executionStartedAt,
+      execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
+      downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
       downstream_calls: downstreamCalls,
     };
 
@@ -490,10 +699,13 @@ const runTask = async (
       request_id: requestId,
       task_id: taskId,
       prompt_mode: promptMode,
+      execution_started_at: executionStartedAt,
+      execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
+      downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
       downstream_calls: downstreamCalls,
     };
 
@@ -646,6 +858,276 @@ const collectDiagnosticHeaders = (req: express.Request): Record<string, string> 
   return result;
 };
 
+const buildIncomingRequestDiagnostic = (
+  req: express.Request,
+  binding: A2AExecutionBinding,
+  inputSurface: ParsedTaskInputSurface,
+  protocolRequestId: string | null,
+  correlationId: string | null,
+): IncomingRequestDiagnostic => {
+  return {
+    selected_binding: binding,
+    request_method: req.method,
+    request_path: req.path,
+    protocol_request_id: protocolRequestId,
+    correlation_id: correlationId,
+    input_surface: inputSurface,
+    content_type: req.get("content-type") || null,
+    accept: req.get("accept") || null,
+    request_headers: collectDiagnosticHeaders(req),
+  };
+};
+
+const createTaskRecord = (requestId: string, input: A2ATaskInput): A2ATaskRecord => {
+  const taskId = randomUUID();
+  const now = new Date().toISOString();
+  return {
+    task_id: taskId,
+    request_id: requestId,
+    status: "queued",
+    created_at: now,
+    completed_at: null,
+    status_history: [
+      {
+        status: "queued",
+        at: now,
+      },
+    ],
+    input,
+    output: null,
+    error: null,
+    diagnostics: null,
+  };
+};
+
+const toA2ATaskState = (status: A2ATaskRecord["status"]): string => {
+  switch (status) {
+    case "queued":
+      return "TASK_STATE_SUBMITTED";
+    case "running":
+      return "TASK_STATE_WORKING";
+    case "completed":
+      return "TASK_STATE_COMPLETED";
+    case "failed":
+      return "TASK_STATE_FAILED";
+    default:
+      return "TASK_STATE_UNKNOWN";
+  }
+};
+
+const buildA2ATaskPayload = (task: A2ATaskRecord): Record<string, unknown> => {
+  const text =
+    task.output?.contradiction_summary ||
+    task.output?.prompt_payload?.headline ||
+    task.error?.message ||
+    "Task accepted.";
+  const timestamp = task.completed_at || task.created_at;
+
+  return {
+    id: task.task_id,
+    contextId: task.input.patient_context?.encounter_id || task.input.patient_context?.patient_id || task.task_id,
+    status: {
+      state: toA2ATaskState(task.status),
+      timestamp,
+      message: {
+        messageId: `${task.task_id}-status-message`,
+        role: "ROLE_AGENT",
+        parts: [{ text }],
+        metadata: {
+          requestId: task.request_id,
+          taskId: task.task_id,
+        },
+      },
+    },
+    artifacts:
+      task.output
+        ? [
+            {
+              artifactId: `care-transitions-command-${task.task_id}`,
+              name: "Care Transitions Command fused response",
+              parts: [
+                {
+                  text: JSON.stringify(task.output),
+                },
+              ],
+            },
+          ]
+        : [],
+    metadata: {
+      requestId: task.request_id,
+      taskId: task.task_id,
+      status: task.status,
+      createdAt: task.created_at,
+      completedAt: task.completed_at,
+      diagnostics: task.diagnostics,
+    },
+  };
+};
+
+const buildA2AHttpJsonSendResponse = (task: A2ATaskRecord): A2AJsonRpcResult => {
+  return {
+    task: buildA2ATaskPayload(task),
+  };
+};
+
+const buildJsonRpcSuccess = (
+  id: A2AJsonRpcRequest["id"],
+  result: A2AJsonRpcResult,
+): Record<string, unknown> => {
+  return {
+    jsonrpc: "2.0",
+    id,
+    result,
+  };
+};
+
+const buildJsonRpcError = (
+  id: A2AJsonRpcRequest["id"],
+  code: number,
+  message: string,
+  data?: Record<string, unknown>,
+): Record<string, unknown> => {
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: {
+      code,
+      message,
+      ...(data ? { data } : {}),
+    },
+  };
+};
+
+const executeParsedTaskRequest = async ({
+  req,
+  parsedTask,
+  requestId,
+  binding,
+  protocolRequestId,
+  correlationId,
+}: {
+  req: express.Request;
+  parsedTask: ParsedTaskInput;
+  requestId: string;
+  binding: A2AExecutionBinding;
+  protocolRequestId: string | null;
+  correlationId: string | null;
+}): Promise<{ taskRecord: A2ATaskRecord; taskSucceeded: boolean }> => {
+  const taskRecord = createTaskRecord(requestId, parsedTask.input);
+  tasks.set(taskRecord.task_id, taskRecord);
+  trimTaskHistory();
+  appendTaskStatus(taskRecord, "running");
+
+  log("info", "A2A task execution started", {
+    request_id: requestId,
+    protocol_request_id: protocolRequestId,
+    correlation_id: correlationId,
+    task_id: taskRecord.task_id,
+    binding,
+    method: req.method,
+    path: req.path,
+    input_surface: parsedTask.inputSurface,
+    prompt_preview: parsedTask.input.prompt.slice(0, 80),
+  });
+
+  try {
+    const incomingRequest = buildIncomingRequestDiagnostic(
+      req,
+      binding,
+      parsedTask.inputSurface,
+      protocolRequestId,
+      correlationId,
+    );
+    const runResult = await withTimeout(
+      runTask(parsedTask.input, requestId, taskRecord.task_id, incomingRequest),
+      config.taskTimeoutMs,
+    );
+
+    appendTaskStatus(taskRecord, "completed");
+    taskRecord.output = runResult.result;
+    taskRecord.diagnostics = runResult.diagnostics;
+    taskRecord.completed_at = new Date().toISOString();
+
+    log("info", "A2A task execution finished", {
+      request_id: requestId,
+      protocol_request_id: protocolRequestId,
+      correlation_id: correlationId,
+      task_id: taskRecord.task_id,
+      binding,
+      method: req.method,
+      path: req.path,
+      final_verdict: runResult.result.final_verdict,
+      decision_matrix_row: runResult.result.decision_matrix_row,
+      hidden_risk_run_status: runResult.result.hidden_risk_run_status,
+      task_duration_ms: runResult.diagnostics.task_duration_ms,
+      downstream_call_ids: runResult.diagnostics.downstream_calls.map((call) => call.call_id),
+      downstream_mcp_correlation: runResult.diagnostics.downstream_correlation,
+    });
+
+    return {
+      taskRecord,
+      taskSucceeded: true,
+    };
+  } catch (error) {
+    const taskError = buildTaskError(error);
+    appendTaskStatus(taskRecord, "failed");
+    taskRecord.error = taskError;
+    taskRecord.completed_at = new Date().toISOString();
+
+    const downstreamCalls =
+      error instanceof McpInvocationError
+        ? [error.diagnostic]
+        : [];
+
+    taskRecord.diagnostics = {
+      request_id: requestId,
+      task_id: taskRecord.task_id,
+      prompt_mode: detectPromptMode(parsedTask.input.prompt),
+      execution_started_at: taskRecord.created_at,
+      execution_finished_at: taskRecord.completed_at,
+      task_duration_ms:
+        new Date(taskRecord.completed_at).getTime() - new Date(taskRecord.created_at).getTime(),
+      hidden_risk_invoked: true,
+      fallbacks_applied: ["task_failure"],
+      incoming_request: buildIncomingRequestDiagnostic(
+        req,
+        binding,
+        parsedTask.inputSurface,
+        protocolRequestId,
+        correlationId,
+      ),
+      downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
+      downstream_calls: downstreamCalls,
+    };
+
+    log("error", "A2A task execution failed", {
+      request_id: requestId,
+      protocol_request_id: protocolRequestId,
+      correlation_id: correlationId,
+      task_id: taskRecord.task_id,
+      binding,
+      method: req.method,
+      path: req.path,
+      error_code: taskError.code,
+      error_message: taskError.message,
+      downstream_call_ids: downstreamCalls.map((call) => call.call_id),
+    });
+
+    return {
+      taskRecord,
+      taskSucceeded: false,
+    };
+  }
+};
+
+const toProtocolRequestId = (value: unknown): string | null => {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  return null;
+};
+
 app.use((req, res, next) => {
   const requestId =
     firstNonEmptyString([
@@ -697,6 +1179,37 @@ app.get("/agent-card", (req, res) => {
   res.status(200).json(buildAgentCard(config, derivePublicBaseUrl(req)));
 });
 
+const sendTaskValidationError = (res: express.Response, requestId: string, message: string): void => {
+  const validationError: A2ATaskError = {
+    code: "invalid_task_input",
+    message,
+    retryable: false,
+    stage: "validation",
+  };
+
+  log("error", "Task payload validation failed", {
+    request_id: requestId,
+    error_code: validationError.code,
+    error_message: validationError.message,
+  });
+
+  res.status(400).json({
+    status: "error",
+    request_id: requestId,
+    error: validationError,
+  });
+};
+
+const sendHttpJsonUnsupportedStreaming = (res: express.Response): void => {
+  res.status(501).json({
+    error: {
+      code: "streaming_not_supported",
+      message:
+        "Streaming is disabled for this external A2A orchestrator runtime. Use message:send or /tasks.",
+    },
+  });
+};
+
 app.post("/tasks", async (req, res) => {
   const requestId = String(res.locals.requestId || randomUUID());
   let parsedTask: ParsedTaskInput;
@@ -704,125 +1217,223 @@ app.post("/tasks", async (req, res) => {
   try {
     parsedTask = parseTaskInput(req.body);
   } catch (error) {
-    const validationMessage = error instanceof Error ? error.message : String(error);
-    const validationError: A2ATaskError = {
-      code: "invalid_task_input",
-      message: validationMessage,
-      retryable: false,
-      stage: "validation",
-    };
-
-    log("error", "Task payload validation failed", {
-      request_id: requestId,
-      error_code: validationError.code,
-      error_message: validationError.message,
-    });
-
-    res.status(400).json({
-      status: "error",
-      request_id: requestId,
-      error: validationError,
-    });
+    sendTaskValidationError(
+      res,
+      requestId,
+      error instanceof Error ? error.message : String(error),
+    );
     return;
   }
 
-  const taskId = randomUUID();
-  const now = new Date().toISOString();
-  const taskRecord: A2ATaskRecord = {
-    task_id: taskId,
-    request_id: requestId,
-    status: "queued",
-    created_at: now,
-    completed_at: null,
-    status_history: [
-      {
-        status: "queued",
-        at: now,
-      },
-    ],
-    input: parsedTask.input,
-    output: null,
-    error: null,
-    diagnostics: null,
-  };
-
-  tasks.set(taskId, taskRecord);
-  trimTaskHistory();
-
-  appendTaskStatus(taskRecord, "running");
-  log("info", "Task accepted", {
-    request_id: requestId,
-    task_id: taskId,
-    input_surface: parsedTask.inputSurface,
-    prompt_preview: parsedTask.input.prompt.slice(0, 80),
+  const correlationId =
+    firstNonEmptyString([req.headers["x-correlation-id"], req.headers["correlation-id"]]) ||
+    null;
+  const executed = await executeParsedTaskRequest({
+    req,
+    parsedTask,
+    requestId,
+    binding: "custom_tasks",
+    protocolRequestId: null,
+    correlationId,
   });
 
+  res.setHeader("location", `/tasks/${executed.taskRecord.task_id}`);
+  res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
+  res.status(executed.taskSucceeded ? 201 : 200).json(buildResponseTaskRecord(executed.taskRecord));
+});
+
+const handleHttpJsonMessageSend = async (req: express.Request, res: express.Response): Promise<void> => {
+  const requestId = String(res.locals.requestId || randomUUID());
+  let parsedTask: ParsedTaskInput;
+
   try {
-    const incomingRequest: IncomingRequestDiagnostic = {
-      input_surface: parsedTask.inputSurface,
-      content_type: req.get("content-type") || null,
-      accept: req.get("accept") || null,
-      request_headers: collectDiagnosticHeaders(req),
-    };
-    const runResult = await withTimeout(
-      runTask(parsedTask.input, requestId, taskId, incomingRequest),
-      config.taskTimeoutMs,
-    );
-    appendTaskStatus(taskRecord, "completed");
-    taskRecord.output = runResult.result;
-    taskRecord.diagnostics = runResult.diagnostics;
-    taskRecord.completed_at = new Date().toISOString();
-
-    log("info", "Task completed", {
-      request_id: requestId,
-      task_id: taskId,
-      final_verdict: runResult.result.final_verdict,
-      decision_matrix_row: runResult.result.decision_matrix_row,
-      hidden_risk_run_status: runResult.result.hidden_risk_run_status,
-      task_duration_ms: runResult.diagnostics.task_duration_ms,
-    });
-
-    res.setHeader("location", `/tasks/${taskId}`);
-    res.setHeader("x-a2a-task-id", taskId);
-    res.status(201).json(buildResponseTaskRecord(taskRecord));
-    return;
+    parsedTask = parseA2AHttpJsonMessageSend(req.body);
   } catch (error) {
-    const taskError = buildTaskError(error);
-    appendTaskStatus(taskRecord, "failed");
-    taskRecord.error = taskError;
-    taskRecord.completed_at = new Date().toISOString();
-    taskRecord.diagnostics = {
+    const message = error instanceof Error ? error.message : String(error);
+    log("error", "A2A HTTP+JSON message/send validation failed", {
       request_id: requestId,
-      task_id: taskId,
-      prompt_mode: detectPromptMode(parsedTask.input.prompt),
-      task_duration_ms:
-        new Date(taskRecord.completed_at).getTime() - new Date(taskRecord.created_at).getTime(),
-      hidden_risk_invoked: true,
-      fallbacks_applied: ["task_failure"],
-      incoming_request: {
-        input_surface: parsedTask.inputSurface,
-        content_type: req.get("content-type") || null,
-        accept: req.get("accept") || null,
-        request_headers: collectDiagnosticHeaders(req),
-      },
-      downstream_calls:
-        error instanceof McpInvocationError
-          ? [error.diagnostic]
-          : [],
-    };
-
-    log("error", "Task failed", {
-      request_id: requestId,
-      task_id: taskId,
-      error_code: taskError.code,
-      error_message: taskError.message,
+      method: req.method,
+      path: req.path,
+      error_message: message,
     });
-
-    // Return the failed task record synchronously so callers can inspect the exact failure.
-    res.setHeader("location", `/tasks/${taskId}`);
-    res.setHeader("x-a2a-task-id", taskId);
-    res.status(200).json(buildResponseTaskRecord(taskRecord));
+    res.status(400).json({
+      error: {
+        code: "invalid_request",
+        message,
+      },
+    });
+    return;
   }
+
+  const correlationId =
+    firstNonEmptyString([req.headers["x-correlation-id"], req.headers["correlation-id"]]) ||
+    requestId;
+  const executed = await executeParsedTaskRequest({
+    req,
+    parsedTask,
+    requestId,
+    binding: "http_json",
+    protocolRequestId: null,
+    correlationId,
+  });
+
+  res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
+  res.status(200).json(buildA2AHttpJsonSendResponse(executed.taskRecord));
+};
+
+app.post(/^\/(?:v1\/)?message:send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/(?:v1\/)?message\/send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/message:send\/v1\/message:send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/message\/send\/v1\/message\/send$/, (req, res) => {
+  void handleHttpJsonMessageSend(req, res);
+});
+app.post(/^\/(?:v1\/)?message:stream$/, (_req, res) => {
+  sendHttpJsonUnsupportedStreaming(res);
+});
+app.post(/^\/(?:v1\/)?message\/stream$/, (_req, res) => {
+  sendHttpJsonUnsupportedStreaming(res);
+});
+
+const handleJsonRpc = async (req: express.Request, res: express.Response): Promise<void> => {
+  let rpc: A2AJsonRpcRequest;
+  const requestId = String(res.locals.requestId || randomUUID());
+  try {
+    rpc = parseA2AJsonRpcRequest(req.body);
+  } catch (error) {
+    if (error instanceof JsonRpcRequestError) {
+      res.status(200).json(buildJsonRpcError(null, error.code, error.message, error.data));
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(200).json(buildJsonRpcError(null, -32600, message));
+    return;
+  }
+
+  const normalizedMethod = normalizeJsonRpcMethod(rpc.method);
+  const protocolRequestId = toProtocolRequestId(rpc.id);
+  const correlationId =
+    firstNonEmptyString([req.headers["x-correlation-id"], req.headers["correlation-id"]]) ||
+    protocolRequestId ||
+    requestId;
+
+  if (normalizedMethod === "send_streaming_message") {
+    res
+      .status(200)
+      .json(
+        buildJsonRpcError(
+          rpc.id,
+          -32004,
+          "Unsupported operation: streaming is disabled for this runtime.",
+        ),
+      );
+    return;
+  }
+
+  if (normalizedMethod === "get_extended_agent_card") {
+    res
+      .status(200)
+      .json(buildJsonRpcSuccess(rpc.id, { message: buildAgentCard(config, derivePublicBaseUrl(req)) }));
+    return;
+  }
+
+  if (normalizedMethod === "get_task") {
+    const paramsTaskId = firstNonEmptyString([
+      rpc.params["id"],
+      rpc.params["taskId"],
+      rpc.params["task_id"],
+    ]);
+    if (!paramsTaskId) {
+      res.status(200).json(buildJsonRpcError(rpc.id, -32602, "Invalid params: task id is required."));
+      return;
+    }
+
+    const task = tasks.get(paramsTaskId);
+    if (!task) {
+      res
+        .status(200)
+        .json(buildJsonRpcError(rpc.id, -32004, `Task not found: ${paramsTaskId}`));
+      return;
+    }
+
+    res.status(200).json(buildJsonRpcSuccess(rpc.id, { task: buildA2ATaskPayload(task) }));
+    return;
+  }
+
+  if (normalizedMethod === "list_tasks") {
+    const listed = [...tasks.values()]
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((task) => buildA2ATaskPayload(task));
+
+    res.status(200).json(
+      buildJsonRpcSuccess(rpc.id, {
+        task: {
+          list: listed,
+          count: listed.length,
+        },
+      }),
+    );
+    return;
+  }
+
+  if (normalizedMethod === "cancel_task") {
+    res
+      .status(200)
+      .json(
+        buildJsonRpcError(
+          rpc.id,
+          -32004,
+          "Unsupported operation: cancel_task is not supported in synchronous mode.",
+        ),
+      );
+    return;
+  }
+
+  if (normalizedMethod !== "send_message") {
+    res
+      .status(200)
+      .json(buildJsonRpcError(rpc.id, -32601, `Method not found: ${rpc.method}`));
+    return;
+  }
+
+  let parsedTask: ParsedTaskInput;
+  try {
+    parsedTask = parseA2AJsonRpcMessageSend(rpc);
+  } catch (error) {
+    if (error instanceof JsonRpcRequestError) {
+      res.status(200).json(buildJsonRpcError(rpc.id, error.code, error.message, error.data));
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(200).json(buildJsonRpcError(rpc.id, -32602, message));
+    return;
+  }
+
+  const executed = await executeParsedTaskRequest({
+    req,
+    parsedTask,
+    requestId,
+    binding: "jsonrpc",
+    protocolRequestId,
+    correlationId,
+  });
+
+  res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
+  res.status(200).json(buildJsonRpcSuccess(rpc.id, buildA2AHttpJsonSendResponse(executed.taskRecord)));
+};
+
+app.post("/rpc", (req, res) => {
+  void handleJsonRpc(req, res);
+});
+app.post("/", (req, res) => {
+  void handleJsonRpc(req, res);
 });
 
 app.get("/tasks", (req, res) => {
@@ -851,6 +1462,39 @@ app.get("/tasks/:taskId", (req, res) => {
   res.status(200).json(buildResponseTaskRecord(task));
 });
 
+app.get("/v1/tasks", (req, res) => {
+  const requestIdFilter = req.query.request_id?.toString() || req.query.requestId?.toString();
+  const statusFilter = req.query.status?.toString();
+  const taskIdFilter = req.query.task_id?.toString() || req.query.taskId?.toString();
+  const all = [...tasks.values()]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .filter((task) => (requestIdFilter ? task.request_id === requestIdFilter : true))
+    .filter((task) => (taskIdFilter ? task.task_id === taskIdFilter : true))
+    .filter((task) => (statusFilter ? task.status === statusFilter : true));
+
+  res.status(200).json({
+    tasks: all.map(buildA2ATaskPayload),
+    count: all.length,
+  });
+});
+
+app.get("/v1/tasks/:taskId", (req, res) => {
+  const task = tasks.get(req.params.taskId);
+  if (!task) {
+    res.status(404).json({
+      error: {
+        code: "not_found",
+        message: `Unknown task id: ${req.params.taskId}`,
+      },
+    });
+    return;
+  }
+
+  res.status(200).json({
+    task: buildA2ATaskPayload(task),
+  });
+});
+
 app.listen(config.port, config.host, () => {
   log("info", "external A2A orchestrator listening", {
     host: config.host,
@@ -859,6 +1503,9 @@ app.listen(config.port, config.host, () => {
     health_endpoint: `http://localhost:${config.port}/healthz`,
     readyz_endpoint: `http://localhost:${config.port}/readyz`,
     agent_card_endpoint: `http://localhost:${config.port}/.well-known/agent-card.json`,
+    rpc_endpoint: `http://localhost:${config.port}/rpc`,
+    message_send_endpoint: `http://localhost:${config.port}/message:send`,
+    message_send_v1_endpoint: `http://localhost:${config.port}/v1/message:send`,
     tasks_endpoint: `http://localhost:${config.port}/tasks`,
     discharge_gatekeeper_mcp_url: config.dischargeGatekeeperMcpUrl,
     clinical_intelligence_mcp_url: config.clinicalIntelligenceMcpUrl,

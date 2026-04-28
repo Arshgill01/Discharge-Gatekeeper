@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-04-25T18:34:55.622Z",
+  "run_id": "20260425T183357Z",
+  "a2a_rehearsals": [
+    {
+      "run": 1,
+      "totalElapsedMs": 147,
+      "promptResults": [
+        {
+          "prompt": "Is this patient safe to discharge today?",
+          "elapsedMs": 106,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: clinical_stability, equipment_and_transport, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\". This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+          "elapsedMs": 22,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Contradiction: structured baseline ready changed to not_ready on cited narrative evidence. Structured baseline 'ready' changed by narrative contradiction: Structured baseline was ready. Hidden-risk contradiction requires not_ready: clinical_stability: Exertional oxygen instability not visible in resting structured data | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight | home_support_and_services: No confirmed overnight support for high-friction home environment. Evidence anchors: Nursin... Evidence first: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". Impacted blocker categories: clinical_stability, equipment_and_transport, home_support_and_services. Manual clinician review is required before final discharge because hidden-risk uncertainty remains unresolved. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+          "elapsedMs": 19,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Final verdict not_ready: complete the cited owner-assigned actions before discharge proceeds. Before discharge, complete: 1. Primary team | Before final discharge order | Before final discharge order: Repeat exertional oxygen assessment and document whether home discharge remains safe today. Completion signal: Primary team documents exertion-aware stability and explicit discharge clearance. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". 2. Care coordination | Immediate discharge hold action | Immediate discharge hold action: Confirm the required equipment delivery and transport timing before any discharge order proceeds. Completion signal: Required equipment and transport have confirmed delivery/pickup windows. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". 3. Case management / Social work | Immediate discharge hold action | Immediate discharge hold action: Confirm overnight caregiver coverage or arrange an alternate safe first-night support plan before discharge proceeds. Completion signal: Overnight caregiver/home-service plan is confirmed with named contact and timing. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". Clinician handoff: Hold discharge at not_ready; Primary team should lead the first action. Focus domains: clinical_stability, equipment_and_transport, home_support_and_services. Patient guidance: Tell the patient discharge is on hold until the cited blockers are resolved and a clinician reviews the updated transition plan. Final posture remains not_ready. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "totalElapsedMs": 51,
+      "promptResults": [
+        {
+          "prompt": "Is this patient safe to discharge today?",
+          "elapsedMs": 18,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: clinical_stability, equipment_and_transport, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\". This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+          "elapsedMs": 15,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Contradiction: structured baseline ready changed to not_ready on cited narrative evidence. Structured baseline 'ready' changed by narrative contradiction: Structured baseline was ready. Hidden-risk contradiction requires not_ready: clinical_stability: Exertional oxygen instability not visible in resting structured data | equipment_and_transport: Required home oxygen or discharge equipment unavailable tonight | home_support_and_services: No confirmed overnight support for high-friction home environment. Evidence anchors: Nursin... Evidence first: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Hospitalist Progress Note 2026-04-18 08:10 (summary): \"Breathing improved. Afebrile. Tolerating oral meds. Likely discharge home later today if remains stable on ...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". Impacted blocker categories: clinical_stability, equipment_and_transport, home_support_and_services. Manual clinician review is required before final discharge because hidden-risk uncertainty remains unresolved. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        },
+        {
+          "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+          "elapsedMs": 18,
+          "finalVerdict": "not_ready",
+          "hiddenRiskRunStatus": "used",
+          "decisionMatrixRow": 3,
+          "contradictionSummary": "Final verdict not_ready: complete the cited owner-assigned actions before discharge proceeds. Before discharge, complete: 1. Primary team | Before final discharge order | Before final discharge order: Repeat exertional oxygen assessment and document whether home discharge remains safe today. Completion signal: Primary team documents exertion-aware stability and explicit discharge clearance. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". 2. Care coordination | Immediate discharge hold action | Immediate discharge hold action: Confirm the required equipment delivery and transport timing before any discharge order proceeds. Completion signal: Required equipment and transport have confirmed delivery/pickup windows. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". 3. Case management / Social work | Immediate discharge hold action | Immediate discharge hold action: Confirm overnight caregiver coverage or arrange an alternate safe first-night support plan before discharge proceeds. Completion signal: Overnight caregiver/home-service plan is confirmed with named contact and timing. Evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\". Clinician handoff: Hold discharge at not_ready; Primary team should lead the first action. Focus domains: clinical_stability, equipment_and_transport, home_support_and_services. Patient guidance: Tell the patient discharge is on hold until the cited blockers are resolved and a clinician reviews the updated transition plan. Final posture remains not_ready. This is assistive discharge decision support and does not replace clinician authority.",
+          "hiddenRiskCitationCount": 3
+        }
+      ]
+    }
+  ],
+  "direct_mcp_fallback": {
+    "deterministic_verdict": "ready",
+    "hidden_risk_status": "ok",
+    "hidden_risk_result": "hidden_risk_present",
+    "hidden_risk_impact": "not_ready",
+    "transition_package_status": "ok",
+    "transition_package_disposition": "not_ready",
+    "transition_package_action_count": 4,
+    "control_hidden_risk_result": "no_hidden_risk"
+  }
+}

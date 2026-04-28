@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-04-25T18:32:53.322Z",
+  "total_events": 14,
+  "prompt_opinion_request_count": 5,
+  "runtime_browser_request_count": 0,
+  "runtime_hosts": [
+    "oqvvg-38-183-11-105.run.pinggy-free.link",
+    "feeqe-38-183-11-105.run.pinggy-free.link",
+    "waiok-38-183-11-105.run.pinggy-free.link"
+  ],
+  "prompt_opinion_calls": [],
+  "runtime_browser_calls": [],
+  "websocket_count": 0
+}

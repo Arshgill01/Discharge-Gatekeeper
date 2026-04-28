@@ -13,8 +13,12 @@ type SurfaceHiddenRiskResult = {
   provider: string;
 };
 
+export const HIDDEN_RISK_RESPONSE_MODES = ["full", "prompt_opinion_slim"] as const;
+export type HiddenRiskResponseMode = (typeof HIDDEN_RISK_RESPONSE_MODES)[number];
+
 export type SurfaceHiddenRiskOptions = {
   llmClientOverride?: HiddenRiskLlmClient;
+  responseMode?: HiddenRiskResponseMode;
 };
 
 export const parseJsonObject = (text: string): unknown => {
@@ -311,6 +315,14 @@ const determineSummaryConfidence = (
   return "low";
 };
 
+const truncateText = (value: string, maxLength: number): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 3).trimEnd()}...`;
+};
+
 const buildBasePayload = (
   input: HiddenRiskInput,
   overrides: Partial<HiddenRiskOutput>,
@@ -382,6 +394,106 @@ const buildErrorPayload = (input: HiddenRiskInput, reason: string): HiddenRiskOu
         "No hidden-risk escalation is emitted when model output is unavailable, timed out, or unparseable.",
     },
   });
+};
+
+const selectCitationIdsForRenderSafe = (
+  findings: HiddenRiskOutput["hidden_risk_findings"],
+  maxCitations: number,
+): string[] => {
+  const selected: string[] = [];
+
+  for (const finding of findings) {
+    for (const citationId of finding.citation_ids) {
+      if (!selected.includes(citationId)) {
+        selected.push(citationId);
+      }
+      if (selected.length >= maxCitations) {
+        return selected;
+      }
+    }
+  }
+
+  return selected;
+};
+
+const buildPromptOpinionSlimSummary = (
+  payload: HiddenRiskOutput,
+  findings: HiddenRiskOutput["hidden_risk_findings"],
+  citations: HiddenRiskOutput["citations"],
+): string => {
+  const baseline = payload.baseline_verdict;
+  const anchorText = citations
+    .slice(0, 3)
+    .map((citation) => `${citation.source_label}${citation.locator ? ` (${citation.locator})` : ""}`)
+    .join("; ");
+
+  if (findings.length === 0) {
+    if (payload.status === "inconclusive") {
+      const base = `Structured baseline was ${baseline}. Narrative contradiction signals remain unresolved, so manual review is required before discharge.`;
+      return anchorText.length > 0 ? `${base} Reviewed anchors: ${anchorText}.` : base;
+    }
+
+    return `Structured baseline remains ${baseline}. Narrative review found no additional discharge-changing hidden risk.`;
+  }
+
+  const contradictionLine = findings
+    .slice(0, 3)
+    .map((finding) => `${finding.category}: ${finding.title}`)
+    .join(" | ");
+  const base = `Structured baseline was ${baseline}. Hidden-risk contradiction requires ${payload.hidden_risk_summary.overall_disposition_impact}: ${contradictionLine}.`;
+  return anchorText.length > 0 ? `${base} Evidence anchors: ${anchorText}.` : base;
+};
+
+const toPromptOpinionSlimPayload = (payload: HiddenRiskOutput): HiddenRiskOutput => {
+  const maxFindings = 3;
+  const maxCitationIdsPerFinding = 2;
+  const maxCitations = 4;
+  const findings = payload.hidden_risk_findings.slice(0, maxFindings).map((finding) => ({
+    ...finding,
+    title: truncateText(finding.title, 96),
+    rationale: truncateText(finding.rationale, 160),
+    citation_ids: finding.citation_ids.slice(0, maxCitationIdsPerFinding),
+  }));
+
+  const selectedCitationIds = selectCitationIdsForRenderSafe(findings, maxCitations);
+  const selectedCitationIdSet = new Set(selectedCitationIds);
+  const citations = payload.citations
+    .filter((citation) => selectedCitationIdSet.has(citation.citation_id))
+    .map((citation) => ({
+      ...citation,
+      locator: truncateText(citation.locator, 64),
+      excerpt: truncateText(citation.excerpt, 120),
+    }));
+  const validCitationIdSet = new Set(citations.map((citation) => citation.citation_id));
+  const findingsWithValidCitations = findings.map((finding) => ({
+    ...finding,
+    citation_ids: finding.citation_ids.filter((citationId) => validCitationIdSet.has(citationId)),
+  }));
+
+  return {
+    ...payload,
+    hidden_risk_summary: {
+      ...payload.hidden_risk_summary,
+      summary: truncateText(
+        buildPromptOpinionSlimSummary(payload, findingsWithValidCitations, citations),
+        380,
+      ),
+      false_positive_guardrail: truncateText(payload.hidden_risk_summary.false_positive_guardrail, 120),
+    },
+    hidden_risk_findings: findingsWithValidCitations,
+    citations,
+  };
+};
+
+const applyResponseMode = (
+  payload: HiddenRiskOutput,
+  responseMode: HiddenRiskResponseMode,
+): HiddenRiskOutput => {
+  if (responseMode === "prompt_opinion_slim") {
+    return toPromptOpinionSlimPayload(payload);
+  }
+
+  return payload;
 };
 
 const applySafetyGuards = (
@@ -540,6 +652,7 @@ export const surfaceHiddenRisks = async (
   rawInput: unknown,
   options?: SurfaceHiddenRiskOptions,
 ): Promise<SurfaceHiddenRiskResult> => {
+  const responseMode = options?.responseMode ?? "full";
   const parsedInputResult = hiddenRiskInputSchema.safeParse(rawInput);
   if (!parsedInputResult.success) {
     throw new Error(`Invalid input for surface_hidden_risks: ${parsedInputResult.error.message}`);
@@ -548,7 +661,7 @@ export const surfaceHiddenRisks = async (
   const input = parsedInputResult.data;
   if (input.narrative_evidence_bundle.length === 0) {
     return {
-      payload: buildInsufficientContextPayload(input),
+      payload: applyResponseMode(buildInsufficientContextPayload(input), responseMode),
       provider: "none",
     };
   }
@@ -565,13 +678,13 @@ export const surfaceHiddenRisks = async (
 
     const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
     return {
-      payload: safeOutput,
+      payload: applyResponseMode(safeOutput, responseMode),
       provider: llmResult.provider,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
-      payload: buildErrorPayload(input, message),
+      payload: applyResponseMode(buildErrorPayload(input, message), responseMode),
       provider: "none",
     };
   }

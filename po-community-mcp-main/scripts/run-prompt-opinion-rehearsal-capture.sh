@@ -45,6 +45,11 @@ Use this filename order:
 - `06-po-prompt1-result.png`
 - `07-po-prompt2-result-or-stall.png`
 - `08-po-prompt3-result-or-stall.png`
+
+If `PROMPT_OPINION_BROWSER_CAPTURE=1` is used, the browser harness also writes:
+- `a2a-p*-result.png`
+- `fallback-p*-result.png`
+- matching `.txt` DOM snapshots for each screenshot
 EOF
 
 seed_note_from_template() {
@@ -179,6 +184,25 @@ run_cmd \
   "06-smoke-prompt-opinion-rehearsal" \
   "PROMPT_OPINION_E2E_OUTPUT_DIR='${OUTPUT_ROOT}' PROMPT_OPINION_E2E_RUN_ID='${RUN_ID}' npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal"
 
+if [[ "${PROMPT_OPINION_BROWSER_CAPTURE:-0}" == "1" ]]; then
+  run_cmd \
+    "Boot two MCP runtimes for browser proof" \
+    "07-start-two-mcp-browser-proof" \
+    "./po-community-mcp-main/scripts/start-two-mcp-local.sh"
+
+  run_cmd \
+    "Boot external A2A runtime for browser proof" \
+    "08-start-a2a-browser-proof" \
+    "./po-community-mcp-main/scripts/start-a2a-local.sh"
+
+  run_cmd \
+    "Authenticated Prompt Opinion browser proof" \
+    "09-prompt-opinion-browser-proof" \
+    "PROMPT_OPINION_E2E_RUN_DIR='${RUN_DIR}' PROMPT_OPINION_E2E_RUN_ID='${RUN_ID}' ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh"
+
+  cleanup
+fi
+
 node - "${RESULTS_FILE}" "${REPORTS_DIR}" "${RUN_ID}" "${BRANCH_NAME}" "${COMMIT_SHA}" <<'NODE'
 const fs = require("node:fs");
 const path = require("node:path");
@@ -197,7 +221,10 @@ const rows = lines.map((line) => {
 
 const greenCount = rows.filter((row) => row.status === "green").length;
 const redCount = rows.filter((row) => row.status === "red").length;
-const localLaneStatus = redCount === 0 ? "green" : "red";
+const localRows = rows.filter((row) => !/browser proof/i.test(row.label));
+const localGreenCount = localRows.filter((row) => row.status === "green").length;
+const localRedCount = localRows.filter((row) => row.status === "red").length;
+const localLaneStatus = localRedCount === 0 ? "green" : "red";
 
 const summary = {
   run_id: runId,
@@ -208,6 +235,10 @@ const summary = {
   totals: {
     green: greenCount,
     red: redCount,
+  },
+  local_totals: {
+    green: localGreenCount,
+    red: localRedCount,
   },
   lane_status_defaults: [
     {
@@ -245,6 +276,24 @@ const summary = {
 
 fs.writeFileSync(path.join(reportsDir, "command-results.json"), JSON.stringify(summary, null, 2));
 
+const browserProofSummaryPath = path.join(reportsDir, "browser-proof-summary.json");
+const browserProofSummary = fs.existsSync(browserProofSummaryPath)
+  ? JSON.parse(fs.readFileSync(browserProofSummaryPath, "utf8"))
+  : null;
+const a2aStatus = browserProofSummary?.lane_statuses?.a2a_main || "yellow";
+const fallbackStatus = browserProofSummary?.lane_statuses?.direct_mcp_fallback || "yellow";
+const a2aBlocker = browserProofSummary?.blockers?.a2a_main || "manual_browser_proof_required";
+const fallbackBlocker = browserProofSummary?.blockers?.direct_mcp_fallback || "manual_browser_proof_required";
+const registrationRows = (browserProofSummary?.registrations?.registrations || []).map((registration) =>
+  `| ${registration.name} | ${registration.status.toUpperCase()} | ${registration.current_url_verified ? "yes" : "no"} | \`${registration.after_url || "missing"}\` |`,
+);
+const phase9Call =
+  a2aStatus === "green" && fallbackStatus === "green"
+    ? "GO"
+    : fallbackStatus === "green"
+      ? "CONDITIONAL GO"
+      : "NO-GO";
+
 const md = [
   "# Prompt Opinion Rehearsal Status",
   "",
@@ -265,7 +314,7 @@ const md = [
       `| ${row.label} | ${row.status.toUpperCase()} | ${row.durationMs} | \`${row.logFile}\` |`,
   ),
   "",
-  "## Lane status defaults",
+  "## Lane status board",
   "| Lane | Status | Reason |",
   "| --- | --- | --- |",
   `| Local automated rehearsal lane | ${localLaneStatus.toUpperCase()} | ${
@@ -273,21 +322,27 @@ const md = [
       ? "All automated local checks passed in this run folder."
       : "At least one automated local check failed in this run folder."
   } |`,
-  "| Prompt Opinion A2A-main workspace lane | YELLOW | Manual Prompt Opinion execution evidence is still required. |",
-  "| Prompt Opinion Direct-MCP fallback workspace lane | YELLOW | Manual Prompt Opinion transcript evidence is still required. |",
+  `| Prompt Opinion A2A-main workspace lane | ${a2aStatus.toUpperCase()} | ${browserProofSummary ? `Authenticated browser blocker: ${a2aBlocker}.` : "Manual Prompt Opinion execution evidence is still required."} |`,
+  `| Prompt Opinion Direct-MCP fallback workspace lane | ${fallbackStatus.toUpperCase()} | ${browserProofSummary ? `Authenticated browser blocker: ${fallbackBlocker}.` : "Manual Prompt Opinion transcript evidence is still required."} |`,
   "",
-  "## Manual workspace checks (default until manually updated)",
-  "| Check | Status | Evidence location |",
-  "| --- | --- | --- |",
-  "| Prompt Opinion A2A chat execution | YELLOW | `screenshots/` + `notes/workspace-evidence.md` |",
-  "| Dual-tool BYO Prompt 2/3 transcript persistence | YELLOW | `screenshots/` + `notes/workspace-evidence.md` |",
+  "## Registration endpoint check",
+  "| Surface | Status | Current URL verified | Active URL |",
+  "| --- | --- | --- | --- |",
+  ...(registrationRows.length ? registrationRows : ["| Not captured | YELLOW | no | `reports/registration-verification.json` missing |"]),
   "",
-  "## Required operator follow-up",
-  "1. Fill `notes/validation-notes.md` with the decisive command results and lane verdicts.",
-  "2. Fill `notes/experiment-matrix.md` with every Prompt Opinion attempt that matters to the lane decision.",
-  "3. Fill `notes/request-id-correlation.md` with request/task IDs for A2A attempts or a precise no-runtime-hit blocker note.",
-  "4. Fill `notes/workspace-evidence.md` and add screenshots into `screenshots/`.",
-  "5. Update this file to GREEN/YELLOW/RED after manual Prompt Opinion rehearsal.",
+  "## Browser/network evidence",
+  "| Artifact | Purpose |",
+  "| --- | --- |",
+  "| `reports/browser-proof-summary.json` | lane statuses, blockers, and prompt attempt summaries |",
+  "| `reports/browser-network-events.json` | sanitized browser request/response event log |",
+  "| `reports/browser-network-summary.json` | endpoint and request-shape summary |",
+  "| `reports/runtime-log-delta.json` | A2A/MCP runtime log deltas captured during browser attempts |",
+  "| `screenshots/` | authenticated workspace screenshots and prompt attempts |",
+  "",
+  "## Phase 9 call",
+  `| Call | ${phase9Call} |`,
+  "| --- | --- |",
+  `| Basis | A2A-main=${a2aStatus}; Direct-MCP fallback=${fallbackStatus}; A2A blocker=${a2aBlocker}; fallback blocker=${fallbackBlocker} |`,
   "",
 ].join("\n");
 

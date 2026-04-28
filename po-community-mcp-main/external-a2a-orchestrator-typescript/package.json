@@ -10,6 +10,7 @@
     "smoke:runtime": "npx tsx smoke/runtime-boot-and-agent-card-smoke.ts",
     "smoke:decision-matrix": "npx tsx smoke/decision-matrix-smoke.ts",
     "smoke:orchestrator": "npx tsx smoke/orchestrator-smoke.ts",
+    "smoke:prompt-opinion-compatibility": "npx tsx smoke/prompt-opinion-compatibility-smoke.ts",
     "smoke:prompt-opinion-rehearsal": "npx tsx smoke/prompt-opinion-rehearsal-smoke.ts",
     "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:decision-matrix && npm run smoke:orchestrator",
     "test": "npm run smoke:release-gate"

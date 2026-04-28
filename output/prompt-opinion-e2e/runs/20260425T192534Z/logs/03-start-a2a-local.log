@@ -1,0 +1,4 @@
+[start-a2a-local] reusing healthy two-MCP runtimes
+[start-a2a-local] external A2A orchestrator is healthy at http://127.0.0.1:5057/readyz
+[start-a2a-local] external A2A started on 127.0.0.1:5057 (pid=41429)
+[start-a2a-local] log file: /Users/arshdeepsingh/Developer/ctc-phase8-browser-proof/po-community-mcp-main/.pids/external-a2a.log

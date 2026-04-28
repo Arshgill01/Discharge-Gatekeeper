@@ -6,7 +6,7 @@ import {
   HiddenRiskOutput,
   hiddenRiskInputSchema,
 } from "./contract";
-import { surfaceHiddenRisks } from "./surface-hidden-risks";
+import { HiddenRiskResponseMode, surfaceHiddenRisks } from "./surface-hidden-risks";
 
 const narrativeActionSchema = z.object({
   action_id: z.string(),
@@ -41,6 +41,10 @@ const narrativeOutputSchema = z.object({
 
 export type TransitionNarrativeOutput = z.infer<typeof narrativeOutputSchema>;
 type NarrativeAction = TransitionNarrativeOutput["recommended_actions"][number];
+
+export type TransitionNarrativeOptions = {
+  responseMode?: HiddenRiskResponseMode;
+};
 
 const actionTemplateByCategory: Record<
   (typeof CANONICAL_BLOCKER_CATEGORIES)[number],
@@ -199,9 +203,126 @@ const buildTopActionSummary = (actions: NarrativeAction[]): string => {
     : "Top pre-discharge actions: no additional actions generated.";
 };
 
+const truncateText = (value: string, maxLength: number): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 3).trimEnd()}...`;
+};
+
+const buildSlimNarrative = (
+  output: TransitionNarrativeOutput,
+  actions: NarrativeAction[],
+  citations: TransitionNarrativeOutput["citations"],
+): string => {
+  const topActions = actions.slice(0, 3).map((action) => action.action);
+  const citationAnchors = citations
+    .slice(0, 3)
+    .map((citation) => `${citation.source_label}${citation.locator ? ` (${citation.locator})` : ""}`)
+    .join("; ");
+
+  if (output.proposed_disposition === "not_ready") {
+    const actionsClause = topActions.length > 0
+      ? `Before discharge, complete: ${topActions.join(" | ")}.`
+      : "Before discharge, complete the cited high-priority safety actions.";
+    const anchorClause = citationAnchors.length > 0
+      ? ` Evidence anchors: ${citationAnchors}.`
+      : "";
+    return `Final posture is not_ready. ${actionsClause}${anchorClause}`;
+  }
+
+  if (output.manual_review_required) {
+    return `Final posture is ${output.proposed_disposition}. Narrative signals remain unresolved, so manual clinician review is required before discharge proceeds.`;
+  }
+
+  return `Final posture remains ${output.proposed_disposition}. Narrative review did not add discharge-changing hidden risk, and deterministic safeguards remain in place.`;
+};
+
+const toPromptOpinionSlimOutput = (
+  output: TransitionNarrativeOutput,
+): TransitionNarrativeOutput => {
+  const maxActions = 4;
+  const maxCitationIdsPerAction = 2;
+  const maxCitations = 4;
+  const slimActions: NarrativeAction[] = output.recommended_actions
+    .slice(0, maxActions)
+    .map((action, index) => ({
+      ...action,
+      action_id: `action_${String(index + 1).padStart(3, "0")}`,
+      action: truncateText(action.action, 220),
+      linked_categories: action.linked_categories.slice(0, 2),
+      citation_ids: action.citation_ids.slice(0, maxCitationIdsPerAction),
+    }));
+
+  const selectedCitationIds: string[] = [];
+  for (const action of slimActions) {
+    for (const citationId of action.citation_ids) {
+      if (!selectedCitationIds.includes(citationId)) {
+        selectedCitationIds.push(citationId);
+      }
+      if (selectedCitationIds.length >= maxCitations) {
+        break;
+      }
+    }
+    if (selectedCitationIds.length >= maxCitations) {
+      break;
+    }
+  }
+
+  const selectedCitationIdSet = new Set(selectedCitationIds);
+  const slimCitations = output.citations
+    .filter((citation) => selectedCitationIdSet.has(citation.citation_id))
+    .map((citation) => ({
+      ...citation,
+      locator: truncateText(citation.locator, 80),
+      excerpt: truncateText(citation.excerpt, 180),
+    }));
+  const slimCitationIdSet = new Set(slimCitations.map((citation) => citation.citation_id));
+  const normalizedActions = slimActions.map((action) => ({
+    ...action,
+    citation_ids: action.citation_ids.filter((citationId) => slimCitationIdSet.has(citationId)),
+  }));
+
+  const keyPointCandidates = [
+    output.key_points.find((point) => point.startsWith("Final posture:")),
+    output.key_points.find((point) => point.startsWith("Hidden-risk review status:")),
+    output.key_points.find((point) => point.startsWith("Contradiction summary:")),
+    output.key_points.find((point) => point.startsWith("Evidence anchors:")),
+    output.key_points.find((point) => point.startsWith("Top pre-discharge actions:")),
+    output.key_points.find((point) => point.startsWith("Clinician handoff brief:")),
+    output.key_points.find((point) => point.startsWith("Patient-facing guidance:")),
+  ].filter((point): point is string => Boolean(point));
+
+  const keyPoints = [...new Set(keyPointCandidates)]
+    .slice(0, 6)
+    .map((point) => truncateText(point, 220));
+
+  return {
+    ...output,
+    narrative: truncateText(buildSlimNarrative(output, normalizedActions, slimCitations), 640),
+    key_points: keyPoints,
+    recommended_actions: normalizedActions,
+    citations: slimCitations,
+  };
+};
+
+const applyResponseMode = (
+  output: TransitionNarrativeOutput,
+  responseMode: HiddenRiskResponseMode,
+): TransitionNarrativeOutput => {
+  if (responseMode === "prompt_opinion_slim") {
+    return toPromptOpinionSlimOutput(output);
+  }
+
+  return output;
+};
+
 export const synthesizeTransitionNarrative = async (
   rawInput: unknown,
+  options?: TransitionNarrativeOptions,
 ): Promise<TransitionNarrativeOutput> => {
+  const responseMode = options?.responseMode ?? "full";
   const parsed = hiddenRiskInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     throw new Error(
@@ -209,7 +330,7 @@ export const synthesizeTransitionNarrative = async (
     );
   }
   const input = parsed.data;
-  const hiddenRisk = await surfaceHiddenRisks(input);
+  const hiddenRisk = await surfaceHiddenRisks(input, { responseMode });
   const hiddenRiskOutput = hiddenRisk.payload;
 
   const proposedDisposition = mapDisposition(
@@ -346,5 +467,5 @@ export const synthesizeTransitionNarrative = async (
       "Assistive discharge-transition synthesis only. Final discharge authority remains with the licensed clinical team.",
   };
 
-  return narrativeOutputSchema.parse(output);
+  return narrativeOutputSchema.parse(applyResponseMode(output, responseMode));
 };

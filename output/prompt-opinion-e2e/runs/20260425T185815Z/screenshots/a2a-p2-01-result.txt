@@ -1,0 +1,37 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+General Chat Agent
+Data Scope
+Show Tool calls
+Input: 31,649 - Output: 49
+Arshdeep Singh
+
+Is this patient safe to discharge today?
+
+Po
+
+Would you like to select a patient from the system, or would you prefer to provide the patient's information yourself?
+
+Input: 
+14720
+Output: 
+49
+Arshdeep Singh
+
+What hidden risk changed that answer? Show me the contradiction and the evidence.
+
+Po
+Responding...
+Consult with another agent:
+None
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

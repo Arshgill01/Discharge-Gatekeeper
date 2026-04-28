@@ -404,6 +404,47 @@ const assertLowConfidenceEscalationIsDowngradedToInconclusive = async (): Promis
   assert.equal(payload.hidden_risk_findings[0]?.recommended_orchestrator_action, "request_manual_review");
 };
 
+const assertPromptOpinionSlimModeStaysRenderSafe = async (): Promise<void> => {
+  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+    responseMode: "prompt_opinion_slim",
+  });
+  const payload = result.payload;
+  const serialized = JSON.stringify(payload);
+
+  assert.ok(
+    serialized.length <= 3200,
+    `Prompt Opinion slim hidden-risk payload should stay compact (<=3200 bytes), saw ${serialized.length}.`,
+  );
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Structured baseline was ready"),
+    "Slim hidden-risk summary must preserve the structured baseline posture line.",
+  );
+  assert.ok(
+    payload.hidden_risk_summary.summary.includes("Evidence anchors:"),
+    "Slim hidden-risk summary should include explicit evidence anchors.",
+  );
+  assert.ok(payload.hidden_risk_findings.length <= 3, "Slim hidden-risk mode should cap findings at 3.");
+  assert.ok(payload.citations.length <= 4, "Slim hidden-risk mode should cap citations at 4.");
+
+  for (const finding of payload.hidden_risk_findings) {
+    assert.ok(
+      finding.rationale.length <= 160,
+      `Slim finding ${finding.finding_id} rationale should stay bounded for transcript safety.`,
+    );
+    assert.ok(
+      finding.citation_ids.length <= 2,
+      `Slim finding ${finding.finding_id} should keep at most 2 citation ids.`,
+    );
+  }
+
+  for (const citation of payload.citations) {
+    assert.ok(
+      citation.excerpt.length <= 120,
+      `Slim citation ${citation.citation_id} excerpt should stay bounded for transcript safety.`,
+    );
+  }
+};
+
 const assertPromptContractGuardrailsPresent = (): void => {
   const requiredPhrases = [
     "Review only the evidence provided",
@@ -433,6 +474,7 @@ const main = async (): Promise<void> => {
   await assertCitationFailuresAreSuppressed();
   await assertDuplicateFindingsAreSuppressedAgainstDeterministicBlockers();
   await assertLowConfidenceEscalationIsDowngradedToInconclusive();
+  await assertPromptOpinionSlimModeStaysRenderSafe();
   console.log("SMOKE PASS: hidden-risk detection");
 };
 

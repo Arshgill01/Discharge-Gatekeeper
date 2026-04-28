@@ -7,6 +7,18 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     get_task: "/tasks/:taskId",
     list_tasks: "/tasks",
   };
+  const protocolEndpoints = {
+    jsonrpc: {
+      primary: `${publicBaseUrl}/rpc`,
+      fallback: `${publicBaseUrl}/`,
+    },
+    http_json: {
+      message_send: `${publicBaseUrl}/message:send`,
+      message_send_v1: `${publicBaseUrl}/v1/message:send`,
+      message_send_slash: `${publicBaseUrl}/message/send`,
+      prompt_opinion_nested_message_send: `${publicBaseUrl}/message:send/v1/message:send`,
+    },
+  };
 
   const absoluteTaskEndpoints = {
     create_task: `${publicBaseUrl}/tasks`,
@@ -21,6 +33,16 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     description: "Care Transitions Command - Synchronous external orchestrator",
     version: config.agentVersion,
     supportedInterfaces: [
+      {
+        url: protocolEndpoints.http_json.message_send,
+        protocolBinding: "HTTP+JSON",
+        protocolVersion: "0.2.6",
+      },
+      {
+        url: protocolEndpoints.jsonrpc.primary,
+        protocolBinding: "JSONRPC",
+        protocolVersion: "0.2.6",
+      },
       {
         url: publicBaseUrl,
         protocolBinding: "JSONRPC",
@@ -65,6 +87,11 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       readyz: `${publicBaseUrl}/readyz`,
       healthz: `${publicBaseUrl}/healthz`,
       agent_card: `${publicBaseUrl}/.well-known/agent-card.json`,
+      rpc: `${publicBaseUrl}/rpc`,
+      message_send: `${publicBaseUrl}/message:send`,
+      message_send_v1: `${publicBaseUrl}/v1/message:send`,
+      message_send_slash: `${publicBaseUrl}/message/send`,
+      prompt_opinion_nested_message_send: protocolEndpoints.http_json.prompt_opinion_nested_message_send,
       ...absoluteTaskEndpoints,
       createTask: `${publicBaseUrl}/tasks`,
       getTask: `${publicBaseUrl}/tasks/:taskId`,
@@ -80,6 +107,8 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
         "POST /tasks with {input: {prompt, patient_context?}}",
         "POST /tasks with {task|task_input|taskInput|request|payload: {prompt|messages, patient_context|patientContext?}}",
         "POST /tasks with text/plain body containing the prompt",
+        "POST /rpc with JSON-RPC SendMessage/message/send params",
+        "POST /message:send, /v1/message:send, or /message:send/v1/message:send with A2A HTTP+JSON body",
       ],
       response_task_shapes: [
         "completed task record with output + diagnostics",

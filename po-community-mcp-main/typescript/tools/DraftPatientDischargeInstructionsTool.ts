@@ -19,12 +19,12 @@ class DraftPatientDischargeInstructionsTool implements IMcpTool {
       V1_PATIENT_INSTRUCTIONS_TOOL_NAME,
       {
         description:
-          "Drafts plain-language discharge instructions linked to blockers and next-step actions, with explicit clinician-review boundaries.",
+          "Deterministic patient-instruction artifact from structured blockers only. Does not perform hidden-risk contradiction or Prompt 2/3 reconciliation.",
         inputSchema: {
           scenario_id: z
             .string()
             .describe(
-              "Optional scenario identifier. Defaults to first_synthetic_discharge_slice_v1. Supported IDs include first_synthetic_discharge_slice_v1, second_synthetic_discharge_slice_ready_with_caveats_v1, and third_synthetic_discharge_slice_ready_v1.",
+              "Optional fixture scenario id. Defaults to first_synthetic_discharge_slice_v1.",
             )
             .optional(),
         },

@@ -1,0 +1,12 @@
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'eslint-visitor-keys@5.0.1',
+npm WARN EBADENGINE   required: { node: '^20.19.0 || ^22.13.0 || >=24' },
+npm WARN EBADENGINE   current: { node: 'v20.13.0', npm: '10.5.2' }
+npm WARN EBADENGINE }
+
+added 226 packages, and audited 227 packages in 16s
+
+68 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
