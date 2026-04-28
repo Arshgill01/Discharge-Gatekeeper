@@ -18,6 +18,12 @@ If Prompt Opinion does not hit the external runtime, record the exact evidence t
 ## Local automated baseline
 Reference the machine-generated report at `reports/request-id-correlation.md` before filling the workspace rows.
 
+## Browser/network artifact baseline
+When the browser harness is used, reference:
+- `reports/browser-network-events.json` for sanitized browser request/response events
+- `reports/browser-network-summary.json` for Prompt Opinion endpoint and body-shape summary
+- `reports/runtime-log-delta.json` for A2A/MCP runtime hits captured during each prompt attempt
+
 ## Workspace A2A correlation
 | Attempt ID | Prompt | Prompt Opinion conversation ID | Browser or host request clue | A2A `request_id` | A2A `task_id` | Downstream header evidence | Result | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -38,3 +44,7 @@ Use this section to record function-call IDs, tool-response IDs, or transcript I
 - Current A2A blocker:
 - Current fallback blocker:
 - Exact evidence files:
+- Prompt Opinion frontend execution request:
+- External runtime hit:
+- Downstream MCP hit:
+- Transcript/persistence break:

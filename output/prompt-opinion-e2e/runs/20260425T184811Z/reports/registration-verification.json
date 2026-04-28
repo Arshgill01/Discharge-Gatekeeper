@@ -1,0 +1,186 @@
+{
+  "generated_at": "2026-04-25T18:52:33.961Z",
+  "update_requested": true,
+  "before_fetch": {
+    "mcp_status": 200,
+    "a2a_status": 200
+  },
+  "after_fetch": {
+    "mcp_status": 200,
+    "a2a_status": 200
+  },
+  "updates": [
+    {
+      "kind": "mcp",
+      "name": "Discharge Gatekeeper MCP",
+      "action": "updated",
+      "before_url": "https://bdpdf-38-183-9-227.run.pinggy-free.link/mcp",
+      "expected_url": "https://zxnzx-38-183-11-105.run.pinggy-free.link/mcp",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "kind": "mcp",
+      "name": "Clinical Intelligence MCP",
+      "action": "updated",
+      "before_url": "https://lfgan-38-183-9-227.run.pinggy-free.link/mcp",
+      "expected_url": "https://rvyfm-38-183-11-105.run.pinggy-free.link/mcp",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "kind": "a2a",
+      "name": "external A2A orchestrator",
+      "action": "updated",
+      "before_url": "https://eubwn-61-246-17-219.run.pinggy-free.link",
+      "expected_url": "https://fpeim-38-183-11-105.run.pinggy-free.link",
+      "ok": false,
+      "status": 400
+    }
+  ],
+  "registrations": [
+    {
+      "kind": "mcp",
+      "name": "Discharge Gatekeeper MCP",
+      "id": "019daeaf-1359-702d-80fc-59b6fbf1db60",
+      "expected_url": "https://zxnzx-38-183-11-105.run.pinggy-free.link/mcp",
+      "before_url": "https://bdpdf-38-183-9-227.run.pinggy-free.link/mcp",
+      "after_url": "https://zxnzx-38-183-11-105.run.pinggy-free.link/mcp",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": {
+        "ok": true,
+        "status": 200,
+        "body_shape": {
+          "supportsFhirContext": "boolean",
+          "scopes": [
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            }
+          ],
+          "tools": [
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            },
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            },
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            },
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            }
+          ]
+        },
+        "body_preview": "{\"supportsFhirContext\":true,\"scopes\":[{\"description\":\"Enables read, and search permissions on the Patient resource for the current patient\",\"name\":\"patient/Patient.rs\",\"required\":true},{\"description\":\"Enables read, and search permissions on the Condition resource for the current patient\",\"name\":\"patient/Condition.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the DocumentReference resource for the current patient\",\"name\":\"patient/DocumentReference.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the MedicationRequest resource for the current patient\",\"name\":\"patient/MedicationRequest.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the MedicationStatement resource for the current patient\",\"name\":\"patient/MedicationStatement.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the Observation resource for the current patient\",\"name\":\"patient/Observation.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the ServiceRequest resource for the current patient\",\"name\":\"patient/ServiceRequest.rs\",\"required\":false}],\"tools\":[{\"name\":\"assess_discharge_r...[truncated 2339 chars]"
+      },
+      "current_url_verified": true,
+      "status": "green"
+    },
+    {
+      "kind": "mcp",
+      "name": "Clinical Intelligence MCP",
+      "id": "019daeb1-76db-7cb3-b5a9-8dc68afc2bae",
+      "expected_url": "https://rvyfm-38-183-11-105.run.pinggy-free.link/mcp",
+      "before_url": "https://lfgan-38-183-9-227.run.pinggy-free.link/mcp",
+      "after_url": "https://rvyfm-38-183-11-105.run.pinggy-free.link/mcp",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": {
+        "ok": true,
+        "status": 200,
+        "body_shape": {
+          "supportsFhirContext": "boolean",
+          "scopes": [
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            },
+            {
+              "description": "string",
+              "name": "string",
+              "required": "boolean"
+            }
+          ],
+          "tools": [
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            },
+            {
+              "name": "string",
+              "description": "string",
+              "isMcpAppTool": "boolean",
+              "hostType": "string",
+              "jsonSchema": "object"
+            }
+          ]
+        },
+        "body_preview": "{\"supportsFhirContext\":true,\"scopes\":[{\"description\":\"Enables read, and search permissions on the Patient resource for the current patient\",\"name\":\"patient/Patient.rs\",\"required\":true},{\"description\":\"Enables read, and search permissions on the Condition resource for the current patient\",\"name\":\"patient/Condition.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the DocumentReference resource for the current patient\",\"name\":\"patient/DocumentReference.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the MedicationRequest resource for the current patient\",\"name\":\"patient/MedicationRequest.rs\",\"required\":false},{\"description\":\"Enables read, and search permissions on the Observation resource for the current patient\",\"name\":\"patient/Observation.rs\",\"required\":false}],\"tools\":[{\"name\":\"surface_hidden_risks\",\"description\":\"Prompt 2 tool for contradiction-first hidden-risk review. Use when asked what hidden risk changed the discharge answer and to show note-backed evidence. Do not use this for deterministic baseline-only Prompt 1 or transition-package Prompt 3 synthesis.\",\"isMcpAppTool\":false,\"hostType\":\"External\",\"jsonSchema\":{\"$sch...[truncated 4578 chars]"
+      },
+      "current_url_verified": true,
+      "status": "green"
+    },
+    {
+      "kind": "a2a",
+      "name": "external A2A orchestrator",
+      "id": "019db14c-a5c7-7fd7-b0fc-c65abb8255f8",
+      "expected_url": "https://fpeim-38-183-11-105.run.pinggy-free.link",
+      "before_url": "https://eubwn-61-246-17-219.run.pinggy-free.link",
+      "after_url": "https://eubwn-61-246-17-219.run.pinggy-free.link",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": null,
+      "current_url_verified": false,
+      "status": "red"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[po-browser-proof] login: green
+[po-browser-proof] workspace discovery: green
+[po-browser-proof] MCP registration verification: yellow
+[po-browser-proof] external A2A connection verification: green
+[po-browser-proof] BYO agent verification: green
+[po-browser-proof] A2A-main session start: green
+[po-browser-proof] Direct-MCP fallback session start: green

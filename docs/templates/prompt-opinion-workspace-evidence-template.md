@@ -30,6 +30,9 @@
 | Prompt 2 result or stall |  | `screenshots/07-po-prompt2-result-or-stall.png` |
 | Prompt 3 result or stall |  | `screenshots/08-po-prompt3-result-or-stall.png` |
 
+Generated browser-proof runs may also include `screenshots/a2a-p*-result.png`,
+`screenshots/fallback-p*-result.png`, and matching `.txt` DOM snapshots.
+
 ## Prompt-by-prompt evidence
 | Attempt ID | Lane | Surface or agent | Prompt | Expected tool path | Conversation ID | Request or task IDs | Result (`green`/`yellow`/`red`) | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -47,6 +50,8 @@
 - External runtime logs:
 - Matching `request_id` / `task_id` evidence:
 - Blocker classification if not proven:
+- Browser network summary:
+- Runtime log delta:
 
 ## Dual-tool BYO path evidence
 - Prompt 2 function call persisted:
@@ -55,6 +60,8 @@
 - Prompt 3 function call persisted:
 - Prompt 3 tool response persisted:
 - Prompt 3 assistant transcript persisted:
+- Prompt-stream/browser request evidence:
+- Runtime MCP log evidence:
 
 ## Final lane statuses
 - A2A-main lane (`green`/`yellow`/`red`):

@@ -40,6 +40,14 @@ Add rows here only when a required attempt fails and you need to prove whether t
 | `A2A-main` |  |  |
 | `Direct-MCP fallback` |  |  |
 
+## Browser proof artifacts
+Use these files when `PROMPT_OPINION_BROWSER_CAPTURE=1` is part of the run:
+- `reports/browser-proof-summary.json`
+- `reports/browser-network-events.json`
+- `reports/browser-network-summary.json`
+- `reports/runtime-log-delta.json`
+- `screenshots/`
+
 Decision rules:
 - `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary.
 - `yellow`: proof is partial or missing a required artifact; the lane cannot be primary.

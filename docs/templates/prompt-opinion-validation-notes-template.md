@@ -15,6 +15,7 @@ Record the exact command result from this run folder before calling any lane `gr
 | `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` |  |  |
 | `./po-community-mcp-main/scripts/check-a2a-readiness.sh` |  |  |
 | `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` |  |  |
+| `PROMPT_OPINION_BROWSER_CAPTURE=1 ./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh` |  |  |
 
 ## Automated check status board
 Copy the machine-generated status lines from `reports/command-results.json`.
@@ -25,6 +26,7 @@ Copy the machine-generated status lines from `reports/command-results.json`.
 | Two-MCP readiness check | `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh` |  |  |  |
 | A2A readiness check | `./po-community-mcp-main/scripts/check-a2a-readiness.sh` |  |  |  |
 | Prompt Opinion rehearsal smoke | `npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal` |  |  |  |
+| Authenticated browser proof | `./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh` |  |  | `logs/09-prompt-opinion-browser-proof.log` |
 
 ## Local artifact cross-check
 | Artifact | Status (`green`/`yellow`/`red`) | Evidence |
@@ -34,6 +36,9 @@ Copy the machine-generated status lines from `reports/command-results.json`.
 | `notes/experiment-matrix.md` completed |  |  |
 | `notes/request-id-correlation.md` completed |  |  |
 | `notes/workspace-evidence.md` completed |  |  |
+| `reports/browser-network-summary.json` present |  |  |
+| `reports/runtime-log-delta.json` present |  |  |
+| authenticated workspace screenshots present |  |  |
 
 ## Lane status board
 | Lane | Status (`green`/`yellow`/`red`) | Evidence |
@@ -47,6 +52,13 @@ Copy the machine-generated status lines from `reports/command-results.json`.
 - A2A runtime hit proven:
 - Matching request/task IDs:
 - If not proven, narrowest blocker:
+
+## Browser/network conclusion
+- Prompt Opinion frontend execution request observed:
+- Prompt Opinion called external runtime:
+- External runtime endpoint and payload shape:
+- Downstream MCP calls observed:
+- Transcript/persistence break:
 
 ## Green/yellow/red rationale
 - Green: the current run folder proves the lane end-to-end and the lane is eligible to be primary.

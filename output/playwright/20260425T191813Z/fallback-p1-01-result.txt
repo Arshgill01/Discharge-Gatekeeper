@@ -1,0 +1,35 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+Care Transitions Command BYO Fallback
+Data Scope
+Show Tool calls
+Input: 47,716 - Output: 200
+Arshdeep Singh
+
+Is this patient safe to discharge today?
+
+Tool:  
+assess_discharge_readiness
+Po
+
+Based on the structured readiness review, the patient is safe for discharge today.
+
+Verdict: READY Summary: No active discharge blockers were detected across the 8 evaluated discharge domains. Final disposition remains with the clinical team for standard sign-off.
+
+Input: 
+47716
+Output: 
+200
+Consult with another agent:
+None
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

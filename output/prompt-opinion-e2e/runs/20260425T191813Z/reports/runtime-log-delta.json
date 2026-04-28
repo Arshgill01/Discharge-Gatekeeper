@@ -1,0 +1,103 @@
+{
+  "A2A-P1-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 0,
+    "clinical_intelligence_mcp_request_count": 0,
+    "both_mcps_hit": false,
+    "discharge_gatekeeper_request_ids": [],
+    "clinical_intelligence_request_ids": []
+  },
+  "A2A-P2-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 0,
+    "clinical_intelligence_mcp_request_count": 0,
+    "both_mcps_hit": false,
+    "discharge_gatekeeper_request_ids": [],
+    "clinical_intelligence_request_ids": []
+  },
+  "A2A-P3-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 0,
+    "clinical_intelligence_mcp_request_count": 0,
+    "both_mcps_hit": false,
+    "discharge_gatekeeper_request_ids": [],
+    "clinical_intelligence_request_ids": []
+  },
+  "FALLBACK-P1-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 7,
+    "clinical_intelligence_mcp_request_count": 6,
+    "both_mcps_hit": true,
+    "discharge_gatekeeper_request_ids": [
+      "be066f63-9c86-4a2d-a8ad-afe19d7016a3",
+      "3e858a69-1305-4123-a321-5dd2b0f5efb7",
+      "dd903907-7cd9-4ed6-a5fc-577792d90e91",
+      "3477ad87-ef43-4572-8cb8-014caedb70f0",
+      "7a992603-4f7c-432d-bb16-fc5d54bea08a",
+      "12f23402-266c-42b2-b2b8-881d21acef0b",
+      "9641ceb0-7a45-4978-84f4-45ba7b839ea4"
+    ],
+    "clinical_intelligence_request_ids": [
+      "a10aa514-abd6-41bb-aaf2-686ad4b89c2e",
+      "bd1bf9b7-dc29-4472-94cc-2057ae840b9a",
+      "3b46560a-a747-4f00-a476-bb90c1b36988",
+      "e3fd7a4a-f7c9-4462-bdc0-7a7ffc7fdbd9",
+      "deb86bb2-5f6a-487e-9669-a1c257f22bef",
+      "4b38ef44-16af-4a4c-9d66-d76e28c64624"
+    ]
+  },
+  "FALLBACK-P2-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 3,
+    "clinical_intelligence_mcp_request_count": 3,
+    "both_mcps_hit": true,
+    "discharge_gatekeeper_request_ids": [
+      "50e20acb-7c4a-4462-ac23-d1b87b8bedbc",
+      "294b82d3-3bf5-4dc4-94ab-1a6287f86f55",
+      "f66e2573-043d-4286-a29e-5e8b050be9d1"
+    ],
+    "clinical_intelligence_request_ids": [
+      "12f20627-6209-4b32-ae24-276b69e7cb0e",
+      "376e0b59-fcc3-43d5-81dc-3316273a6978",
+      "2915ce39-1c3f-432b-b4db-dfb4fb145031"
+    ]
+  },
+  "FALLBACK-P3-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 0,
+    "clinical_intelligence_mcp_request_count": 0,
+    "both_mcps_hit": false,
+    "discharge_gatekeeper_request_ids": [],
+    "clinical_intelligence_request_ids": []
+  }
+}
