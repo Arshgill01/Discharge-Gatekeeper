@@ -12,6 +12,11 @@ Phase 7 operating stance:
 - required backup lane: direct-MCP fallback (separate Prompt Opinion calls to both MCPs)
 - promotion rule: use A2A-main only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`; otherwise run fallback if it is `green`
 
+Phase 8.5 route-boundary note:
+- the stable A2A proof target is one assembled Prompt Opinion turn, not the full 3-prompt judged flow
+- Direct-MCP remains the primary judged 3-prompt path unless a current run folder proves otherwise
+- treat one-turn A2A proof as architecture evidence: selected external agent, Prompt Opinion POST, runtime acceptance, both MCP hits, and visible assembled answer
+
 ## 1. Registration surfaces
 
 ### Surface A: `Discharge Gatekeeper MCP`
@@ -98,6 +103,10 @@ Artifact bundle contract:
 - workspace attempt matrix in `notes/experiment-matrix.md`
 - workspace request/task correlation in `notes/request-id-correlation.md`
 - final lane write-up in `notes/validation-notes.md`
+- A2A route-lock matrix in `reports/a2a-route-lock-matrix.json`
+- A2A runtime correlation summary in `reports/a2a-runtime-correlation-summary.json`
+- downstream MCP hit summary in `reports/a2a-downstream-mcp-hit-summary.json`
+- final one-turn lane status in `reports/a2a-one-turn-status.json`
 - dependency bootstrap via `npm ci` runs automatically for all three runtimes unless `PROMPT_OPINION_SKIP_NPM_CI=1` is set
 
 Run-folder operator workflow:
