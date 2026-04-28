@@ -16,6 +16,50 @@ const PROMPTS = {
   prompt3: "What exactly must happen before discharge, and prepare the transition package.",
 };
 
+const A2A_ROUTE_LOCK_VARIANTS = [
+  {
+    id: "A",
+    attemptId: "A2A-VA-01",
+    name: "Prompt 2 as first A2A turn",
+    prompt:
+      "Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes.",
+    expectedTokens: ["care transitions command", "structured", "hidden", "not_ready", "contradiction"],
+  },
+  {
+    id: "B",
+    attemptId: "A2A-VB-01",
+    name: "Exact external agent name included",
+    prompt:
+      "Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient.",
+    expectedTokens: ["care transitions command", "clinical intelligence", "hidden", "not_ready", "evidence"],
+  },
+  {
+    id: "C",
+    attemptId: "A2A-VC-01",
+    name: "Explicit forward instruction",
+    prompt:
+      "Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today?",
+    expectedTokens: ["care transitions command", "not_ready", "structured", "hidden", "forward"],
+  },
+  {
+    id: "D",
+    attemptId: "A2A-VD-01",
+    name: "Existing Prompt 3 control",
+    prompt: PROMPTS.prompt3,
+    expectedTokens: ["transition", "handoff", "before discharge", "not_ready"],
+  },
+];
+
+const A2A_ROUTE_LOCK_SKIPPED_VARIANTS = [
+  {
+    id: "E",
+    name: "Consultation prompt override comparison",
+    status: "skipped",
+    reason:
+      "The General Chat consult-system forwarding prompt is not configurable from this repo or runbook automation. Variant E remains an operator-side/manual check only.",
+  },
+];
+
 const BLOCKER_LABELS = [
   "registration_only",
   "chat_path_not_routed",
@@ -253,6 +297,7 @@ const readLogDeltas = (startOffsets) => {
 
 const summarizeRuntimeDelta = (delta) => {
   const a2aRequests = (delta.a2a || []).filter((entry) => entry.message === "HTTP request received");
+  const a2aResponses = (delta.a2a || []).filter((entry) => entry.message === "HTTP request completed");
   const a2aTasksStarted = (delta.a2a || []).filter((entry) => entry.message === "A2A task execution started");
   const a2aTasksFinished = (delta.a2a || []).filter((entry) => entry.message === "A2A task execution finished");
   const dgkMcpRequests = (delta.dischargeGatekeeper || []).filter((entry) => entry.message === "MCP request received");
@@ -260,17 +305,26 @@ const summarizeRuntimeDelta = (delta) => {
 
   return {
     a2a_request_count: a2aRequests.length,
+    a2a_response_count: a2aResponses.length,
+    a2a_2xx_response_count: a2aResponses.filter((entry) => Number(entry.status_code) >= 200 && Number(entry.status_code) < 300).length,
     a2a_task_started_count: a2aTasksStarted.length,
     a2a_task_finished_count: a2aTasksFinished.length,
     a2a_paths: [...new Set(a2aRequests.map((entry) => entry.path).filter(Boolean))],
+    a2a_response_paths: [...new Set(a2aResponses.map((entry) => entry.path).filter(Boolean))],
+    a2a_status_codes: [...new Set(a2aResponses.map((entry) => entry.status_code).filter((value) => value !== undefined))],
     a2a_request_ids: [
       ...new Set(
-        [...a2aRequests, ...a2aTasksStarted, ...a2aTasksFinished]
+        [...a2aRequests, ...a2aResponses, ...a2aTasksStarted, ...a2aTasksFinished]
           .map((entry) => entry.request_id)
           .filter(Boolean),
       ),
     ],
     a2a_task_ids: [...new Set(a2aTasksStarted.map((entry) => entry.task_id).filter(Boolean))],
+    a2a_correlation_ids: [
+      ...new Set(
+        [...a2aTasksStarted, ...a2aTasksFinished].map((entry) => entry.correlation_id).filter(Boolean),
+      ),
+    ],
     discharge_gatekeeper_mcp_request_count: dgkMcpRequests.length,
     clinical_intelligence_mcp_request_count: ciMcpRequests.length,
     both_mcps_hit:
@@ -728,7 +782,12 @@ const selectConsultAgent = async (page, agentName) => {
   const combo = page.locator('[role="combobox"][aria-haspopup="listbox"]').last();
   const selectedAlready = await combo.innerText({ timeout: 3000 }).catch(() => "");
   if (selectedAlready.toLowerCase().includes(agentName.toLowerCase())) {
-    return true;
+    const evidence = await capture(page, "a2a-consult-selected.png", "A2A consult selection");
+    return {
+      verified: true,
+      selectedText: selectedAlready,
+      evidence,
+    };
   }
 
   const opened =
@@ -740,7 +799,11 @@ const selectConsultAgent = async (page, agentName) => {
       agent_name: agentName,
       reason: "consult combobox not found or not clickable",
     });
-    return false;
+    return {
+      verified: false,
+      selectedText: selectedAlready,
+      evidence: null,
+    };
   }
 
   await page.waitForTimeout(1000);
@@ -756,7 +819,11 @@ const selectConsultAgent = async (page, agentName) => {
     selected_text: selectedText,
     evidence: [evidence],
   });
-  return verified;
+  return {
+    verified,
+    selectedText,
+    evidence,
+  };
 };
 
 const findPromptInput = async (page) => {
@@ -875,7 +942,16 @@ const enableToolCalls = async (page) => {
   await clickIfVisible(page, switchControl, 2500);
 };
 
-const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expectedTool }) => {
+const sendPrompt = async ({
+  page,
+  lane,
+  attemptId,
+  prompt,
+  expectedTokens,
+  expectedTool,
+  routeLockVariant = null,
+  selectedAgent = null,
+}) => {
   await enableToolCalls(page);
   const { input, blocked } = await waitForPromptInputReady(page, 30000);
   if (!input) {
@@ -953,6 +1029,7 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
     function_call_persisted: expectedTool ? lower.includes(expectedTool.toLowerCase()) : false,
     tool_response_persisted: /response|verdict|hidden_risk|transition|not_ready|ready/.test(lower),
     expected_text_visible: matched,
+    assembled_answer_visible: matched && /not_ready|ready_with_caveats|ready|contradiction|transition|handoff|hidden/i.test(lower),
   };
 
   const a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
@@ -972,9 +1049,17 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
 
   let status = "red";
   if (lane === "A2A-main") {
-    if (matched && a2aRuntimeHit && runtimeSummary.both_mcps_hit) {
+    const selectedAgentVerified = Boolean(selectedAgent?.verified);
+    const a2aAccepted = runtimeSummary.a2a_2xx_response_count > 0;
+    if (
+      selectedAgentVerified &&
+      transcriptFlags.assembled_answer_visible &&
+      a2aRuntimeHit &&
+      a2aAccepted &&
+      runtimeSummary.both_mcps_hit
+    ) {
       status = "green";
-    } else if (a2aRuntimeHit) {
+    } else if (selectedAgentVerified && (a2aRuntimeHit || promptStreamRequests.length > 0)) {
       status = "yellow";
     }
   } else if (matched && transcriptFlags.function_call_persisted && transcriptFlags.tool_response_persisted) {
@@ -987,16 +1072,19 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
     attempt_id: attemptId,
     lane,
     prompt,
+    route_lock_variant: routeLockVariant,
     expected_tool: expectedTool,
     started_at: startedAt,
     finished_at: nowIso(),
     status,
     observed_route: observedRoute,
     conversation_url: page.url(),
+    selected_agent_verified: selectedAgent?.verified ?? null,
+    selected_agent_text: selectedAgent?.selectedText ?? null,
     runtime_summary: runtimeSummary,
     transcript_flags: transcriptFlags,
     prompt_stream_request_count: promptStreamRequests.length,
-    evidence: [evidence],
+    evidence: [selectedAgent?.evidence, evidence].filter(Boolean),
   };
   attempts.push(attempt);
   return attempt;
@@ -1096,6 +1184,68 @@ const laneStatus = (lane) => {
 
 const mdStatus = (status) => `\`${status}\``;
 
+const bestA2AVariant = () => {
+  const a2aAttempts = attempts.filter((attempt) => attempt.lane === "A2A-main");
+  if (a2aAttempts.length === 0) {
+    return null;
+  }
+
+  const score = (attempt) => {
+    let total = 0;
+    if (attempt.status === "green") total += 100;
+    else if (attempt.status === "yellow") total += 50;
+    if (attempt.selected_agent_verified) total += 20;
+    if (attempt.runtime_summary.a2a_request_count > 0) total += 10;
+    if (attempt.runtime_summary.a2a_2xx_response_count > 0) total += 10;
+    if (attempt.runtime_summary.both_mcps_hit) total += 10;
+    if (attempt.transcript_flags.assembled_answer_visible) total += 10;
+    return total;
+  };
+
+  return [...a2aAttempts].sort((left, right) => score(right) - score(left))[0];
+};
+
+const buildA2ARouteLockMatrix = ({ a2aStatus, a2aBlocker }) => {
+  const variantAttempts = A2A_ROUTE_LOCK_VARIANTS.map((variant) => {
+    const attempt = attempts.find((candidate) => candidate.attempt_id === variant.attemptId) || null;
+    return {
+      variant_id: variant.id,
+      variant_name: variant.name,
+      prompt: variant.prompt,
+      status: attempt?.status || "not_run",
+      selected_agent_verified: attempt?.selected_agent_verified ?? false,
+      selected_agent_text: attempt?.selected_agent_text || null,
+      observed_route: attempt?.observed_route || "not run",
+      prompt_stream_request_count: attempt?.prompt_stream_request_count || 0,
+      transcript_visible: attempt?.transcript_flags?.assembled_answer_visible || false,
+      a2a_request_ids: attempt?.runtime_summary?.a2a_request_ids || [],
+      a2a_task_ids: attempt?.runtime_summary?.a2a_task_ids || [],
+      a2a_message_ids: (attempt?.runtime_summary?.a2a_task_ids || []).map((taskId) => `${taskId}-status-message`),
+      response_status_codes: attempt?.runtime_summary?.a2a_status_codes || [],
+      response_paths: attempt?.runtime_summary?.a2a_response_paths || [],
+      both_mcps_hit: attempt?.runtime_summary?.both_mcps_hit || false,
+      evidence: attempt?.evidence || [],
+    };
+  });
+
+  return {
+    generated_at: nowIso(),
+    lane: "A2A-main",
+    status: a2aStatus,
+    blocker: a2aBlocker,
+    variants: variantAttempts,
+    skipped_variants: A2A_ROUTE_LOCK_SKIPPED_VARIANTS,
+    best_variant: bestA2AVariant()
+      ? {
+          attempt_id: bestA2AVariant().attempt_id,
+          route_lock_variant: bestA2AVariant().route_lock_variant,
+          status: bestA2AVariant().status,
+          observed_route: bestA2AVariant().observed_route,
+        }
+      : null,
+  };
+};
+
 const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBlocker }) => {
   const rows = attempts.map((attempt) => {
     const expectedRoute =
@@ -1109,7 +1259,11 @@ const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbac
       ...attempt.runtime_summary.clinical_intelligence_request_ids,
     ].join(", ") || "none";
     const evidence = attempt.evidence.map((item) => `\`${item.screenshot}\``).join(", ");
-    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence} |`;
+    const surface =
+      attempt.lane === "A2A-main"
+        ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
+        : "Browser proof harness";
+    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence} |`;
   });
 
   return [
@@ -1125,13 +1279,13 @@ const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbac
     "## Blocker isolation attempts",
     "| Attempt ID | Why this isolation run exists | Narrowest blocker under test | Outcome | Evidence |",
     "| --- | --- | --- | --- | --- |",
-    `| ISO-A2A | Determine whether Prompt Opinion chat reaches the external runtime | ${a2aBlocker} | A2A-main lane is ${a2aStatus} | \`reports/browser-network-summary.json\`, \`reports/runtime-log-delta.json\` |`,
+    `| ISO-A2A | Determine whether Prompt Opinion chat reaches the external runtime and accepts one assembled turn | ${a2aBlocker} | A2A-main lane is ${a2aStatus} | \`reports/a2a-route-lock-matrix.json\`, \`reports/a2a-runtime-correlation-summary.json\` |`,
     `| ISO-FALLBACK | Determine whether dual-tool BYO hits both MCPs and persists visible output | ${fallbackBlocker} | Direct-MCP fallback lane is ${fallbackStatus} | \`reports/browser-network-summary.json\`, \`reports/runtime-log-delta.json\` |`,
     "",
     "## Lane decision summary",
     "| Lane | Status (`green`/`yellow`/`red`) | Why |",
     "| --- | --- | --- |",
-    `| \`A2A-main\` | \`${a2aStatus}\` | ${a2aBlocker === "none" ? "all three A2A prompt attempts completed with runtime and downstream evidence" : `blocker classified as \`${a2aBlocker}\``} |`,
+    `| \`A2A-main\` | \`${a2aStatus}\` | ${a2aBlocker === "none" ? "one route-lock variant proved selected agent, runtime acceptance, both MCP hits, and visible assembled answer" : `blocker classified as \`${a2aBlocker}\``} |`,
     `| \`Direct-MCP fallback\` | \`${fallbackStatus}\` | ${fallbackBlocker === "none" ? "all three fallback prompt attempts completed visibly" : `blocker classified as \`${fallbackBlocker}\``} |`,
     "",
   ].join("\n");
@@ -1142,7 +1296,13 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
     .filter((attempt) => attempt.lane === "A2A-main")
     .map((attempt) => {
       const runtime = attempt.runtime_summary;
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${runtime.both_mcps_hit ? "both MCPs hit" : "not proven"} | \`${attempt.status}\` | prompt-stream requests: ${attempt.prompt_stream_request_count} |`;
+      const notes = [
+        `variant=${attempt.route_lock_variant?.id || "n/a"}`,
+        `selected_agent=${attempt.selected_agent_verified ? "yes" : "no"}`,
+        `2xx=${runtime.a2a_2xx_response_count > 0 ? "yes" : "no"}`,
+        `prompt-stream requests=${attempt.prompt_stream_request_count}`,
+      ].join("; ");
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${runtime.both_mcps_hit ? "both MCPs hit" : "not proven"} | \`${attempt.status}\` | ${notes} |`;
     });
   const fallbackRows = attempts
     .filter((attempt) => attempt.lane === "Direct-MCP fallback")
@@ -1173,7 +1333,7 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
     `- Current fallback blocker: \`${fallbackBlocker}\``,
     `- A2A-main status: \`${a2aStatus}\``,
     `- Direct-MCP fallback status: \`${fallbackStatus}\``,
-    `- Exact evidence files: \`reports/browser-network-summary.json\`, \`reports/runtime-log-delta.json\`, \`screenshots/\``,
+    `- Exact evidence files: \`reports/a2a-route-lock-matrix.json\`, \`reports/a2a-runtime-correlation-summary.json\`, \`reports/a2a-downstream-mcp-hit-summary.json\`, \`screenshots/\``,
     "",
     "Known blocker labels:",
     ...BLOCKER_LABELS.map((label) => `- \`${label}\``),
@@ -1188,7 +1348,11 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
       ...attempt.runtime_summary.discharge_gatekeeper_request_ids,
       ...attempt.runtime_summary.clinical_intelligence_request_ids,
     ].join(", ") || "none";
-    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route} |`;
+    const surface =
+      attempt.lane === "A2A-main"
+        ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
+        : "Browser proof harness";
+    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route} |`;
   });
   const registrationRows = (registrationSummary?.registrations || []).map(
     (registration) =>
@@ -1231,6 +1395,8 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
     "| MCP registrations | yes | `screenshots/03-po-mcp-servers-registered.png` |",
     "| A2A connection status | yes | `screenshots/04-po-a2a-connection-status.png` |",
     "| BYO agent config | yes | `screenshots/05-po-byo-agent-config.png` |",
+    "| Selected external A2A agent | yes | `screenshots/a2a-consult-selected.png` |",
+    "| A2A route-lock variants | see attempt screenshots | `screenshots/a2a-v*-result.png` |",
     "| Prompt 1 result | see attempt screenshots | `screenshots/*p1*result.png` |",
     "| Prompt 2 result or stall | see attempt screenshots | `screenshots/*p2*result.png` |",
     "| Prompt 3 result or stall | see attempt screenshots | `screenshots/*p3*result.png` |",
@@ -1243,8 +1409,10 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
     "## A2A path evidence",
     `- A2A prompt execution result: \`${a2aStatus}\``,
     `- Blocker classification if not proven: \`${a2aBlocker}\``,
+    "- Route-lock matrix: `reports/a2a-route-lock-matrix.json`",
     "- External runtime logs: `reports/runtime-log-delta.json`",
-    "- Matching request/task evidence: `notes/request-id-correlation.md`",
+    "- Matching request/task evidence: `reports/a2a-runtime-correlation-summary.json`, `notes/request-id-correlation.md`",
+    "- Downstream MCP hit summary: `reports/a2a-downstream-mcp-hit-summary.json`",
     "",
     "## Dual-tool BYO path evidence",
     ...attempts
@@ -1293,11 +1461,12 @@ const renderValidationNotes = ({ a2aStatus, fallbackStatus, a2aBlocker, fallback
     "| Lane | Status (`green`/`yellow`/`red`) | Evidence |",
     "| --- | --- | --- |",
     `| Local automated rehearsal lane | \`${commandResults?.totals?.red === 0 ? "green" : "red"}\` | \`reports/status-summary.md\`, \`reports/request-id-correlation.md\` |`,
-    `| Prompt Opinion A2A-main workspace lane | \`${a2aStatus}\` | \`notes/request-id-correlation.md\`, \`reports/browser-network-summary.json\` |`,
+    `| Prompt Opinion A2A-main workspace lane | \`${a2aStatus}\` | \`reports/a2a-route-lock-matrix.json\`, \`reports/a2a-runtime-correlation-summary.json\` |`,
     `| Prompt Opinion Direct-MCP fallback workspace lane | \`${fallbackStatus}\` | \`notes/workspace-evidence.md\`, \`screenshots/\` |`,
     `| Current blocker-isolation conclusion | \`${a2aStatus === "green" && fallbackStatus === "green" ? "green" : "red"}\` | A2A: \`${a2aBlocker}\`; fallback: \`${fallbackBlocker}\` |`,
     "",
     "## Request-id conclusion",
+    `- A2A one-turn assembled proof green: ${a2aStatus === "green" ? "yes" : "no"}`,
     `- A2A runtime hit proven: ${a2aBlocker === "none" ? "yes" : "no"}`,
     `- If not proven, narrowest blocker: \`${a2aBlocker}\``,
     `- Direct-MCP fallback blocker: \`${fallbackBlocker}\``,
@@ -1351,7 +1520,7 @@ const renderStatusSummary = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBl
     "| Lane | Status | Reason |",
     "| --- | --- | --- |",
     `| Local automated rehearsal lane | ${localStatus} | ${localStatus === "GREEN" ? "All automated local checks passed in this run folder." : "One or more automated local checks failed."} |`,
-    `| Prompt Opinion A2A-main workspace lane | ${a2aStatus.toUpperCase()} | ${a2aBlocker === "none" ? "Authenticated browser proof observed A2A runtime and downstream MCP execution." : `Blocker: ${a2aBlocker}.`} |`,
+    `| Prompt Opinion A2A-main workspace lane | ${a2aStatus.toUpperCase()} | ${a2aBlocker === "none" ? "Authenticated browser proof observed selected external A2A, 2xx runtime acceptance, both MCP hits, and visible assembled answer." : `Blocker: ${a2aBlocker}.`} |`,
     `| Prompt Opinion Direct-MCP fallback workspace lane | ${fallbackStatus.toUpperCase()} | ${fallbackBlocker === "none" ? "Authenticated browser proof observed visible fallback output for all prompts." : `Blocker: ${fallbackBlocker}.`} |`,
     "",
     "## Registration Endpoint Check",
@@ -1362,6 +1531,10 @@ const renderStatusSummary = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBl
     "## Browser/network evidence",
     "| Artifact | Purpose |",
     "| --- | --- |",
+    "| `reports/a2a-route-lock-matrix.json` | one-turn A2A experiment matrix with best variant and skipped Variant E rationale |",
+    "| `reports/a2a-runtime-correlation-summary.json` | request/task/message correlation summary for A2A route-lock attempts |",
+    "| `reports/a2a-downstream-mcp-hit-summary.json` | downstream MCP hit summary for each A2A route-lock variant |",
+    "| `reports/a2a-one-turn-status.json` | final A2A one-turn assembled proof status board |",
     "| `reports/browser-network-events.json` | sanitized browser request/response event log |",
     "| `reports/browser-network-summary.json` | endpoint and request-shape summary |",
     "| `reports/runtime-log-delta.json` | A2A/MCP runtime log deltas captured during browser attempts |",
@@ -1388,6 +1561,66 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
   const runtimeDelta = Object.fromEntries(
     attempts.map((attempt) => [attempt.attempt_id, attempt.runtime_summary]),
   );
+  const a2aRouteLockMatrix = buildA2ARouteLockMatrix({ a2aStatus, a2aBlocker });
+  const a2aRuntimeCorrelationSummary = attempts
+    .filter((attempt) => attempt.lane === "A2A-main")
+    .map((attempt) => ({
+      attempt_id: attempt.attempt_id,
+      variant_id: attempt.route_lock_variant?.id || null,
+      prompt: attempt.prompt,
+      selected_agent_verified: attempt.selected_agent_verified,
+      selected_agent_text: attempt.selected_agent_text,
+      conversation_url: attempt.conversation_url,
+      prompt_stream_request_count: attempt.prompt_stream_request_count,
+      request_ids: attempt.runtime_summary.a2a_request_ids,
+      task_ids: attempt.runtime_summary.a2a_task_ids,
+      message_ids: attempt.runtime_summary.a2a_task_ids.map((taskId) => `${taskId}-status-message`),
+      correlation_ids: attempt.runtime_summary.a2a_correlation_ids,
+      response_paths: attempt.runtime_summary.a2a_response_paths,
+      response_status_codes: attempt.runtime_summary.a2a_status_codes,
+      both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      assembled_answer_visible: attempt.transcript_flags.assembled_answer_visible,
+      status: attempt.status,
+    }));
+  const a2aDownstreamMcpHitSummary = attempts
+    .filter((attempt) => attempt.lane === "A2A-main")
+    .map((attempt) => ({
+      attempt_id: attempt.attempt_id,
+      variant_id: attempt.route_lock_variant?.id || null,
+      discharge_gatekeeper_mcp_request_count: attempt.runtime_summary.discharge_gatekeeper_mcp_request_count,
+      clinical_intelligence_mcp_request_count: attempt.runtime_summary.clinical_intelligence_mcp_request_count,
+      both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      discharge_gatekeeper_request_ids: attempt.runtime_summary.discharge_gatekeeper_request_ids,
+      clinical_intelligence_request_ids: attempt.runtime_summary.clinical_intelligence_request_ids,
+      status: attempt.status,
+    }));
+  const bestVariant = bestA2AVariant();
+  const a2aOneTurnStatus = {
+    generated_at: nowIso(),
+    lane: "A2A-main",
+    status: a2aStatus,
+    blocker: a2aBlocker,
+    best_variant: bestVariant
+      ? {
+          attempt_id: bestVariant.attempt_id,
+          variant_id: bestVariant.route_lock_variant?.id || null,
+          variant_name: bestVariant.route_lock_variant?.name || null,
+          status: bestVariant.status,
+        }
+      : null,
+    green_criteria: {
+      selected_agent_verified: Boolean(bestVariant?.selected_agent_verified),
+      browser_network_request_observed: Boolean(bestVariant?.prompt_stream_request_count),
+      runtime_post_observed: Boolean(bestVariant?.runtime_summary?.a2a_request_count),
+      runtime_2xx_observed: Boolean(bestVariant?.runtime_summary?.a2a_2xx_response_count),
+      request_task_message_correlation_observed:
+        Boolean(bestVariant?.runtime_summary?.a2a_request_ids?.length) &&
+        Boolean(bestVariant?.runtime_summary?.a2a_task_ids?.length) &&
+        Boolean(bestVariant?.runtime_summary?.a2a_task_ids?.map((taskId) => `${taskId}-status-message`).length),
+      both_mcps_hit: Boolean(bestVariant?.runtime_summary?.both_mcps_hit),
+      assembled_answer_visible: Boolean(bestVariant?.transcript_flags?.assembled_answer_visible),
+    },
+  };
   const browserProofSummary = {
     generated_at: nowIso(),
     run_id: runId,
@@ -1406,6 +1639,10 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
     },
   };
 
+  await writeJson(path.join(reportsDir, "a2a-route-lock-matrix.json"), a2aRouteLockMatrix);
+  await writeJson(path.join(reportsDir, "a2a-runtime-correlation-summary.json"), a2aRuntimeCorrelationSummary);
+  await writeJson(path.join(reportsDir, "a2a-downstream-mcp-hit-summary.json"), a2aDownstreamMcpHitSummary);
+  await writeJson(path.join(reportsDir, "a2a-one-turn-status.json"), a2aOneTurnStatus);
   await writeJson(path.join(reportsDir, "browser-network-events.json"), networkEvents);
   await writeJson(path.join(reportsDir, "browser-network-summary.json"), networkSummary);
   await writeJson(path.join(reportsDir, "runtime-log-delta.json"), runtimeDelta);
@@ -1568,31 +1805,19 @@ const main = async () => {
 
     const a2aReady = await startSession(page, workspaceId, "General Chat Agent", "A2A-main", "a2a-launchpad.png");
     if (a2aReady) {
-      await selectConsultAgent(page, "external A2A orchestrator");
-      await sendPrompt({
-        page,
-        lane: "A2A-main",
-        attemptId: "A2A-P1-01",
-        prompt: PROMPTS.prompt1,
-        expectedTokens: ["not_ready", "hidden", "verdict", "Care Transitions"],
-        expectedTool: null,
-      });
-      await sendPrompt({
-        page,
-        lane: "A2A-main",
-        attemptId: "A2A-P2-01",
-        prompt: PROMPTS.prompt2,
-        expectedTokens: ["contradiction", "Nursing Note", "Case Management", "hidden_risk"],
-        expectedTool: null,
-      });
-      await sendPrompt({
-        page,
-        lane: "A2A-main",
-        attemptId: "A2A-P3-01",
-        prompt: PROMPTS.prompt3,
-        expectedTokens: ["transition", "handoff", "Before discharge", "not_ready"],
-        expectedTool: null,
-      });
+      const selectedAgent = await selectConsultAgent(page, "external A2A orchestrator");
+      for (const variant of A2A_ROUTE_LOCK_VARIANTS) {
+        await sendPrompt({
+          page,
+          lane: "A2A-main",
+          attemptId: variant.attemptId,
+          prompt: variant.prompt,
+          expectedTokens: variant.expectedTokens,
+          expectedTool: null,
+          routeLockVariant: variant,
+          selectedAgent,
+        });
+      }
     }
 
     const fallbackReady = await startSession(

@@ -42,12 +42,12 @@ Use this filename order:
 - `03-po-mcp-servers-registered.png`
 - `04-po-a2a-connection-status.png`
 - `05-po-byo-agent-config.png`
-- `06-po-prompt1-result.png`
-- `07-po-prompt2-result-or-stall.png`
+- `06-po-a2a-selected-agent.png`
+- `07-po-a2a-best-variant-result.png`
 - `08-po-prompt3-result-or-stall.png`
 
 If `PROMPT_OPINION_BROWSER_CAPTURE=1` is used, the browser harness also writes:
-- `a2a-p*-result.png`
+- `a2a-v*-result.png`
 - `fallback-p*-result.png`
 - matching `.txt` DOM snapshots for each screenshot
 EOF
