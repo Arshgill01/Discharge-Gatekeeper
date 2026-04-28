@@ -57,11 +57,16 @@ Generated browser-proof runs may also include `screenshots/a2a-p*-result.png`,
 - Prompt 2 function call persisted:
 - Prompt 2 tool response persisted:
 - Prompt 2 assistant transcript persisted:
+- Prompt 2 semantic anchors passed:
+- Prompt 2 settle reason / bounded-wait outcome:
 - Prompt 3 function call persisted:
 - Prompt 3 tool response persisted:
 - Prompt 3 assistant transcript persisted:
+- Prompt 3 semantic anchors passed:
+- Prompt 3 settle reason / bounded-wait outcome:
 - Prompt-stream/browser request evidence:
 - Runtime MCP log evidence:
+- `reports/direct-mcp-status.json` present:
 
 ## Final lane statuses
 - A2A-main lane (`green`/`yellow`/`red`):
@@ -69,6 +74,6 @@ Generated browser-proof runs may also include `screenshots/a2a-p*-result.png`,
 - Preferred live lane from this run folder:
 
 Status definitions:
-- `green`: the current run folder proves the lane end-to-end and the lane is eligible to be primary.
+- `green`: the current run folder proves the lane end-to-end, including final-settle transcript persistence, semantic anchors, and runtime/MCP correlation.
 - `yellow`: proof is partial or missing a required artifact; the lane cannot be primary.
 - `red`: a blocking defect, failed required validation, or missing required evidence makes the lane unusable.

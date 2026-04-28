@@ -34,11 +34,19 @@ A2A registration and runtime reachability have improved, but the full A2A multi-
 
 ## Direct-MCP strict green criteria
 - Prompt 1, Prompt 2, and Prompt 3 visibly complete in Prompt Opinion
-- Final assistant transcript persists for each prompt
-- Screenshots are captured in the run folder
+- Final assistant transcript persists for each prompt after the turn has settled
+- Each prompt passes its semantic anchor checks:
+  - Prompt 1: structured `ready` baseline is summarized, hidden narrative contradiction is surfaced, patient-specific evidence is visible, final posture is `not_ready`
+  - Prompt 2: contradiction between structured posture and notes is explicit, the answer escalates because of the hidden risk, and the patient is not treated as cleanly safe to discharge
+  - Prompt 3: transition package/handoff/instructions are prepared, the output stays conservative and contradiction-aware, and no unsafe normal-discharge instruction appears
+- Screenshots and text snapshots are captured in the run folder after final settle
 - Browser network evidence is captured
-- Runtime/MCP hit evidence is captured
+- Runtime/MCP hit evidence is captured and correlated to the settled transcript within the bounded wait window
 - Run-folder status board marks the Direct-MCP 3-prompt lane `GREEN`
+
+## Direct-MCP downgrade rules
+- `YELLOW`: final transcript becomes visible, but semantic anchors, MCP correlation, or post-settle persistence remain incomplete after the full bounded wait
+- `RED`: transcript never settles, a visible platform/runtime error appears, no relevant MCP activity is observed, or the clinical recommendation contradicts the required conservative posture
 
 ## A2A one-turn strict green criteria
 - External A2A is selected and verified in the UI

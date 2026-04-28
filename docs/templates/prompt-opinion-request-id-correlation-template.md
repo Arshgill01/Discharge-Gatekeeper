@@ -33,6 +33,7 @@ When the browser harness is used, reference:
 
 ## Direct-MCP fallback correlation
 Use this section to record function-call IDs, tool-response IDs, or transcript IDs when the fallback lane is the primary proof path.
+Do not call the lane `green` unless the final transcript was captured after settle and the prompt's semantic anchors passed in the same bounded window.
 
 | Attempt ID | Prompt | Conversation ID | Tool path | Function call persisted | Tool response persisted | Final assistant transcript persisted | Result | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

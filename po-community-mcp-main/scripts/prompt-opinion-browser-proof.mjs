@@ -86,6 +86,138 @@ const promptTimeoutMs = Number(getenv("PROMPT_OPINION_PROMPT_TIMEOUT_MS", "18000
 const browserSlowMoMs = Number(getenv("PROMPT_OPINION_BROWSER_SLOW_MO_MS", "0"));
 const updateRegistrations = getenv("PROMPT_OPINION_UPDATE_REGISTRATIONS", "0") === "1";
 const postSettleRuntimeGraceMs = Number(getenv("PROMPT_OPINION_POST_SETTLE_RUNTIME_GRACE_MS", "20000"));
+const finalSettleDelayMs = Number(getenv("PROMPT_OPINION_FINAL_SETTLE_DELAY_MS", "3000"));
+const settlePollMs = Number(getenv("PROMPT_OPINION_SETTLE_POLL_MS", "2000"));
+
+const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
+
+const normalizeWhitespace = (value) => String(value || "").replace(/\s+/g, " ").trim();
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const parseRegexSpec = (value) => {
+  if (value instanceof RegExp) {
+    return value;
+  }
+  if (typeof value !== "string") {
+    return new RegExp(escapeRegex(String(value || "")), "i");
+  }
+  const trimmed = value.trim();
+  if (trimmed.startsWith("/") && trimmed.lastIndexOf("/") > 0) {
+    const lastSlash = trimmed.lastIndexOf("/");
+    const source = trimmed.slice(1, lastSlash);
+    const flags = trimmed.slice(lastSlash + 1) || "i";
+    return new RegExp(source, flags);
+  }
+  return new RegExp(escapeRegex(trimmed), "i");
+};
+
+const defaultSemanticAnchorSets = {
+  prompt1: {
+    required_any: [
+      {
+        name: "final posture is not_ready",
+        patterns: [/not[_ -]?ready/i, /unsafe to discharge/i, /hold discharge/i],
+      },
+      {
+        name: "structured posture is summarized",
+        patterns: [
+          /structured baseline/i,
+          /deterministic/i,
+          /discharge spine/i,
+          /baseline[^.\n]{0,80}\bready\b/i,
+          /\bstructured\b[^.\n]{0,80}\bready\b/i,
+        ],
+      },
+      {
+        name: "hidden narrative contradiction is surfaced",
+        patterns: [/hidden risk/i, /contradiction/i, /narrative evidence/i, /note[- ]level/i],
+      },
+      {
+        name: "patient-specific evidence is mentioned",
+        patterns: [
+          /nursing note/i,
+          /case management/i,
+          /hospitalist/i,
+          /home oxygen/i,
+          /oxygen/i,
+          /stairs/i,
+          /82%/i,
+        ],
+      },
+    ],
+    forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}\bready\b/i, /routine discharge/i],
+  },
+  prompt2: {
+    required_any: [
+      {
+        name: "final posture remains not_ready",
+        patterns: [/not[_ -]?ready/i, /unsafe to discharge/i, /cannot discharge/i],
+      },
+      {
+        name: "recommendation changes because of hidden narrative risk",
+        patterns: [
+          /hidden risk/i,
+          /narrative evidence/i,
+          /contradiction/i,
+          /changed that answer/i,
+          /forced escalation/i,
+        ],
+      },
+      {
+        name: "structured posture and note contradiction are both visible",
+        patterns: [
+          /structured baseline/i,
+          /baseline[^.\n]{0,80}\bready\b/i,
+          /nursing note/i,
+          /case management/i,
+          /hospitalist/i,
+          /notes?\b/i,
+        ],
+      },
+    ],
+    forbidden_any: [/safe to discharge(?: home)? today/i, /no hidden risk/i, /discharge as normal/i],
+  },
+  prompt3: {
+    required_any: [
+      {
+        name: "transition package or handoff is prepared",
+        patterns: [
+          /transition package/i,
+          /handoff/i,
+          /patient[- ]friendly/i,
+          /patient[- ]facing/i,
+          /discharge instructions/i,
+          /next steps/i,
+        ],
+      },
+      {
+        name: "posture stays conservative and contradiction-aware",
+        patterns: [/not[_ -]?ready/i, /hold discharge/i, /before discharge/i, /manual clinician review/i],
+      },
+      {
+        name: "actions are concrete",
+        patterns: [/owner/i, /timing/i, /case management/i, /home oxygen/i, /follow[- ]up/i],
+      },
+    ],
+    forbidden_any: [/discharge as normal/i, /routine discharge/i, /safe to discharge(?: home)? today/i],
+  },
+};
+
+const overrideSemanticAnchorSets = (() => {
+  const raw = getenv("PROMPT_OPINION_SEMANTIC_ANCHORS_JSON");
+  if (!raw) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(
+      `[po-browser-proof] ignoring PROMPT_OPINION_SEMANTIC_ANCHORS_JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return {};
+  }
+})();
 
 const publicEndpoints = {
   dischargeGatekeeperMcp: getenv("PROMPT_OPINION_DGK_PUBLIC_URL"),
@@ -813,6 +945,208 @@ const isPromptInputReadyNow = async (page) => {
 
 const hasRespondingIndicator = (text) => /(^|\n)\s*Po\s*\nResponding\.\.\.|Responding\.\.\./i.test(text);
 
+const visibleErrorPatterns = [
+  /something went wrong/i,
+  /failed to (?:load|send|generate|respond)/i,
+  /unable to (?:load|generate|respond|connect)/i,
+  /request timed out/i,
+  /\btimeout\b/i,
+  /network error/i,
+  /connection lost/i,
+  /try again/i,
+  /platform error/i,
+];
+
+const transcriptToolPatterns = [/response/i, /verdict/i, /hidden[_ -]?risk/i, /transition/i, /not[_ -]?ready/i, /\bready\b/i];
+
+const getPromptKey = (prompt) => PROMPT_KEYS[prompt] || null;
+
+const getExpectedRuntimeHit = ({ lane, promptKey, runtimeSummary }) => {
+  if (lane === "A2A-main") {
+    return runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
+  }
+  if (promptKey === "prompt1") {
+    return runtimeSummary.discharge_gatekeeper_mcp_request_count > 0;
+  }
+  if (promptKey === "prompt2" || promptKey === "prompt3") {
+    return runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+  }
+  return (
+    runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 ||
+    runtimeSummary.clinical_intelligence_mcp_request_count > 0
+  );
+};
+
+const mergeAnchorConfig = (promptKey) => {
+  const defaults = defaultSemanticAnchorSets[promptKey] || { required_any: [], forbidden_any: [] };
+  const override = overrideSemanticAnchorSets[promptKey] || {};
+  return {
+    required_any: (override.required_any || defaults.required_any).map((group) => ({
+      name: group.name,
+      patterns: (group.patterns || []).map(parseRegexSpec),
+    })),
+    forbidden_any: (override.forbidden_any || defaults.forbidden_any).map(parseRegexSpec),
+  };
+};
+
+const evaluateSemanticAnchors = (promptKey, assistantText, pageLevelText) => {
+  const config = mergeAnchorConfig(promptKey);
+  const assistant = normalizeWhitespace(assistantText);
+  const combined = normalizeWhitespace(`${assistant}\n${pageLevelText}`);
+  const anchorResults = config.required_any.map((group) => {
+    const matchedPattern = group.patterns.find((pattern) => pattern.test(assistant) || pattern.test(combined)) || null;
+    return {
+      name: group.name,
+      passed: Boolean(matchedPattern),
+      matched_pattern: matchedPattern ? matchedPattern.toString() : null,
+    };
+  });
+  const forbiddenMatches = config.forbidden_any
+    .filter((pattern) => assistant && pattern.test(assistant))
+    .map((pattern) => pattern.toString());
+
+  return {
+    passed: anchorResults.every((result) => result.passed),
+    groups: anchorResults,
+    forbidden_matches: forbiddenMatches,
+    checked_text: assistant || combined,
+  };
+};
+
+const extractTranscriptSnapshot = async (page) =>
+  page.evaluate(() => {
+    const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
+    const isVisible = (element) => {
+      if (!element) {
+        return false;
+      }
+      const style = window.getComputedStyle(element);
+      if (style.visibility === "hidden" || style.display === "none") {
+        return false;
+      }
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+
+    const collectTexts = (selectors) => {
+      const texts = [];
+      const seen = new Set();
+      for (const selector of selectors) {
+        let nodes = [];
+        try {
+          nodes = Array.from(document.querySelectorAll(selector));
+        } catch {
+          continue;
+        }
+        for (const node of nodes) {
+          if (!isVisible(node)) {
+            continue;
+          }
+          const text = normalize(node.innerText || node.textContent || "");
+          if (!text || text.length < 8 || seen.has(text)) {
+            continue;
+          }
+          seen.add(text);
+          texts.push(text);
+        }
+      }
+      return texts;
+    };
+
+    const assistantSelectors = [
+      '[data-message-author="assistant"]',
+      '[data-message-role="assistant"]',
+      '[data-author="assistant"]',
+      '[data-testid*="assistant" i]',
+      '[class*="assistant" i]',
+      '[aria-label*="assistant" i]',
+      'article[data-author="assistant"]',
+      'section[data-author="assistant"]',
+    ];
+    const transcriptSelectors = [
+      '[data-testid*="message" i]',
+      '[class*="message" i]',
+      '[role="article"]',
+      'article',
+      'main section',
+      'main div',
+    ];
+
+    const assistantCandidates = collectTexts(assistantSelectors);
+    const transcriptCandidates = collectTexts(transcriptSelectors);
+    return {
+      assistantText: assistantCandidates.at(-1) || "",
+      assistantCandidates: assistantCandidates.slice(-5),
+      transcriptTail: transcriptCandidates.slice(-8),
+    };
+  });
+
+const collectAttemptState = async ({ page, lane, prompt, promptKey, expectedTool, startOffsets }) => {
+  const bodyText = await pageText(page);
+  const transcriptSnapshot = await extractTranscriptSnapshot(page).catch(() => ({
+    assistantText: "",
+    assistantCandidates: [],
+    transcriptTail: [],
+  }));
+  const assistantText = redactText(transcriptSnapshot.assistantText || "");
+  const runtimeSummary = summarizeRuntimeDelta(readLogDeltas(startOffsets));
+  const inputReady = await isPromptInputReadyNow(page);
+  const responding = hasRespondingIndicator(bodyText);
+  const semantic = evaluateSemanticAnchors(promptKey, assistantText, bodyText);
+  const lower = bodyText.toLowerCase();
+  const promptExcerpt = normalizeWhitespace(prompt).toLowerCase().slice(0, 48);
+  const assistantMessagePresent =
+    assistantText.length >= 24 ||
+    transcriptSnapshot.assistantCandidates.some((candidate) => candidate.length >= 24) ||
+    semantic.passed;
+  const errorSignals = visibleErrorPatterns.filter((pattern) => pattern.test(bodyText)).map((pattern) => pattern.toString());
+  const expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
+  const a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
+  const directRuntimeHit =
+    runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 || runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+  const contradictsExpectedNotReady =
+    !/not[_ -]?ready/i.test(assistantText) &&
+    /(safe to discharge|ready for discharge|routine discharge|verdict[^.\n]{0,20}\bready\b)/i.test(assistantText);
+
+  return {
+    bodyText,
+    assistantText,
+    transcriptSnapshot,
+    runtimeSummary,
+    inputReady,
+    responding,
+    semantic,
+    expectedRuntimeHit,
+    a2aRuntimeHit,
+    directRuntimeHit,
+    assistantMessagePresent,
+    transcriptFlags: {
+      user_prompt_persisted: lower.includes(promptExcerpt),
+      function_call_persisted: expectedTool ? lower.includes(expectedTool.toLowerCase()) : false,
+      tool_response_persisted: transcriptToolPatterns.some((pattern) => pattern.test(lower)),
+      assistant_message_present: assistantMessagePresent,
+      assistant_transcript_persisted: assistantMessagePresent && !responding,
+      expected_text_visible: assistantMessagePresent && !responding,
+      semantic_anchor_passed: semantic.passed,
+      forbidden_text_present: semantic.forbidden_matches.length > 0,
+      wrong_clinical_recommendation: contradictsExpectedNotReady || semantic.forbidden_matches.length > 0,
+    },
+    errorSignals,
+    settleReady: (inputReady || !responding) && assistantMessagePresent && errorSignals.length === 0,
+  };
+};
+
+const summarizeSettleTrace = (trace) =>
+  trace.map((entry) => ({
+    at: entry.at,
+    input_ready: entry.input_ready,
+    responding: entry.responding,
+    assistant_message_present: entry.assistant_message_present,
+    semantic_anchor_passed: entry.semantic_anchor_passed,
+    expected_runtime_hit: entry.expected_runtime_hit,
+    error_signals: entry.error_signals,
+  }));
+
 const disabledPromptAttempt = async ({ page, lane, attemptId, prompt, expectedTool, observedRoute }) => {
   const evidence = await capture(page, `${attemptId.toLowerCase()}-input-disabled.png`, `${attemptId} prompt input disabled`);
   const attempt = {
@@ -828,7 +1162,12 @@ const disabledPromptAttempt = async ({ page, lane, attemptId, prompt, expectedTo
       user_prompt_persisted: false,
       function_call_persisted: false,
       tool_response_persisted: false,
+      assistant_message_present: false,
+      assistant_transcript_persisted: false,
       expected_text_visible: false,
+      semantic_anchor_passed: false,
+      forbidden_text_present: false,
+      wrong_clinical_recommendation: false,
     },
   };
   attempts.push(attempt);
@@ -877,6 +1216,7 @@ const enableToolCalls = async (page) => {
 
 const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expectedTool }) => {
   await enableToolCalls(page);
+  const promptKey = getPromptKey(prompt);
   const { input, blocked } = await waitForPromptInputReady(page, 30000);
   if (!input) {
     const evidence = await capture(page, `${attemptId.toLowerCase()}-no-input.png`, `${attemptId} no prompt input`);
@@ -889,7 +1229,17 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
       observed_route: "prompt input not found",
       evidence: [evidence],
       runtime_summary: summarizeRuntimeDelta({}),
-      transcript_flags: {},
+      transcript_flags: {
+        user_prompt_persisted: false,
+        function_call_persisted: false,
+        tool_response_persisted: false,
+        assistant_message_present: false,
+        assistant_transcript_persisted: false,
+        expected_text_visible: false,
+        semantic_anchor_passed: false,
+        forbidden_text_present: false,
+        wrong_clinical_recommendation: false,
+      },
     };
     attempts.push(attempt);
     return attempt;
@@ -913,50 +1263,76 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
   await page.waitForTimeout(2500);
 
   const deadline = Date.now() + promptTimeoutMs;
-  let text = await pageText(page);
-  let matched = expectedTokens.some((token) => text.toLowerCase().includes(token.toLowerCase()));
-  let settledAt = null;
-  let runtimeObserved = false;
+  const settleTrace = [];
+  let settleStartedAt = null;
+  let finalState = null;
+  let timedOut = false;
+  let settleReason = "timeout";
   while (Date.now() < deadline) {
-    await page.waitForTimeout(4000);
-    text = await pageText(page);
-    matched = expectedTokens.some((token) => text.toLowerCase().includes(token.toLowerCase()));
-    const runtimeSummaryNow = summarizeRuntimeDelta(readLogDeltas(startOffsets));
-    runtimeObserved =
-      lane === "A2A-main"
-        ? runtimeSummaryNow.a2a_request_count > 0 || runtimeSummaryNow.a2a_task_started_count > 0
-        : runtimeSummaryNow.discharge_gatekeeper_mcp_request_count > 0 ||
-          runtimeSummaryNow.clinical_intelligence_mcp_request_count > 0;
-    const inputReady = await isPromptInputReadyNow(page);
-    const turnSettled = inputReady && !hasRespondingIndicator(text);
-    if (turnSettled && settledAt === null) {
-      settledAt = Date.now();
+    finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
+    const expectedTokensMatched = expectedTokens.some((token) =>
+      finalState.bodyText.toLowerCase().includes(token.toLowerCase()) || finalState.assistantText.toLowerCase().includes(token.toLowerCase()),
+    );
+    settleTrace.push({
+      at: nowIso(),
+      input_ready: finalState.inputReady,
+      responding: finalState.responding,
+      assistant_message_present: finalState.transcriptFlags.assistant_message_present,
+      semantic_anchor_passed: finalState.transcriptFlags.semantic_anchor_passed,
+      expected_runtime_hit: finalState.expectedRuntimeHit,
+      error_signals: finalState.errorSignals,
+      expected_tokens_matched: expectedTokensMatched,
+    });
+    if (settleTrace.length > 16) {
+      settleTrace.shift();
     }
-    if (turnSettled && runtimeObserved) {
+
+    const settlePassed =
+      finalState.settleReady &&
+      finalState.transcriptFlags.assistant_transcript_persisted &&
+      finalState.transcriptFlags.semantic_anchor_passed &&
+      !finalState.transcriptFlags.wrong_clinical_recommendation;
+    if (settlePassed && settleStartedAt === null) {
+      settleStartedAt = Date.now();
+    } else if (!settlePassed) {
+      settleStartedAt = null;
+    }
+
+    if (settleStartedAt !== null && Date.now() - settleStartedAt >= finalSettleDelayMs && finalState.expectedRuntimeHit) {
+      settleReason = "settled_with_runtime";
       break;
     }
-    if (turnSettled && Date.now() - settledAt >= postSettleRuntimeGraceMs) {
+    if (settleStartedAt !== null && Date.now() - settleStartedAt >= postSettleRuntimeGraceMs) {
+      settleReason = finalState.expectedRuntimeHit ? "settled_runtime_grace_elapsed" : "settled_transcript_runtime_missing";
       break;
     }
+    if (finalState.errorSignals.length > 0 && !finalState.directRuntimeHit && !finalState.a2aRuntimeHit) {
+      settleReason = "visible_error_before_runtime";
+      break;
+    }
+    await page.waitForTimeout(settlePollMs);
+  }
+  if (!finalState) {
+    finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
+  } else {
+    timedOut = settleReason === "timeout";
   }
 
-  await page.waitForTimeout(3000);
-  text = await pageText(page);
+  await page.waitForTimeout(finalSettleDelayMs);
+  finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
   const evidence = await capture(page, `${attemptId.toLowerCase()}-result.png`, `${attemptId} result`);
   const runtimeDelta = readLogDeltas(startOffsets);
   const runtimeSummary = summarizeRuntimeDelta(runtimeDelta);
   const relevantNetwork = networkEvents.slice(beforeNetworkCount);
+  finalState.runtimeSummary = runtimeSummary;
+  finalState.expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
+  finalState.a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
+  finalState.directRuntimeHit =
+    runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 || runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+  const transcriptFlags = finalState.transcriptFlags;
 
-  const lower = text.toLowerCase();
-  const transcriptFlags = {
-    user_prompt_persisted: lower.includes(prompt.toLowerCase().slice(0, 48)),
-    function_call_persisted: expectedTool ? lower.includes(expectedTool.toLowerCase()) : false,
-    tool_response_persisted: /response|verdict|hidden_risk|transition|not_ready|ready/.test(lower),
-    expected_text_visible: matched,
-  };
-
-  const a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
-  const directRuntimeHit = runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 || runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+  const a2aRuntimeHit = finalState.a2aRuntimeHit;
+  const directRuntimeHit = finalState.directRuntimeHit;
   const promptStreamRequests = relevantNetwork.filter((event) => event.event === "request" && /prompt-stream|chat|conversation/i.test(event.url));
 
   let observedRoute = "no visible runtime route";
@@ -971,15 +1347,33 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
   }
 
   let status = "red";
-  if (lane === "A2A-main") {
-    if (matched && a2aRuntimeHit && runtimeSummary.both_mcps_hit) {
+  const finalTranscriptVisible =
+    transcriptFlags.assistant_transcript_persisted && transcriptFlags.assistant_message_present && !finalState.responding;
+  const wrongClinicalRecommendation = transcriptFlags.wrong_clinical_recommendation;
+  if (wrongClinicalRecommendation || finalState.errorSignals.length > 0) {
+    status = "red";
+  } else if (lane === "A2A-main") {
+    if (
+      finalTranscriptVisible &&
+      transcriptFlags.semantic_anchor_passed &&
+      !wrongClinicalRecommendation &&
+      a2aRuntimeHit &&
+      runtimeSummary.both_mcps_hit
+    ) {
       status = "green";
-    } else if (a2aRuntimeHit) {
+    } else if (finalTranscriptVisible || a2aRuntimeHit) {
       status = "yellow";
     }
-  } else if (matched && transcriptFlags.function_call_persisted && transcriptFlags.tool_response_persisted) {
+  } else if (
+    finalTranscriptVisible &&
+    transcriptFlags.semantic_anchor_passed &&
+    !wrongClinicalRecommendation &&
+    finalState.expectedRuntimeHit
+  ) {
     status = "green";
-  } else if (directRuntimeHit || transcriptFlags.function_call_persisted) {
+  } else if (!directRuntimeHit && !finalTranscriptVisible && !promptStreamRequests.length) {
+    status = "red";
+  } else if (finalTranscriptVisible || directRuntimeHit || transcriptFlags.function_call_persisted) {
     status = "yellow";
   }
 
@@ -995,6 +1389,18 @@ const sendPrompt = async ({ page, lane, attemptId, prompt, expectedTokens, expec
     conversation_url: page.url(),
     runtime_summary: runtimeSummary,
     transcript_flags: transcriptFlags,
+    semantic_anchors: finalState.semantic,
+    assistant_text_preview: truncate(finalState.assistantText, 1200),
+    error_signals: finalState.errorSignals,
+    settle: {
+      reason: settleReason,
+      timed_out: timedOut || settleReason === "timeout",
+      final_settle_delay_ms: finalSettleDelayMs,
+      post_settle_runtime_grace_ms: postSettleRuntimeGraceMs,
+      expected_runtime_hit: finalState.expectedRuntimeHit,
+      final_transcript_visible: finalTranscriptVisible,
+      trace: summarizeSettleTrace(settleTrace),
+    },
     prompt_stream_request_count: promptStreamRequests.length,
     evidence: [evidence],
   };
@@ -1058,7 +1464,7 @@ const classifyBlocker = (laneStatus, laneAttempts) => {
     if (!anyA2aHit) {
       return "chat_path_not_routed";
     }
-    const anyTranscript = laneAttempts.some((attempt) => attempt.transcript_flags.expected_text_visible);
+    const anyTranscript = laneAttempts.some((attempt) => attempt.transcript_flags.assistant_transcript_persisted);
     if (!anyTranscript) {
       return "runtime_hit_but_no_transcript";
     }
@@ -1070,7 +1476,7 @@ const classifyBlocker = (laneStatus, laneAttempts) => {
       attempt.runtime_summary.discharge_gatekeeper_mcp_request_count > 0 ||
       attempt.runtime_summary.clinical_intelligence_mcp_request_count > 0,
   );
-  const anyExpectedText = laneAttempts.some((attempt) => attempt.transcript_flags.expected_text_visible);
+  const anyExpectedText = laneAttempts.some((attempt) => attempt.transcript_flags.assistant_transcript_persisted);
   if (!anyMcpHit) {
     return "chat_path_not_routed";
   }
@@ -1088,7 +1494,10 @@ const laneStatus = (lane) => {
   if (laneAttempts.every((attempt) => attempt.status === "green")) {
     return "green";
   }
-  if (laneAttempts.some((attempt) => attempt.status === "green" || attempt.status === "yellow")) {
+  if (laneAttempts.some((attempt) => attempt.status === "red")) {
+    return "red";
+  }
+  if (laneAttempts.some((attempt) => attempt.status === "yellow")) {
     return "yellow";
   }
   return "red";
@@ -1109,7 +1518,7 @@ const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbac
       ...attempt.runtime_summary.clinical_intelligence_request_ids,
     ].join(", ") || "none";
     const evidence = attempt.evidence.map((item) => `\`${item.screenshot}\``).join(", ");
-    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
   });
 
   return [
@@ -1148,7 +1557,7 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
     .filter((attempt) => attempt.lane === "Direct-MCP fallback")
     .map((attempt) => {
       const flags = attempt.transcript_flags;
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.expected_text_visible ? "yes" : "no"} | \`${attempt.status}\` | ${attempt.observed_route} |`;
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.assistant_transcript_persisted ? "yes" : "no"} | \`${attempt.status}\` | settle=${attempt.settle?.reason || "n/a"}; anchors=${flags.semantic_anchor_passed ? "pass" : "fail"}; route=${attempt.observed_route} |`;
     });
 
   return [
@@ -1188,7 +1597,7 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
       ...attempt.runtime_summary.discharge_gatekeeper_request_ids,
       ...attempt.runtime_summary.clinical_intelligence_request_ids,
     ].join(", ") || "none";
-    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | Browser proof harness | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
   });
   const registrationRows = (registrationSummary?.registrations || []).map(
     (registration) =>
@@ -1252,7 +1661,9 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
       .flatMap((attempt) => [
         `- ${attempt.attempt_id} function call persisted: ${attempt.transcript_flags.function_call_persisted ? "yes" : "no"}`,
         `- ${attempt.attempt_id} tool response persisted: ${attempt.transcript_flags.tool_response_persisted ? "yes" : "no"}`,
-        `- ${attempt.attempt_id} assistant transcript persisted: ${attempt.transcript_flags.expected_text_visible ? "yes" : "no"}`,
+        `- ${attempt.attempt_id} assistant transcript persisted: ${attempt.transcript_flags.assistant_transcript_persisted ? "yes" : "no"}`,
+        `- ${attempt.attempt_id} semantic anchors passed: ${attempt.transcript_flags.semantic_anchor_passed ? "yes" : "no"}`,
+        `- ${attempt.attempt_id} settle reason: ${attempt.settle?.reason || "n/a"}`,
       ]),
     "",
     "## Final lane statuses",
@@ -1362,6 +1773,7 @@ const renderStatusSummary = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBl
     "## Browser/network evidence",
     "| Artifact | Purpose |",
     "| --- | --- |",
+    "| `reports/direct-mcp-status.json` | Direct-MCP lane status, blocker, and per-prompt settle results |",
     "| `reports/browser-network-events.json` | sanitized browser request/response event log |",
     "| `reports/browser-network-summary.json` | endpoint and request-shape summary |",
     "| `reports/runtime-log-delta.json` | A2A/MCP runtime log deltas captured during browser attempts |",
@@ -1410,6 +1822,20 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
   await writeJson(path.join(reportsDir, "browser-network-summary.json"), networkSummary);
   await writeJson(path.join(reportsDir, "runtime-log-delta.json"), runtimeDelta);
   await writeJson(path.join(reportsDir, "browser-proof-summary.json"), browserProofSummary);
+  await writeJson(path.join(reportsDir, "direct-mcp-status.json"), {
+    generated_at: nowIso(),
+    lane: "Direct-MCP fallback",
+    status: fallbackStatus,
+    blocker: fallbackBlocker,
+    attempts: attempts.filter((attempt) => attempt.lane === "Direct-MCP fallback"),
+  });
+  await writeJson(path.join(reportsDir, "a2a-status.json"), {
+    generated_at: nowIso(),
+    lane: "A2A-main",
+    status: a2aStatus,
+    blocker: a2aBlocker,
+    attempts: attempts.filter((attempt) => attempt.lane === "A2A-main"),
+  });
 
   await fsp.writeFile(
     path.join(notesDir, "experiment-matrix.md"),
