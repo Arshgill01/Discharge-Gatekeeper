@@ -7,10 +7,10 @@ If you want the exact manual verification order for re-checking what is already 
 
 Use this document to separate what must be registered, what may be published, and what the demo should do when a layer fails.
 
-Phase 7 operating stance:
-- primary lane: A2A-main (`external A2A orchestrator`)
-- required backup lane: direct-MCP fallback (separate Prompt Opinion calls to both MCPs)
-- promotion rule: use A2A-main only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`; otherwise run fallback if it is `green`
+Phase 8.5 operating stance:
+- primary judged live lane: direct-MCP fallback (separate Prompt Opinion calls to both MCPs)
+- architecture proof lane: A2A-main (`external A2A orchestrator`) as a one-turn assembled proof
+- promotion rule: use A2A-main as the judged live lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`; otherwise run fallback if it is `green`
 
 Phase 8.5 route-boundary note:
 - the stable A2A proof target is one assembled Prompt Opinion turn, not the full 3-prompt judged flow
@@ -314,7 +314,7 @@ If task invocation fails:
 3. if unresolved before demo window, cut to direct two-MCP fallback
 
 ## 6. Preferred demo path
-Preferred final demo:
+Architecture proof demo:
 1. Prompt Opinion invokes `external A2A orchestrator`
 2. orchestrator calls `Discharge Gatekeeper MCP`
 3. orchestrator calls `Clinical Intelligence MCP`
@@ -322,6 +322,7 @@ Preferred final demo:
 
 Use this path only if all three components passed a clean-session rehearsal the same day.
 Use this path only if the current run folder also marks both `A2A-main` and `Direct-MCP fallback` as `green`.
+Otherwise keep it as architecture proof only and run the judged 3-prompt story through the direct-MCP lane.
 
 ### A2A-main operator quick-check
 Before going live:

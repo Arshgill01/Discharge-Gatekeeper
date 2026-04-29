@@ -16,16 +16,23 @@ The demo story assumes:
 - the A2A layer is synchronous request/response, not streaming
 - Prompt Opinion is the only user-facing surface
 
-Primary demo path:
-- Prompt Opinion -> `external A2A orchestrator` -> both MCPs -> one synchronous reconciled response
+Primary live demo path:
+- Direct-MCP 3 prompts in Prompt Opinion:
+  - Prompt 1 via `Discharge Gatekeeper MCP`
+  - Prompt 2 via `Clinical Intelligence MCP`
+  - Prompt 3 via `Clinical Intelligence MCP.synthesize_transition_narrative`
 
-Fallback demo path:
-- direct two-MCP invocation per [`docs/phase2-two-mcp-operator-runbook.md`](phase2-two-mcp-operator-runbook.md)
+Architecture proof path:
+- one-turn Prompt Opinion -> `external A2A orchestrator` -> both MCPs -> one synchronous reconciled response
+
+Exploratory path only:
+- full A2A 3-prompt flow stays non-primary unless a current run folder proves it green
 
 Current workspace note:
 - the intended fallback story remains one BYO operator path, but the 2026-04-21 continuation pass isolated a Prompt Opinion dual-MCP BYO execution problem.
 - if that blocker is still present on demo day, the narrowest stable workspace fallback is to use the dedicated single-tool Clinical Intelligence BYO agents for Prompt 2 and Prompt 3 while keeping the architecture explanation accurate.
-- until a current run folder marks `A2A-main` green, the stable A2A claim is one-turn assembled proof only, not the full 3-prompt judged lane.
+- Phase 8.5 route-lock: Direct-MCP is the judged live lane until the current run folder proves a stronger option.
+- the stable A2A claim is one-turn assembled proof only unless a current run folder proves the full 3-prompt A2A lane green.
 
 Run-status source of truth before any demo:
 - `output/prompt-opinion-e2e/latest/reports/status-summary.md`
@@ -56,7 +63,7 @@ What this proves:
 - the system is not doing generic summarization
 - the answer can change when evidence outside the structured snapshot matters
 - Prompt 1 is stronger than the old structured-only story because it preserves baseline `ready` and still lands on final `not_ready`
-- A2A is functioning as the primary assembled-agent lane because the fused verdict appears in one response
+- the contradiction story is preserved even when the judged lane is Direct-MCP and the A2A lane is shown separately as architecture proof
 
 Judge should notice at Prompt 1:
 - the baseline structured posture is still visible (`ready`)

@@ -37,12 +37,22 @@ if ! message_send_payload="$(curl -sSf \
   exit 1
 fi
 
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "${tmp_dir}"' EXIT
+
+printf '%s' "${ready_payload}" > "${tmp_dir}/ready.json"
+printf '%s' "${card_payload}" > "${tmp_dir}/card.json"
+printf '%s' "${tasks_payload}" > "${tmp_dir}/tasks.json"
+printf '%s' "${rpc_probe_payload}" > "${tmp_dir}/rpc.json"
+printf '%s' "${message_send_payload}" > "${tmp_dir}/message-send.json"
+
 node -e '
-const ready = JSON.parse(process.argv[1]);
-const card = JSON.parse(process.argv[2]);
-const tasks = JSON.parse(process.argv[3]);
-const rpcProbe = JSON.parse(process.argv[4]);
-const messageSend = JSON.parse(process.argv[5]);
+const fs = require("node:fs");
+const ready = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+const card = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const tasks = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const rpcProbe = JSON.parse(fs.readFileSync(process.argv[4], "utf8"));
+const messageSend = JSON.parse(fs.readFileSync(process.argv[5], "utf8"));
 if (ready.status !== "ok") throw new Error(`readyz status must be ok, got ${ready.status}`);
 if (ready.server_name !== "external A2A orchestrator") throw new Error(`server_name mismatch: ${ready.server_name}`);
 if (!card.capabilities || !card.capabilities.task_lifecycle) throw new Error("agent card missing task_lifecycle capability");
@@ -61,4 +71,4 @@ if (!messageSend.task || !messageSend.task.id) {
   throw new Error("/message:send probe must return task with an id");
 }
 console.log("READY PASS: external A2A orchestrator");
-' "${ready_payload}" "${card_payload}" "${tasks_payload}" "${rpc_probe_payload}" "${message_send_payload}"
+' "${tmp_dir}/ready.json" "${tmp_dir}/card.json" "${tmp_dir}/tasks.json" "${tmp_dir}/rpc.json" "${tmp_dir}/message-send.json"

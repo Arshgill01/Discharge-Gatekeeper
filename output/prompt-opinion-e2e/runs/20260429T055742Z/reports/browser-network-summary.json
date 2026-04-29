@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-04-29T06:00:41.635Z",
+  "total_events": 52,
+  "prompt_opinion_request_count": 20,
+  "runtime_browser_request_count": 0,
+  "runtime_hosts": [
+    "frtmq-115-244-89-220.run.pinggy-free.link",
+    "ajvuq-115-244-89-220.run.pinggy-free.link",
+    "cljcy-115-244-89-220.run.pinggy-free.link"
+  ],
+  "prompt_opinion_calls": [
+    {
+      "id": "req-19",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/account/login?passwordRequired=true&errorMessage=Email%20and%20password%20combination%20is%20incorrect",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    }
+  ],
+  "runtime_browser_calls": [],
+  "websocket_count": 0
+}

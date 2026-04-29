@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-04-29T05:58:20.180Z",
-  "run_id": "20260429T055742Z",
+  "generated_at": "2026-04-28T09:00:12.474Z",
+  "run_id": "20260428T085924Z",
   "a2a_rehearsals": [
     {
       "run": 1,
-      "totalElapsedMs": 145,
+      "totalElapsedMs": 134,
       "promptResults": [
         {
           "prompt": "Is this patient safe to discharge today?",
-          "elapsedMs": 107,
+          "elapsedMs": 91,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -17,7 +17,7 @@
         },
         {
           "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
-          "elapsedMs": 20,
+          "elapsedMs": 21,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -26,7 +26,7 @@
         },
         {
           "prompt": "What exactly must happen before discharge, and prepare the transition package.",
-          "elapsedMs": 18,
+          "elapsedMs": 22,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -37,11 +37,11 @@
     },
     {
       "run": 2,
-      "totalElapsedMs": 55,
+      "totalElapsedMs": 58,
       "promptResults": [
         {
           "prompt": "Is this patient safe to discharge today?",
-          "elapsedMs": 16,
+          "elapsedMs": 20,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -50,7 +50,7 @@
         },
         {
           "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
-          "elapsedMs": 16,
+          "elapsedMs": 19,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
@@ -59,7 +59,7 @@
         },
         {
           "prompt": "What exactly must happen before discharge, and prepare the transition package.",
-          "elapsedMs": 23,
+          "elapsedMs": 19,
           "finalVerdict": "not_ready",
           "hiddenRiskRunStatus": "used",
           "decisionMatrixRow": 3,
