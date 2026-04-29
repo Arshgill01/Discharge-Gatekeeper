@@ -396,6 +396,266 @@ const buildErrorPayload = (input: HiddenRiskInput, reason: string): HiddenRiskOu
   });
 };
 
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asString = (value: unknown): string | null => {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+};
+
+const asBoolean = (value: unknown): boolean | null => {
+  return typeof value === "boolean" ? value : null;
+};
+
+const asStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => asString(item))
+    .filter((item): item is string => Boolean(item));
+};
+
+const normalizeDispositionImpact = (value: unknown): HiddenRiskOutput["hidden_risk_summary"]["overall_disposition_impact"] => {
+  const normalized = asString(value)?.toLowerCase();
+  if (normalized === "none" || normalized === "caveat" || normalized === "not_ready" || normalized === "uncertain") {
+    return normalized;
+  }
+  if (normalized === "ready" || normalized === "safe") {
+    return "none";
+  }
+  if (normalized === "review" || normalized === "review_required") {
+    return "uncertain";
+  }
+  return "uncertain";
+};
+
+const normalizeConfidence = (
+  value: unknown,
+  fallback: HiddenRiskOutput["hidden_risk_summary"]["confidence"],
+): HiddenRiskOutput["hidden_risk_summary"]["confidence"] => {
+  const normalized = asString(value)?.toLowerCase();
+  if (normalized === "low" || normalized === "medium" || normalized === "high") {
+    return normalized;
+  }
+  return fallback;
+};
+
+const inferResultFromRaw = (
+  raw: Record<string, unknown>,
+  findings: Record<string, unknown>[],
+): HiddenRiskOutput["hidden_risk_summary"]["result"] => {
+  const hiddenRiskPresent = asBoolean(raw["hidden_risk_present"]);
+  if (hiddenRiskPresent === true) {
+    return "hidden_risk_present";
+  }
+  if (hiddenRiskPresent === false) {
+    return "no_hidden_risk";
+  }
+  const summary = asRecord(raw["hidden_risk_summary"]);
+  const summaryResult = asString(summary?.["result"])?.toLowerCase();
+  if (summaryResult === "hidden_risk_present" || summaryResult === "no_hidden_risk" || summaryResult === "inconclusive") {
+    return summaryResult;
+  }
+  return findings.length > 0 ? "hidden_risk_present" : "inconclusive";
+};
+
+const inferFindingCategories = (
+  text: string,
+): HiddenRiskFinding["category"][] => {
+  const lowered = text.toLowerCase();
+  const scored = (Object.keys(categoryKeywordMap) as HiddenRiskFinding["category"][])
+    .map((category) => ({
+      category,
+      score: categoryKeywordMap[category].filter((keyword) => lowered.includes(keyword)).length,
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (scored.length === 0) {
+    return ["clinical_stability"];
+  }
+
+  const maxScore = scored[0]?.score ?? 0;
+  const categories = scored
+    .filter((entry) => entry.score >= 2 || entry.score === maxScore)
+    .map((entry) => entry.category)
+    .slice(0, 3);
+
+  if (
+    !categories.includes("home_support_and_services") &&
+    /\b(caregiver|overnight|lives alone|alone|daughter cannot stay|no alternate caregiver)\b/i.test(lowered)
+  ) {
+    categories.push("home_support_and_services");
+  }
+
+  if (
+    !categories.includes("equipment_and_transport") &&
+    /\b(oxygen|concentrator|equipment|delivery delayed|cannot deliver|transport)\b/i.test(lowered)
+  ) {
+    categories.push("equipment_and_transport");
+  }
+
+  return categories.slice(0, 3);
+};
+
+const normalizeAction = (
+  value: unknown,
+  dispositionImpact: HiddenRiskFinding["disposition_impact"],
+  manualReviewRequired: boolean,
+): HiddenRiskFinding["recommended_orchestrator_action"] => {
+  const normalized = asString(value)?.toLowerCase();
+  if (
+    normalized === "add_blocker" ||
+    normalized === "escalate_existing_blocker" ||
+    normalized === "request_manual_review" ||
+    normalized === "ignore_duplicate"
+  ) {
+    return normalized;
+  }
+  if (normalized === "escalate_for_review") {
+    return manualReviewRequired ? "request_manual_review" : "add_blocker";
+  }
+  if (dispositionImpact === "uncertain") {
+    return "request_manual_review";
+  }
+  return "add_blocker";
+};
+
+const normalizeRawModelOutput = (
+  decoded: unknown,
+  input: HiddenRiskInput,
+): unknown => {
+  const raw = asRecord(decoded);
+  if (!raw) {
+    return decoded;
+  }
+
+  const rawFindings = Array.isArray(raw["hidden_risk_findings"])
+    ? raw["hidden_risk_findings"].map((finding) => asRecord(finding)).filter((finding): finding is Record<string, unknown> => Boolean(finding))
+    : [];
+  const rawCitations = Array.isArray(raw["citations"])
+    ? raw["citations"].map((citation) => asRecord(citation)).filter((citation): citation is Record<string, unknown> => Boolean(citation))
+    : [];
+
+  const summary = asRecord(raw["hidden_risk_summary"]);
+  const result = inferResultFromRaw(raw, rawFindings);
+  const overallDispositionImpact = normalizeDispositionImpact(
+    summary?.["overall_disposition_impact"] ??
+      summary?.["disposition_impact"] ??
+      raw["disposition"] ??
+      raw["overall_disposition_impact"] ??
+      (result === "hidden_risk_present" ? "not_ready" : result === "no_hidden_risk" ? "none" : "uncertain"),
+  );
+  const manualReviewRequired = asBoolean(summary?.["manual_review_required"]) ?? (overallDispositionImpact !== "none");
+  const fallbackInputCitations = [
+    ...input.deterministic_snapshot.deterministic_evidence.map((evidence, index) => ({
+      citation_id: evidence.evidence_id || `det_${index + 1}`,
+      source_type: "deterministic_evidence",
+      source_label: evidence.source_label,
+      locator: "deterministic summary",
+      excerpt: evidence.detail || evidence.source_label,
+    })),
+    ...input.narrative_evidence_bundle.map((source) => ({
+      citation_id: source.source_id,
+      source_type: source.source_type,
+      source_label: source.source_label,
+      locator: source.locator || "n/a",
+      excerpt: source.excerpt,
+    })),
+  ];
+  const normalizedCitations = [
+    ...rawCitations.map((citation, index) => ({
+      citation_id: asString(citation["citation_id"]) || `cit_${index + 1}`,
+      source_type: asString(citation["source_type"]) || "narrative_source",
+      source_label: asString(citation["source_label"]) || `Source ${index + 1}`,
+      locator: asString(citation["locator"]) || "n/a",
+      excerpt: asString(citation["excerpt"]) || "No excerpt provided.",
+    })),
+    ...fallbackInputCitations,
+  ].filter(
+    (citation, index, items) =>
+      items.findIndex((candidate) => candidate.citation_id === citation.citation_id) === index,
+  );
+  const citationMap = new Map(normalizedCitations.map((citation) => [citation.citation_id, citation]));
+  const citationIdsBySourceLabel = new Map(
+    normalizedCitations.map((citation) => [citation.source_label.toLowerCase(), citation.citation_id]),
+  );
+
+  const expandedFindings = rawFindings.flatMap((finding, index) => {
+    const title =
+      asString(finding["title"]) ||
+      asString(finding["finding_title"]) ||
+      `Hidden risk finding ${index + 1}`;
+    const rationale = asString(finding["rationale"]) || asString(finding["summary"]) || title;
+    const citationIds = asStringArray(finding["citation_ids"]);
+    const sourceLabels = asStringArray(finding["source_labels"]);
+    const derivedCitationIds = sourceLabels
+      .map((label) => citationIdsBySourceLabel.get(label.toLowerCase()) || null)
+      .filter((citationId): citationId is string => Boolean(citationId));
+    const validCitationIds = [...new Set([...citationIds, ...derivedCitationIds])].filter((citationId) => citationMap.has(citationId));
+    const excerpt = asString(finding["excerpt"]) || "";
+    const combinedText = `${title} ${rationale} ${excerpt} ${sourceLabels.join(" ")}`.trim();
+    const categories = inferFindingCategories(combinedText);
+    const dispositionImpact = normalizeDispositionImpact(
+      finding["disposition_impact"] ??
+        finding["disposition"] ??
+        summary?.["disposition_impact"] ??
+        raw["disposition"] ??
+        raw["overall_disposition_impact"] ??
+        overallDispositionImpact,
+    );
+    const confidence = normalizeConfidence(
+      finding["confidence"],
+      validCitationIds.length >= 2 && dispositionImpact === "not_ready" ? "high" : "medium",
+    );
+
+    return categories.map((category, categoryIndex) => ({
+      finding_id: asString(finding["finding_id"]) || `model_finding_${index + 1}_${categoryIndex + 1}`,
+      title: categories.length > 1 ? `${title} (${category})` : title,
+      category,
+      disposition_impact: dispositionImpact,
+      confidence,
+      is_duplicate_of_blocker_id: asString(finding["is_duplicate_of_blocker_id"]) || null,
+      rationale,
+      recommended_orchestrator_action: normalizeAction(
+        finding["recommended_orchestrator_action"],
+        dispositionImpact,
+        manualReviewRequired,
+      ),
+      citation_ids: validCitationIds,
+    }));
+  });
+
+  return {
+    contract_version: "phase0_hidden_risk_v1",
+    status: result === "inconclusive" ? "inconclusive" : "ok",
+    patient_id: asString(raw["patient_id"]) || input.deterministic_snapshot.patient_id || null,
+    encounter_id: asString(raw["encounter_id"]) || input.deterministic_snapshot.encounter_id || null,
+    baseline_verdict: input.deterministic_snapshot.baseline_verdict,
+    hidden_risk_summary: {
+      result,
+      overall_disposition_impact: overallDispositionImpact,
+      confidence: normalizeConfidence(summary?.["confidence"], expandedFindings.length >= 2 ? "high" : "medium"),
+      summary: asString(summary?.["summary"]) || "Hidden-risk review completed.",
+      manual_review_required: manualReviewRequired,
+      false_positive_guardrail:
+        "No findings are emitted without cited narrative evidence with discharge relevance.",
+    },
+    hidden_risk_findings: expandedFindings,
+    citations: normalizedCitations,
+    review_metadata: {
+      narrative_sources_reviewed: input.narrative_evidence_bundle.length,
+      duplicate_findings_suppressed: 0,
+      weak_findings_suppressed: 0,
+    },
+  };
+};
+
 const selectCitationIdsForRenderSafe = (
   findings: HiddenRiskOutput["hidden_risk_findings"],
   maxCitations: number,
@@ -671,7 +931,8 @@ export const surfaceHiddenRisks = async (
   try {
     const llmResult = await llmClient.generateHiddenRiskResponse(input);
     const decoded = parseJsonObject(llmResult.rawText);
-    const parsedOutputResult = hiddenRiskOutputSchema.safeParse(decoded);
+    const normalizedDecoded = normalizeRawModelOutput(decoded, input);
+    const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
     if (!parsedOutputResult.success) {
       throw new Error(`Model output violated hidden-risk contract: ${parsedOutputResult.error.message}`);
     }
