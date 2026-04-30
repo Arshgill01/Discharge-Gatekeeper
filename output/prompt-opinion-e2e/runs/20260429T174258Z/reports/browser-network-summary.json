@@ -1,0 +1,208 @@
+{
+  "generated_at": "2026-04-29T17:44:48.235Z",
+  "total_events": 201,
+  "prompt_opinion_request_count": 66,
+  "runtime_browser_request_count": 0,
+  "runtime_hosts": [
+    "xexwq-38-137-53-117.run.pinggy-free.link",
+    "ifyct-38-137-53-117.run.pinggy-free.link",
+    "omvpc-38-137-53-117.run.pinggy-free.link"
+  ],
+  "prompt_opinion_calls": [
+    {
+      "id": "req-29",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/list?includePatientName=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-28",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?activeOnly=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-33",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-34",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-35",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers/019daeaf-1359-702d-80fc-59b6fbf1db60",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "text",
+        "shape": "text",
+        "preview": "{\"name\":\"Discharge Gatekeeper MCP\",\"endpoint\":\"https://xexwq-38-137-53-117.run.pinggy-free.link/mcp\",\"transportType\":\"StreamableHttp\",\"authType\":\"Open\",\"apiKeyHeaderName\":\"\",\"apiKeyHeaderValue\":\"\",\"basicAuthUsername\":\"\",\"basicAuthPassword\"[redacted]\"\",\"sendFhirContext\":false,\"fhirCtxAuthorizedScopes\":[]}"
+      }
+    },
+    {
+      "id": "req-36",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers/019daeb1-76db-7cb3-b5a9-8dc68afc2bae",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "text",
+        "shape": "text",
+        "preview": "{\"name\":\"Clinical Intelligence MCP\",\"endpoint\":\"https://ifyct-38-137-53-117.run.pinggy-free.link/mcp\",\"transportType\":\"StreamableHttp\",\"authType\":\"Open\",\"apiKeyHeaderName\":\"\",\"apiKeyHeaderValue\":\"\",\"basicAuthUsername\":\"\",\"basicAuthPassword\"[redacted]\"\",\"sendFhirContext\":false,\"fhirCtxAuthorizedScopes\":[]}"
+      }
+    },
+    {
+      "id": "req-37",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/019db14c-a5c7-7fd7-b0fc-c65abb8255f8",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "url": "string",
+          "displayName": "string",
+          "sendFhirContextIfExtExists": "boolean",
+          "fhirCtxAuthorizedScopes": []
+        },
+        "preview": "{\"url\":\"https://omvpc-38-137-53-117.run.pinggy-free.link\",\"displayName\":\"external A2A orchestrator\",\"sendFhirContextIfExtExists\":false,\"fhirCtxAuthorizedScopes\":[]}"
+      }
+    },
+    {
+      "id": "req-38",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-39",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-40",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers/test",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "text",
+        "shape": "text",
+        "preview": "{\"name\":\"Discharge Gatekeeper MCP\",\"endpoint\":\"https://xexwq-38-137-53-117.run.pinggy-free.link/mcp\",\"transportType\":\"StreamableHttp\",\"authType\":\"Open\",\"apiKeyHeaderName\":\"\",\"apiKeyHeaderValue\":\"\",\"basicAuthUsername\":\"\",\"basicAuthPassword\"[redacted]\"\",\"sendFhirContext\":false,\"fhirCtxAuthorizedScopes\":[]}"
+      }
+    },
+    {
+      "id": "req-41",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers/test",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "text",
+        "shape": "text",
+        "preview": "{\"name\":\"Clinical Intelligence MCP\",\"endpoint\":\"https://ifyct-38-137-53-117.run.pinggy-free.link/mcp\",\"transportType\":\"StreamableHttp\",\"authType\":\"Open\",\"apiKeyHeaderName\":\"\",\"apiKeyHeaderValue\":\"\",\"basicAuthUsername\":\"\",\"basicAuthPassword\"[redacted]\"\",\"sendFhirContext\":false,\"fhirCtxAuthorizedScopes\":[]}"
+      }
+    },
+    {
+      "id": "req-42",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/external-agent-card?url=https%3A%2F%2Fomvpc-38-137-53-117.run.pinggy-free.link",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-43",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-53",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-54",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/published-marketplace/mcp-servers?page=1&pageCount=5",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-61",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-69",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list?excludeWorkspaceAgents=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-72",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/published-marketplace/agents?checkAddedWorkspaceId=019da8ef-cb09-71b0-9d7e-4e11591d55db&page=1&pageCount=15",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-88",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/byo-agents",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-96",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?types=Byo&excludeOrchestrators=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-100",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    }
+  ],
+  "runtime_browser_calls": [],
+  "websocket_count": 4
+}

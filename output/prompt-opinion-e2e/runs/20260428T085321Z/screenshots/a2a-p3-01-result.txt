@@ -1,0 +1,35 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+General Chat Agent
+Data Scope
+Show Tool calls
+Input: 0 - Output: 0
+Arshdeep Singh
+
+Is this patient safe to discharge today?
+
+Arshdeep Singh
+
+What hidden risk changed that answer? Show me the contradiction and the evidence.
+
+Arshdeep Singh
+
+hi
+
+Arshdeep Singh
+
+What exactly must happen before discharge, and prepare the transition package.
+
+Consult with another agent:
+external A2A orchestrator
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

@@ -1,0 +1,1389 @@
+{
+  "generated_at": "2026-04-28T09:07:57.872Z",
+  "run_id": "20260428T085321Z",
+  "base_url": "https://app.promptopinion.ai/",
+  "public_endpoints": {
+    "dischargeGatekeeperMcp": "",
+    "clinicalIntelligenceMcp": "",
+    "externalA2a": ""
+  },
+  "registrations": {
+    "generated_at": "2026-04-28T08:54:46.758Z",
+    "update_requested": true,
+    "before_fetch": {
+      "mcp_status": 200,
+      "a2a_status": 200
+    },
+    "after_fetch": {
+      "mcp_status": 200,
+      "a2a_status": 200
+    },
+    "updates": [],
+    "registrations": [
+      {
+        "kind": "mcp",
+        "name": "Discharge Gatekeeper MCP",
+        "id": "019daeaf-1359-702d-80fc-59b6fbf1db60",
+        "expected_url": null,
+        "before_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+        "after_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+        "update_requested": true,
+        "update_result": null,
+        "connection_check": null,
+        "current_url_verified": false,
+        "status": "red"
+      },
+      {
+        "kind": "mcp",
+        "name": "Clinical Intelligence MCP",
+        "id": "019daeb1-76db-7cb3-b5a9-8dc68afc2bae",
+        "expected_url": null,
+        "before_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+        "after_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+        "update_requested": true,
+        "update_result": null,
+        "connection_check": null,
+        "current_url_verified": false,
+        "status": "red"
+      },
+      {
+        "kind": "a2a",
+        "name": "external A2A orchestrator",
+        "id": "019db14c-a5c7-7fd7-b0fc-c65abb8255f8",
+        "expected_url": null,
+        "before_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+        "after_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+        "update_requested": true,
+        "update_result": null,
+        "connection_check": null,
+        "current_url_verified": false,
+        "status": "red"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "login",
+      "status": "green",
+      "at": "2026-04-28T08:54:45.575Z",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/launchpad",
+      "evidence": [
+        {
+          "label": "Login page",
+          "screenshot": "screenshots/01-po-login-page.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/01-po-login-page.png",
+          "text": "screenshots/01-po-login-page.txt",
+          "url": "https://app.promptopinion.ai/account/login"
+        },
+        {
+          "label": "Workspace launchpad",
+          "screenshot": "screenshots/02-po-workspace-launchpad.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/02-po-workspace-launchpad.png",
+          "text": "screenshots/02-po-workspace-launchpad.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/launchpad"
+        }
+      ]
+    },
+    {
+      "name": "workspace discovery",
+      "status": "green",
+      "at": "2026-04-28T08:54:45.577Z",
+      "workspace_id": "019da8ef-cb09-71b0-9d7e-4e11591d55db"
+    },
+    {
+      "name": "registration endpoint verification",
+      "status": "red",
+      "at": "2026-04-28T08:54:46.758Z",
+      "update_requested": true,
+      "updates": [],
+      "registrations": [
+        {
+          "name": "Discharge Gatekeeper MCP",
+          "status": "red",
+          "before_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+          "after_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+          "current_url_verified": false,
+          "connection_check_status": null
+        },
+        {
+          "name": "Clinical Intelligence MCP",
+          "status": "red",
+          "before_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+          "after_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+          "current_url_verified": false,
+          "connection_check_status": null
+        },
+        {
+          "name": "external A2A orchestrator",
+          "status": "red",
+          "before_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+          "after_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+          "current_url_verified": false,
+          "connection_check_status": null
+        }
+      ]
+    },
+    {
+      "name": "MCP registration verification",
+      "status": "green",
+      "at": "2026-04-28T08:54:49.905Z",
+      "route": "mcp-servers",
+      "missing_tokens": [],
+      "evidence": [
+        {
+          "label": "MCP registration verification",
+          "screenshot": "screenshots/03-po-mcp-servers-registered.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/03-po-mcp-servers-registered.png",
+          "text": "screenshots/03-po-mcp-servers-registered.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers"
+        }
+      ]
+    },
+    {
+      "name": "external A2A connection verification",
+      "status": "green",
+      "at": "2026-04-28T08:54:52.974Z",
+      "route": "a2a-connections",
+      "missing_tokens": [],
+      "evidence": [
+        {
+          "label": "external A2A connection verification",
+          "screenshot": "screenshots/04-po-a2a-connection-status.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/04-po-a2a-connection-status.png",
+          "text": "screenshots/04-po-a2a-connection-status.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections"
+        }
+      ]
+    },
+    {
+      "name": "BYO agent verification",
+      "status": "green",
+      "at": "2026-04-28T08:54:56.603Z",
+      "route": "byo-agents",
+      "missing_tokens": [],
+      "evidence": [
+        {
+          "label": "BYO agent verification",
+          "screenshot": "screenshots/05-po-byo-agent-config.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/05-po-byo-agent-config.png",
+          "text": "screenshots/05-po-byo-agent-config.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/byo-agents"
+        }
+      ]
+    },
+    {
+      "name": "A2A-main session start",
+      "status": "green",
+      "at": "2026-04-28T08:55:08.506Z",
+      "agent_name": "General Chat Agent",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5"
+    },
+    {
+      "name": "A2A consult selection",
+      "status": "green",
+      "at": "2026-04-28T08:55:10.678Z",
+      "agent_name": "external A2A orchestrator",
+      "selected_text": "external A2A orchestrator",
+      "evidence": [
+        {
+          "label": "A2A consult selection",
+          "screenshot": "screenshots/a2a-consult-selected.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/a2a-consult-selected.png",
+          "text": "screenshots/a2a-consult-selected.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5"
+        }
+      ]
+    },
+    {
+      "name": "Direct-MCP fallback session start",
+      "status": "green",
+      "at": "2026-04-28T09:04:44.694Z",
+      "agent_name": "Care Transitions Command BYO Fallback",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd355-58cb-7337-9c73-728253b51dbf"
+    },
+    {
+      "name": "browser proof fatal error",
+      "status": "red",
+      "at": "2026-04-28T09:07:57.871Z",
+      "error": "page.waitForTimeout: Target page, context or browser has been closed"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "A2A-P1-01",
+      "lane": "A2A-main",
+      "prompt": "Is this patient safe to discharge today?",
+      "expected_tool": null,
+      "started_at": "2026-04-28T08:55:10.737Z",
+      "finished_at": "2026-04-28T08:58:17.923Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion -> external A2A runtime",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5",
+      "runtime_summary": {
+        "a2a_request_count": 70,
+        "a2a_task_started_count": 47,
+        "a2a_task_finished_count": 47,
+        "a2a_paths": [
+          "/.well-known/agent-card.json",
+          "/readyz",
+          "/tasks",
+          "/rpc",
+          "/message:send",
+          "/v1/message:send",
+          "/message:send/v1/message:send"
+        ],
+        "a2a_request_ids": [
+          "5884e8d9-4fcf-4b3f-8a85-02522bd4df3f",
+          "4363a27b-b479-4eab-ba23-3d4d0a554988",
+          "47a04f48-0e3c-484f-aded-49c6d23857fa",
+          "po-header-request-id",
+          "po-text-request-id",
+          "eccd5d9d-8190-4f7c-bfd5-6d158b906044",
+          "144a599c-c618-455d-8697-5d932de9c39a",
+          "be2a5ec8-a394-4e6e-af75-bfd5fc4baf29",
+          "0f85c7d3-82f8-4fca-97c1-8a49dcf6607b",
+          "ebf2894d-955d-4b6b-947b-22e5691653c9",
+          "0bdddb64-b153-4e3c-9df7-a3299346de81",
+          "b5e42a1d-b174-4c22-a870-c8f3271f8d52",
+          "8745b5a5-0169-47ae-aa65-b9a0b235ccfa",
+          "2e0d17eb-7ee2-4be4-88f1-745ff1616207",
+          "56a8defb-6103-4729-80ee-3a6dbe850a71",
+          "98fdd367-b60f-4d09-8a18-84e78ba00413",
+          "fe35da5f-0421-4138-95cc-6b0305267af9",
+          "readiness-rpc",
+          "readiness-http-json",
+          "c917e601-7911-42c9-8133-5781493ddc92",
+          "6f24af47-ac81-4302-bec6-205e5a7edceb",
+          "313b8a83-7c43-4831-a262-9566cffd24cb",
+          "8189c2ff-ce8a-4117-b0a3-d74a84457d8e",
+          "10acfec1-c791-47ec-8d95-f3b056297eec",
+          "5e35206d-14da-4fe7-b5a9-3d9bcacc71d2",
+          "40dd45df-b8bb-4ff9-8cff-271cfa481441",
+          "d6f1c3af-c960-4da1-a3bb-2ea16d82a5ed",
+          "e17a6672-4e84-4ab3-bc58-6869135a97e5",
+          "4fabbc4e-0d6b-4664-aa98-47161f8dce6b",
+          "po-http-json-request",
+          "c7bee3e0-c80e-4194-a2df-297334438ba8",
+          "3b1ef174-449a-499e-b5c5-3c59f390e97a",
+          "po-jsonrpc-request",
+          "po-rpc-id-2",
+          "po-rpc-id-3",
+          "007b625d-6416-482b-9e90-79fc9ae40df9",
+          "453f3e88-d88f-4bb9-b2f9-c427f5bf10de",
+          "8cb92b8a-e156-47b9-bcfd-a994ef926a99",
+          "685b98e4-aa7d-4408-b9fa-938eeb2e2535",
+          "c2b24931-78b7-43cf-822e-535adffd1844",
+          "c24cd577-28b6-4094-a2ca-80fea057a6cb",
+          "a5039542-b273-467d-bd60-356cbc13843a",
+          "aac66f97-47ab-4ea1-a268-1a1a396ebf1b",
+          "7795e026-f881-49a8-8c9b-0d0571203e3f",
+          "dbf8b150-7e71-44ad-970e-9a9c9067e42b",
+          "96c5094e-4c8c-4408-98bd-fb0de9d841bf",
+          "c563fc37-b4dd-43d1-a7ab-0bae63bd696a",
+          "874240e8-2116-4b6d-ac0c-75bb62b2496c",
+          "b2982905-c567-4e96-97e8-8f0f615de612",
+          "f38ef3eb-67eb-4491-a0a5-b598b317703e",
+          "a89dbd26-918b-458b-90e5-2daafdb3cda9",
+          "7aa3aeb5-bc47-4702-a829-841fdc795a30",
+          "0c89ce56-605f-4b9f-a066-4db106978184",
+          "bfe0b764-bda4-4c1d-a9b0-cac4541e687d",
+          "4c001d98-2ad3-412f-a164-5ff3a5916a37",
+          "d61fea35-4325-46b1-a04e-b803fc4d9573",
+          "ca6004d0-a461-4af0-abab-6794fa3bbcc8",
+          "7de13357-2378-4f74-8b03-a72c3b50352c",
+          "502aa99d-409b-419a-b681-488c1dc134a5",
+          "d3b15537-2055-41f1-96b9-d6287c0d03a0",
+          "143118e9-06e2-44cf-ac31-6883faf184aa",
+          "a4daca00-5253-43cf-8900-e697465e000d"
+        ],
+        "a2a_task_ids": [
+          "21a713a0-97cd-4623-bb6d-ce6a62488320",
+          "e9b8af67-146e-4661-88d0-01e45e61b98d",
+          "54f829a4-8005-4398-a19a-d629001fac14",
+          "b18bf8ca-5efc-4a95-93b2-eeea7051c71f",
+          "1aaa965f-8f83-490b-b3db-511d71451394",
+          "632523d7-bb3d-46fe-bd4a-e9d898c3dc0d",
+          "95f5dc78-8620-4f0e-bae1-27783989fb1d",
+          "405507d3-aca3-42a8-8308-7dc2f6661239",
+          "b403b06a-4ca0-4969-9810-aa57873e14dd",
+          "3012e64a-9cf9-43c1-ae01-d0e35fc059c8",
+          "fbee22b0-c757-43cc-997c-ff07d27a24c3",
+          "6e7e37f4-540c-4221-814a-51bc886c5b93",
+          "4396bbee-4ccb-4a51-bb57-73ff6c1be554",
+          "388ce36c-78c3-447f-9840-b17b61eb0f9f",
+          "4370c0cb-36cf-413d-82c0-2d081ef2cda6",
+          "b287a66a-6b10-419d-b5c0-3822bee0e6a6",
+          "9484d579-9c55-4ad1-8ce5-445d5271ae0e",
+          "4d340d52-f688-486c-a080-3955c2eefca0",
+          "99e8d969-1b6e-4a02-8d08-4a8285af4a1c",
+          "0fa4756d-258d-4bef-9ede-0a100090ac20",
+          "96e0710f-aef4-4898-ad71-34472d9eba1c",
+          "f0ae00e1-2273-4eaa-ab65-44af426eaee0",
+          "ba37c32e-29d3-4642-89c7-f3aecb37b8ba",
+          "8420b982-6451-49e2-92d2-72f8308ce4ff",
+          "a29f941b-14f1-49db-b6da-4ec988838ac3",
+          "547e740b-c70b-4865-8728-4930f49f517e",
+          "9f53498b-42d7-48a8-91b6-0e92b9bc585e",
+          "a2c41b8e-5929-47f3-8f72-ed1784137062",
+          "f5bd4cdd-453c-429f-87fb-8d72bb3efed9",
+          "94eb1cf8-e757-4422-a100-f08ab393c6ea",
+          "dd75c814-3fab-4027-870a-cc7bf3faa966",
+          "fa79929f-3b34-4b9b-8d04-6d2cb8e7a65f",
+          "28665cdc-7e64-430b-a32e-8d159857346b",
+          "d56873f3-6fc3-45fb-8dd3-3abf966b1428",
+          "261d6da8-8591-42c5-9efe-7e814b3482e2",
+          "b980d1ab-0f04-4501-b969-855b0f51dc93",
+          "43880f30-0a4c-47f0-808b-fadcf8f05077",
+          "d0d0b9ef-c675-45bd-b82c-9df212af1af3",
+          "e4fb2ced-534f-40b2-ac7e-1ec351f448e3",
+          "a8f8c267-0f15-4734-b12a-56941b0b7220",
+          "da12bcff-201e-4bca-a32d-d1aab871308f",
+          "81efc5f0-4d37-4fb3-83f3-d19a3b625955",
+          "78f10989-bfe7-483b-94d3-e8623a5e91a2",
+          "084e7de6-46da-462a-a205-495400a7b103",
+          "90b34e68-845d-4b57-94dc-59d78c7cf2ae",
+          "e970b0a0-14ba-42db-bd86-16b807e6c1b1",
+          "395ff7a4-4c94-4334-a876-25d26b8ab683"
+        ],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": false,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "final posture is not_ready",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "structured posture is summarized",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "hidden narrative contradiction is surfaced",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "patient-specific evidence is mentioned",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Is this patient safe to discharge today? Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": true,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-28T08:57:42.558Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:44.575Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:46.589Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:48.606Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:50.621Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:52.636Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:54.650Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:56.664Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:57:58.680Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:00.690Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:02.710Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:04.742Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:06.753Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:08.764Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:10.772Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T08:58:12.783Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A-P1-01 result",
+          "screenshot": "screenshots/a2a-p1-01-result.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/a2a-p1-01-result.png",
+          "text": "screenshots/a2a-p1-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5"
+        }
+      ]
+    },
+    {
+      "attempt_id": "A2A-P2-01",
+      "lane": "A2A-main",
+      "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+      "expected_tool": null,
+      "started_at": "2026-04-28T08:58:17.995Z",
+      "finished_at": "2026-04-28T09:01:24.926Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion -> external A2A runtime",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5",
+      "runtime_summary": {
+        "a2a_request_count": 89,
+        "a2a_task_started_count": 64,
+        "a2a_task_finished_count": 62,
+        "a2a_paths": [
+          "/.well-known/agent-card.json",
+          "/readyz",
+          "/tasks",
+          "/rpc",
+          "/message:send",
+          "/v1/message:send",
+          "/message:send/v1/message:send"
+        ],
+        "a2a_request_ids": [
+          "a6f50b71-e6a4-48b0-b746-bae15e8c1a90",
+          "642f0594-0dda-4340-bd75-bdf802f9e980",
+          "ed4ca83c-110b-42ab-9288-d67eb0edc2a6",
+          "73b00cee-d82e-4537-915f-5a6e289dd0f2",
+          "readiness-rpc",
+          "readiness-http-json",
+          "8c54956b-4eff-44ae-b649-bbe32ff30008",
+          "po-header-request-id",
+          "po-text-request-id",
+          "34a59232-b060-4953-835b-b981f4324842",
+          "77a26351-f7dd-49f2-ac5a-79fa9f19b462",
+          "77765afb-4400-48ea-873c-c4ac56c0c913",
+          "302709b3-6e83-4212-9fcc-f2e7ef40cfec",
+          "07b2b43b-0509-4d18-9bf0-fbf27f0d612b",
+          "5edf6116-23d8-4a9d-8c7e-c934569da8d3",
+          "290681a2-df48-46be-aef0-b69a9b2830a0",
+          "7438b61d-cfc3-4958-8940-22c24f33e887",
+          "d13790bc-7805-4902-aa19-aaf25c9b5157",
+          "f5f1b096-5624-4cde-a062-3a7d852c750e",
+          "c624f1e0-5e7b-451e-8d38-7ed7dfae64ac",
+          "8f9a370a-a31a-4eac-9a01-a4c2cc8e79a8",
+          "f69b22c7-0c34-42a0-b096-e85646bfd00b",
+          "f7ae841d-9807-436d-982c-4e04eede30c1",
+          "7fb5e0f2-1ea1-4c13-bc18-e2c40b18c532",
+          "7e3679d4-e151-41b1-9278-a7ef5ca489e9",
+          "b4aa5247-e641-49d8-9e9e-02011a2e2e8d",
+          "e76f81b7-5dc3-4b4f-a491-694d74ecc1cd",
+          "cecac86d-a530-4e41-8d17-46170a7adb29",
+          "75d829e6-dd54-4761-9836-69e2deede3e5",
+          "aaeb90e6-cd5e-4fdd-b27c-77f274cb60d4",
+          "ef2b66a1-dc59-4087-bc4f-cf1225802fba",
+          "po-http-json-request",
+          "46b3fd2a-818b-4fae-ad54-26998e79dad7",
+          "ef31c1a0-6c71-4c0e-980c-5ecac8eeb97f",
+          "po-jsonrpc-request",
+          "po-rpc-id-2",
+          "po-rpc-id-3",
+          "c9c51770-251b-4ea7-ad58-0788d53aa306",
+          "65f9638b-7ef9-4798-9cbf-9453b6daf269",
+          "d8237224-7dd8-4d11-9c73-74c06939796e",
+          "5a6f7f68-456f-418f-b196-0162b52a1d93",
+          "47f67c97-081d-4042-80ff-70af6a95e467",
+          "0c64f9b7-160e-4095-a28b-6a26e5d45474",
+          "59d1672a-bed2-4206-8695-c49eed1c1e01",
+          "a75f7e92-5830-4903-b17f-22905fd3cb2d",
+          "f7673ffe-3833-48d6-88d8-7e23ff696d14",
+          "46317a1e-f9ac-434c-a210-b6f0791e945d",
+          "724498eb-2e2b-4d22-b637-1777bc0c020a",
+          "70bdf050-c329-4f9c-8382-bee3ae611307",
+          "136050f5-5e78-4ab1-9bed-688fc7a76c58",
+          "77fcceb3-b129-4757-a038-d17469b2b938",
+          "5056297e-dba5-48a7-911d-3c0c2dcf0cfe",
+          "c619bc2e-5f8a-43a5-ac18-53e6522147c9",
+          "390edf38-aef9-429b-ade5-c6e6d87c9b1d",
+          "bf7b6e43-532a-4e7e-93fa-db336d65baab",
+          "daec5d9c-55c3-4dcf-8370-5816c9df5730",
+          "9aa2cdc2-446f-4a8f-83bc-21c177823ad4",
+          "44cbc5a8-9db5-4bd7-a141-70ab7892ab3d",
+          "283c44f8-ea0b-4300-932e-f5c9eac7b0d2",
+          "cdb2654a-c652-4fa6-9ead-b382321a9c24",
+          "a52e742f-34ef-418f-ad4a-3c34265864d8",
+          "215f854f-b7c2-4f10-9586-5c3de64cf848",
+          "93645534-f4c6-4d90-aec1-28bedc44a051",
+          "854513e0-736f-4a45-bbe2-de8c92f23f73",
+          "bb4bb76d-add4-4b4c-87f1-18b14e9e2764",
+          "f4df19be-6dd8-4e93-a420-a32fa4930da2",
+          "b13cd605-3d5d-4d9b-950a-0a365062369c",
+          "4afb56e7-a269-41b6-ac33-8b5d9d3177cc",
+          "f6a6c12f-37af-4707-8db3-e941184667ff",
+          "95554500-cc07-400a-8ea5-43f13354a098",
+          "9012e04b-8591-459c-ad61-8004bd24ae2c",
+          "7d058ff1-a1b9-45d3-8e94-da881c2b4faa",
+          "a9f54d66-95b8-472a-a371-5d5ceb937530"
+        ],
+        "a2a_task_ids": [
+          "6f02f319-5ee6-4aa0-84db-12f480e9e50e",
+          "4e48019c-ea97-44ec-b607-d6579e12f20f",
+          "9a3aa9a2-4ae2-4f0d-9bda-4bbdd6eb6f61",
+          "52cf91e0-4aad-42a8-afa4-1bcaea93be28",
+          "57cb82ca-4a1d-4557-a5dc-e1d0e01b7e8d",
+          "12eb4b47-b404-44cc-a004-b9d11382f07c",
+          "a7015644-9f5b-4fbb-97b7-cf4a677051ab",
+          "da07301b-ade5-4117-8ad9-edc8b8845ab7",
+          "2d94c4c6-60e9-4cd4-8a48-f841cb1bbdc3",
+          "3fcef2fa-ed0d-4861-b7d7-aadc273cfba5",
+          "04bc94b3-793d-4b6c-b5da-ae2d037302fc",
+          "bb17ce28-b3dc-45b7-824a-08416f7be137",
+          "6d19abb6-c7b4-4979-8d08-2b97ddfc52ab",
+          "b5d28849-28be-4ccd-a30a-5461c8dc4a4f",
+          "82fc22c9-edc2-405a-b7d9-24b733688c47",
+          "b29abddd-73fe-4e27-9c6f-fa30560996ed",
+          "f32dae16-5f16-48cb-a55e-a340489381cf",
+          "6b4222d6-b53f-43f7-8a09-a4c3b3bec938",
+          "5ffe8dd2-0d7a-415d-9785-8ddaf00f23e0",
+          "cfc2687e-f801-42a3-9b11-558413580efe",
+          "b07d9395-a6eb-4702-b520-a46366236afe",
+          "fa5e47ce-2d73-4d17-83f6-0e66e4bd1e9b",
+          "ce25712f-59e0-464e-86d8-691eb009e729",
+          "d27729eb-3f7c-449e-a19c-e948012e02d3",
+          "1ec3a4d1-e582-4e0d-a25d-9b45a23761a8",
+          "82206122-5c37-4fb2-a71c-310b7a443c1e",
+          "aeca846b-9424-4ef6-a42b-1d01ce88899d",
+          "2e159821-5d01-42d9-86d9-2d765e4d56ef",
+          "41941b90-4ad4-40c8-8158-658bebd38e10",
+          "37fb3205-37b5-4fc3-bfc1-a474233f3e20",
+          "f461050e-5a27-4b9a-80bd-29df8813a8e1",
+          "e104359c-2502-40f0-afc0-d19f68fd81b1",
+          "2f2a52ed-c7fe-4cc8-905a-24b0cc0568d5",
+          "82936205-6dd2-47b0-ba54-cafdd5bda2e0",
+          "ec500c55-3d6b-4826-ba5e-d65b235d7066",
+          "6a6ee389-3b09-4e93-88e4-89bf98d600a4",
+          "c5e64e2a-cf40-4fd3-b0d9-7f41afb24aab",
+          "a60f4473-a05b-4052-8614-e32cc3891bec",
+          "9c8c73db-cb8a-496e-9ac5-5b1c94066bb4",
+          "8f66595e-4122-4135-86de-46e3de2851ef",
+          "ef71f801-bb55-4aaa-b68e-4d7d15c38875",
+          "179c61bf-21ee-4a73-a7ad-578c50ffd5a3",
+          "c7c00933-0477-4cec-861d-17e56247ffc6",
+          "04d462c5-ca43-4dae-bd2a-a329206cdec1",
+          "e974bc03-3b19-4bc0-b952-6c8edcf601df",
+          "d4a597c0-1aa4-4ca1-9098-77d23ac80259",
+          "c7d65fed-875d-44ed-9e80-55fff4a3ca2b",
+          "af408813-0494-4933-aab1-b7a2a3ba5360",
+          "95fa12e6-b924-4a4b-a9c1-fa1244aaf695",
+          "b69a9337-8933-44d8-8cc8-6d04bc963b07",
+          "697ccf1c-bd6f-44cd-b5f2-0695eff7e735",
+          "66948d85-d0c9-43b6-8d04-4bab132e7f4f",
+          "f498ae06-4f57-4b7c-9585-17b1cd4c614b",
+          "99bdb555-7f4a-48ce-b489-ef6ac8756681",
+          "4589c204-03ab-48b4-8c40-c387694e66d3",
+          "c92eb762-2ccd-4933-8760-2bdc59e11466",
+          "d3545d11-9ebd-4284-a7c4-08083cab0453",
+          "8ad3c3a1-2fab-4f1f-becc-6ee5bd8cae4b",
+          "93f7b810-fd57-4fb0-8871-e4004a0f694f",
+          "da660282-3bcf-43cd-9163-d94faf8524d6",
+          "58582e6c-e231-42a7-b971-ae7d6cab67d7",
+          "083c2cd7-196b-4c73-a658-51e51791da53",
+          "4007f2fc-66cf-4f3a-b86f-fd6844349674",
+          "fbaf2484-562a-4cb0-8d00-fea6d1560f25"
+        ],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "final posture remains not_ready",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "recommendation changes because of hidden narrative risk",
+            "passed": true,
+            "matched_pattern": "/hidden risk/i"
+          },
+          {
+            "name": "structured posture and note contradiction are both visible",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Is this patient safe to discharge today? Arshdeep Singh What hidden risk changed that answer? Show me the contradiction and the evidence. Arshdeep Singh hi Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": true,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-28T09:00:49.521Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:00:51.526Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:00:53.535Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:00:55.549Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:00:57.563Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:00:59.576Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:01.590Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:03.690Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:05.707Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:07.723Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:09.733Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:11.750Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:13.770Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:15.789Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:17.805Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:01:19.821Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 2,
+      "evidence": [
+        {
+          "label": "A2A-P2-01 result",
+          "screenshot": "screenshots/a2a-p2-01-result.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/a2a-p2-01-result.png",
+          "text": "screenshots/a2a-p2-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5"
+        }
+      ]
+    },
+    {
+      "attempt_id": "A2A-P3-01",
+      "lane": "A2A-main",
+      "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+      "expected_tool": null,
+      "started_at": "2026-04-28T09:01:24.971Z",
+      "finished_at": "2026-04-28T09:04:31.753Z",
+      "status": "red",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "transition package or handoff is prepared",
+            "passed": true,
+            "matched_pattern": "/transition package/i"
+          },
+          {
+            "name": "posture stays conservative and contradiction-aware",
+            "passed": true,
+            "matched_pattern": "/before discharge/i"
+          },
+          {
+            "name": "actions are concrete",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Is this patient safe to discharge today? Arshdeep Singh What hidden risk changed that answer? Show me the contradiction and the evidence. Arshdeep Singh hi Arshdeep Singh What exactly must happen before discharge, and prepare the transition package. Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-28T09:03:56.319Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:03:58.325Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:00.333Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:02.340Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:04.350Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:06.359Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:08.367Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:10.375Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:12.383Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:14.392Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:16.403Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:18.412Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:20.436Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:22.449Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:24.457Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:04:26.482Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A-P3-01 result",
+          "screenshot": "screenshots/a2a-p3-01-result.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/a2a-p3-01-result.png",
+          "text": "screenshots/a2a-p3-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd34c-8e14-77c2-849a-b80fea9fd4d5"
+        }
+      ]
+    },
+    {
+      "attempt_id": "FALLBACK-P1-01",
+      "lane": "Direct-MCP fallback",
+      "prompt": "Is this patient safe to discharge today?",
+      "expected_tool": "assess_discharge_readiness",
+      "started_at": "2026-04-28T09:04:44.729Z",
+      "finished_at": "2026-04-28T09:07:51.502Z",
+      "status": "red",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd355-58cb-7337-9c73-728253b51dbf",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "final posture is not_ready",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "structured posture is summarized",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "hidden narrative contradiction is surfaced",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "patient-specific evidence is mentioned",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org Care Transitions Command BYO Fallback Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Is this patient safe to discharge today? Consult with another agent: None Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-28T09:07:16.248Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:18.254Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:20.260Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:22.265Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:24.272Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:26.277Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:28.282Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:30.288Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:32.295Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:34.311Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:36.327Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:38.344Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:40.361Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:42.379Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:44.385Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:46.406Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "FALLBACK-P1-01 result",
+          "screenshot": "screenshots/fallback-p1-01-result.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/fallback-p1-01-result.png",
+          "text": "screenshots/fallback-p1-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd355-58cb-7337-9c73-728253b51dbf"
+        }
+      ]
+    }
+  ],
+  "lane_statuses": {
+    "a2a_main": "red",
+    "direct_mcp_fallback": "red"
+  },
+  "blockers": {
+    "a2a_main": "runtime_hit_but_no_transcript",
+    "direct_mcp_fallback": "chat_path_not_routed"
+  }
+}

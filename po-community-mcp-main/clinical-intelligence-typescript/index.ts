@@ -9,10 +9,14 @@ import { getRuntimeConfig } from "./runtime-config";
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const startTimeMs = Date.now();
 
-const app = createMcpExpressApp({
-  host: config.host,
-  allowedHosts: config.allowedHosts,
-});
+const app = createMcpExpressApp(
+  config.disableHostValidation
+    ? { host: "0.0.0.0" }
+    : {
+        host: config.host,
+        allowedHosts: config.allowedHosts,
+      },
+);
 
 const log = (
   level: "info" | "error",
@@ -57,6 +61,7 @@ const buildHealthPayload = () => {
     tool_count: REGISTERED_TOOL_NAMES.length,
     tools: REGISTERED_TOOL_NAMES,
     allowed_hosts: config.allowedHosts,
+    disable_host_validation: config.disableHostValidation,
     endpoints: {
       mcp: "/mcp",
       healthz: "/healthz",
@@ -163,6 +168,7 @@ app.listen(config.port, () => {
     port: config.port,
     po_env: config.poEnv,
     allowed_hosts: config.allowedHosts,
+    disable_host_validation: config.disableHostValidation,
     mcp_endpoint: `http://localhost:${config.port}/mcp`,
     health_endpoint: `http://localhost:${config.port}/healthz`,
     readiness_endpoint: `http://localhost:${config.port}/readyz`,

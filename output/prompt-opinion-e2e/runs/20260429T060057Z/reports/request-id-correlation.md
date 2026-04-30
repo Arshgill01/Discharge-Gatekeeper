@@ -1,0 +1,19 @@
+# Local Request-ID Correlation Report
+
+## Generated at
+2026-04-29T06:01:38.165Z
+
+## Run ID
+`20260429T060057Z`
+
+| Attempt | Prompt | Prompt mode | Request ID | Task ID | Incoming x-request-id | Incoming x-correlation-id | Deterministic call | Clinical call |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Run 1 | Is this patient safe to discharge today? | prompt_1 | `4b664de0-c056-4346-a3f6-dbe56a1147f5` | `640003b4-ed18-4f2b-9f30-35568627f171` | `` | `` | `32f4e6db-d493-4218-b0cc-006ffa3bb788` (200) | `809ab2e4-fc5e-4f4e-b5cc-b70039d4cfb8` (200) |
+| Run 1 | What hidden risk changed that answer? Show me the contradiction and the evidence. | prompt_2 | `83a0af1a-f860-4d20-bf67-054e26433f9c` | `8f2ea4d3-64fb-492c-a08c-0c72d8ec3101` | `` | `` | `74e723b4-c83e-4d6a-9458-6666b9c20095` (200) | `4d956f91-2f15-402f-99f8-4dc7042e0ed1` (200) |
+| Run 1 | What exactly must happen before discharge, and prepare the transition package. | prompt_3 | `e5da9097-54f5-4a04-a909-814a8d5bca7a` | `85481728-cd5f-48e7-ac66-174caf4ca8a8` | `` | `` | `9561b66c-a230-4f38-807c-792bb1e5db30` (200) | `cfabb751-82ee-4b00-98ca-b8fb81a3954a` (200) |
+| Run 2 | Is this patient safe to discharge today? | prompt_1 | `c87d41a0-8cfa-42f7-8940-5afa41cbd15e` | `59440c85-eab1-4e5e-8bd6-48e8a17ac767` | `` | `` | `a4edee60-e7a1-42a5-8ea9-f430d72e652c` (200) | `b2c82c7d-c663-4edb-962a-aa248bbdfd3f` (200) |
+| Run 2 | What hidden risk changed that answer? Show me the contradiction and the evidence. | prompt_2 | `08bc29b0-d725-4d8c-9f7c-a8913f30adac` | `16c92fc2-4083-4778-932c-a417fc31a8fc` | `` | `` | `3826dfef-1730-4770-877e-e360d9ef3f9d` (200) | `8b9730e2-569a-4537-ae8f-4a88ceac5f65` (200) |
+| Run 2 | What exactly must happen before discharge, and prepare the transition package. | prompt_3 | `3267c910-12b5-4779-af91-5ed0a02f95c8` | `639a87fe-5e8e-4829-97f5-df9b9ea3df71` | `` | `` | `4de53b87-a9e4-4d05-9fdf-39cacb491371` (200) | `95929c1b-5a4c-4584-8ad7-d6e28344b69d` (200) |
+
+Use this report as the local baseline when you fill `notes/request-id-correlation.md` for Prompt Opinion workspace attempts.
+

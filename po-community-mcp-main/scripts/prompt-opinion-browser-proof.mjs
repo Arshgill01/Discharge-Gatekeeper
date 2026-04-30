@@ -132,8 +132,16 @@ const updateRegistrations = getenv("PROMPT_OPINION_UPDATE_REGISTRATIONS", "0") =
 const postSettleRuntimeGraceMs = Number(getenv("PROMPT_OPINION_POST_SETTLE_RUNTIME_GRACE_MS", "20000"));
 const finalSettleDelayMs = Number(getenv("PROMPT_OPINION_FINAL_SETTLE_DELAY_MS", "3000"));
 const settlePollMs = Number(getenv("PROMPT_OPINION_SETTLE_POLL_MS", "2000"));
+const normalizeLaneToken = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+const enabledBrowserLanes = new Set(
+  (getenv("PROMPT_OPINION_BROWSER_LANES", "all") || "all")
+    .split(",")
+    .map((item) => normalizeLaneToken(item))
+    .filter(Boolean),
+);
 
 const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
+const laneEnabled = (lane) => enabledBrowserLanes.has("all") || enabledBrowserLanes.has(normalizeLaneToken(lane));
 
 const normalizeWhitespace = (value) => String(value || "").replace(/\s+/g, " ").trim();
 const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -2229,7 +2237,12 @@ const main = async () => {
       "Care Transitions Command",
     ]);
 
-    const a2aReady = await startSession(page, workspaceId, "General Chat Agent", "A2A-main", "a2a-launchpad.png");
+    const runA2aLane = laneEnabled("a2a-main");
+    const runDirectLane = laneEnabled("direct-mcp fallback") || laneEnabled("direct-mcp") || laneEnabled("direct_mcp_fallback");
+
+    const a2aReady = runA2aLane
+      ? await startSession(page, workspaceId, "General Chat Agent", "A2A-main", "a2a-launchpad.png")
+      : false;
     if (a2aReady) {
       const selectedAgent = await selectConsultAgent(page, "external A2A orchestrator");
       for (const variant of A2A_ROUTE_LOCK_VARIANTS) {
@@ -2246,13 +2259,15 @@ const main = async () => {
       }
     }
 
-    const fallbackReady = await startSession(
-      page,
-      workspaceId,
-      "Care Transitions Command BYO Fallback",
-      "Direct-MCP fallback",
-      "fallback-launchpad.png",
-    );
+    const fallbackReady = runDirectLane
+      ? await startSession(
+          page,
+          workspaceId,
+          "Care Transitions Command BYO Fallback",
+          "Direct-MCP fallback",
+          "fallback-launchpad.png",
+        )
+      : false;
     if (fallbackReady) {
       await sendPrompt({
         page,

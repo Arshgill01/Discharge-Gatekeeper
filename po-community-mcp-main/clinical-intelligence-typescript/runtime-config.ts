@@ -99,13 +99,24 @@ export type RuntimeConfig = {
   port: number;
   poEnv: string;
   allowedHosts: string[];
+  disableHostValidation: boolean;
   serverName: string;
   serverVersion: string;
+};
+
+const parseBoolean = (value: string | undefined): boolean => {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
 };
 
 export const getRuntimeConfig = (environment: Environment): RuntimeConfig => {
   const poEnv = parsePoEnv(environment["PO_ENV"]);
   const explicitAllowedHosts = parseCsvHosts(environment["ALLOWED_HOSTS"]);
+  const disableHostValidation = parseBoolean(environment["DISABLE_HOST_VALIDATION"]);
   const allowedHosts = [
     ...new Set([...defaultAllowedHostsByPoEnv(poEnv), ...explicitAllowedHosts]),
   ];
@@ -115,6 +126,7 @@ export const getRuntimeConfig = (environment: Environment): RuntimeConfig => {
     port: parsePort(environment["PORT"]),
     poEnv,
     allowedHosts,
+    disableHostValidation,
     serverName: environment["MCP_SERVER_NAME"]?.trim() || "Clinical Intelligence MCP",
     serverVersion: environment["MCP_SERVER_VERSION"]?.trim() || "1.0.0",
   };
