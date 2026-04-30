@@ -1,0 +1,17 @@
+{
+  "status": "yellow",
+  "captured": false,
+  "reason": "Authenticated browser proof was not run in this environment.",
+  "required_env_missing": [
+    "PROMPT_OPINION_EMAIL",
+    "PROMPT_OPINION_PASSWORD",
+    "PROMPT_OPINION_DGK_PUBLIC_URL",
+    "PROMPT_OPINION_CI_PUBLIC_URL",
+    "PROMPT_OPINION_A2A_PUBLIC_URL"
+  ],
+  "notes": [
+    "No Prompt Opinion frontend execution request was captured.",
+    "No external A2A runtime hit from Prompt Opinion was captured.",
+    "No Direct-MCP final transcript persistence evidence was captured."
+  ]
+}

@@ -16,6 +16,8 @@ Phase 8.5 route-boundary note:
 - the stable A2A proof target is one assembled Prompt Opinion turn, not the full 3-prompt judged flow
 - Direct-MCP remains the primary judged 3-prompt path unless a current run folder proves otherwise
 - treat one-turn A2A proof as architecture evidence: selected external agent, Prompt Opinion POST, runtime acceptance, both MCP hits, and visible assembled answer
+- local green checks are not the same as a Google/Gemini-backed Clinical Intelligence proof when `CLINICAL_INTELLIGENCE_LLM_PROVIDER` is unset; the local boot scripts default to the heuristic provider
+- a Phase 9 promotion run must explicitly set `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` with `GOOGLE_API_KEY` or `GEMINI_API_KEY`, or the run folder must mark the Google-backed path as not proven
 
 ## 1. Registration surfaces
 
@@ -65,6 +67,7 @@ Before registration, verify for every component:
 - identity string matches the frozen name
 - health check passes
 - logs show requests clearly enough to debug discovery failures
+- Clinical Intelligence logs/config identify whether hidden-risk output came from `google` or `heuristic`; do not use heuristic output as evidence for the real Google-backed path
 
 Observed browser gate from the Phase 4 validation pass:
 - an unauthenticated browser reaches `https://app.promptopinion.ai/` but stops at the login screen

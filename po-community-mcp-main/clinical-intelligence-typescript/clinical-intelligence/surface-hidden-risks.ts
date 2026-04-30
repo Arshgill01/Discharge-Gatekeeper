@@ -698,10 +698,12 @@ const buildPromptOpinionSlimSummary = (
 
   const contradictionLine = findings
     .slice(0, 3)
-    .map((finding) => `${finding.category}: ${finding.title}`)
+    .map((finding) => finding.category)
     .join(" | ");
-  const base = `Structured baseline was ${baseline}. Hidden-risk contradiction requires ${payload.hidden_risk_summary.overall_disposition_impact}: ${contradictionLine}.`;
-  return anchorText.length > 0 ? `${base} Evidence anchors: ${anchorText}.` : base;
+  const base = `Structured baseline was ${baseline}. Hidden-risk contradiction requires ${payload.hidden_risk_summary.overall_disposition_impact}.`;
+  const evidence = anchorText.length > 0 ? ` Evidence anchors: ${anchorText}.` : "";
+  const categories = contradictionLine.length > 0 ? ` Impacted categories: ${contradictionLine}.` : "";
+  return `${base}${evidence}${categories}`;
 };
 
 const toPromptOpinionSlimPayload = (payload: HiddenRiskOutput): HiddenRiskOutput => {
@@ -710,8 +712,8 @@ const toPromptOpinionSlimPayload = (payload: HiddenRiskOutput): HiddenRiskOutput
   const maxCitations = 4;
   const findings = payload.hidden_risk_findings.slice(0, maxFindings).map((finding) => ({
     ...finding,
-    title: truncateText(finding.title, 96),
-    rationale: truncateText(finding.rationale, 160),
+    title: truncateText(finding.title, 84),
+    rationale: truncateText(finding.rationale, 120),
     citation_ids: finding.citation_ids.slice(0, maxCitationIdsPerFinding),
   }));
 
@@ -722,7 +724,7 @@ const toPromptOpinionSlimPayload = (payload: HiddenRiskOutput): HiddenRiskOutput
     .map((citation) => ({
       ...citation,
       locator: truncateText(citation.locator, 64),
-      excerpt: truncateText(citation.excerpt, 120),
+      excerpt: truncateText(citation.excerpt, 96),
     }));
   const validCitationIdSet = new Set(citations.map((citation) => citation.citation_id));
   const findingsWithValidCitations = findings.map((finding) => ({
@@ -738,7 +740,7 @@ const toPromptOpinionSlimPayload = (payload: HiddenRiskOutput): HiddenRiskOutput
         buildPromptOpinionSlimSummary(payload, findingsWithValidCitations, citations),
         380,
       ),
-      false_positive_guardrail: truncateText(payload.hidden_risk_summary.false_positive_guardrail, 120),
+      false_positive_guardrail: truncateText(payload.hidden_risk_summary.false_positive_guardrail, 80),
     },
     hidden_risk_findings: findingsWithValidCitations,
     citations,

@@ -1,0 +1,26 @@
+{
+  "lane": "A2A one-turn assembled proof lane",
+  "status": "yellow",
+  "classification_time_utc": "2026-04-30T05:40:00Z",
+  "architecture_proof_candidate": true,
+  "strict_green_criteria": {
+    "external_a2a_selected_in_ui": false,
+    "prompt_opinion_post_to_runtime": false,
+    "runtime_accepts_prompt_opinion_shape": false,
+    "runtime_returns_accepted_response": false,
+    "both_mcps_invoked": false,
+    "final_transcript_contains_assembled_result": false
+  },
+  "evidence": {
+    "current_run_folder": "output/prompt-opinion-e2e/runs/20260430T053710Z",
+    "local_rehearsal": "green",
+    "authenticated_browser_proof": "not_run",
+    "worker_b_reference_run": "output/prompt-opinion-e2e/runs/20260428T090256Z"
+  },
+  "blocker": "manual_browser_proof_required",
+  "notes": [
+    "The merged branch passes local A2A compatibility and rehearsal smokes.",
+    "This run does not prove Prompt Opinion selected the external A2A runtime or sent a live browser request to it.",
+    "Worker B reference evidence remained yellow because Prompt Opinion chat routing was inconsistent."
+  ]
+}

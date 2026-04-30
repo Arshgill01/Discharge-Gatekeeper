@@ -1,0 +1,24 @@
+{
+  "lane": "Direct-MCP 3-prompt lane",
+  "status": "yellow",
+  "classification_time_utc": "2026-04-30T05:40:00Z",
+  "primary_live_lane_candidate": true,
+  "strict_green_criteria": {
+    "all_three_visible_transcripts": false,
+    "semantic_anchors_pass": false,
+    "runtime_evidence_exists": false,
+    "post_settle_screenshots_and_text_snapshots": false
+  },
+  "evidence": {
+    "current_run_folder": "output/prompt-opinion-e2e/runs/20260430T053710Z",
+    "local_rehearsal": "green",
+    "authenticated_browser_proof": "not_run",
+    "worker_a_reference_run": "output/prompt-opinion-e2e/runs/20260429T181905Z"
+  },
+  "blocker": "manual_browser_proof_required",
+  "notes": [
+    "The merged branch passes local Direct-MCP/A2A rehearsal checks.",
+    "This run does not include authenticated Prompt Opinion final visible transcripts for the Direct-MCP 3-prompt lane.",
+    "Worker A reference evidence remained yellow because runtime hits did not prove final visible transcript persistence."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "status": "yellow",
+  "local_runtime_correlation": "green",
+  "prompt_opinion_runtime_correlation": "not_run",
+  "direct_mcp": {
+    "status": "yellow",
+    "reason": "No authenticated Prompt Opinion Direct-MCP prompt attempts were captured in this run."
+  },
+  "a2a_one_turn": {
+    "status": "yellow",
+    "reason": "No authenticated Prompt Opinion A2A one-turn route-lock attempt was captured in this run."
+  },
+  "google_backed_path": {
+    "status": "not_proven",
+    "reason": "CLINICAL_INTELLIGENCE_LLM_PROVIDER, GOOGLE_API_KEY, and GEMINI_API_KEY were absent from the shell; local scripts defaulted to heuristic provider."
+  }
+}
