@@ -1,0 +1,27 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+General Chat Agent
+Data Scope
+Show Tool calls
+Input: 0 - Output: 0
+Arshdeep Singh
+
+Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes.
+
+Arshdeep Singh
+
+Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient.
+
+Consult with another agent:
+external A2A orchestrator
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

@@ -1,0 +1,416 @@
+{
+  "generated_at": "2026-04-28T09:06:44.656Z",
+  "total_events": 276,
+  "prompt_opinion_request_count": 98,
+  "runtime_browser_request_count": 0,
+  "runtime_hosts": [
+    "kind-ears-talk.loca.lt"
+  ],
+  "prompt_opinion_calls": [
+    {
+      "id": "req-27",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?activeOnly=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-28",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/list?includePatientName=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-32",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-33",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-34",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-35",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-36",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/external-agent-card?url=https%3A%2F%2Fkind-ears-talk.loca.lt",
+      "status": 422,
+      "resource_type": "fetch",
+      "post_data": null
+    },
+    {
+      "id": "req-37",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-45",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-48",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/published-marketplace/mcp-servers?page=1&pageCount=5",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-55",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-63",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list?excludeWorkspaceAgents=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-66",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/published-marketplace/agents?checkAddedWorkspaceId=019da8ef-cb09-71b0-9d7e-4e11591d55db&page=1&pageCount=15",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-82",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/byo-agents",
+      "status": 200,
+      "resource_type": "document",
+      "post_data": null
+    },
+    {
+      "id": "req-90",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?types=Byo&excludeOrchestrators=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-94",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/mcp-servers",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-105",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?activeOnly=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-106",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/list?includePatientName=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-110",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations",
+      "status": 201,
+      "resource_type": "xhr",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "aiAgentId": "string",
+          "title": "string"
+        },
+        "preview": "{\"aiAgentId\":\"019da8ef-cb21-7e67-a0e4-0e4f183b785e\",\"title\":\"General Chat - 04/28/2026\"}"
+      }
+    },
+    {
+      "id": "req-112",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-114",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6/messages/list",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-113",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-115",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string",
+          "a2aConnectionId": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes.\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:33:24+05:30\",\"a2aConnectionId\":\"019db14c-a5c7-7fd7-b0fc-c65abb8255f8\"}"
+      }
+    },
+    {
+      "id": "req-116",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string",
+          "a2aConnectionId": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient.\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:33:24+05:30\",\"a2aConnectionId\":\"019db14c-a5c7-7fd7-b0fc-c65abb8255f8\"}"
+      }
+    },
+    {
+      "id": "req-117",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string",
+          "a2aConnectionId": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today?\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:33:24+05:30\",\"a2aConnectionId\":\"019db14c-a5c7-7fd7-b0fc-c65abb8255f8\"}"
+      }
+    },
+    {
+      "id": "req-118",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd354-3797-77fb-911e-0b7d100aade6/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string",
+          "a2aConnectionId": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"What exactly must happen before discharge, and prepare the transition package.\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:33:24+05:30\",\"a2aConnectionId\":\"019db14c-a5c7-7fd7-b0fc-c65abb8255f8\"}"
+      }
+    },
+    {
+      "id": "req-130",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/list?includePatientName=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-129",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/ai-agents/list?activeOnly=true",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-132",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations",
+      "status": 201,
+      "resource_type": "xhr",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "aiAgentId": "string",
+          "title": "string"
+        },
+        "preview": "{\"aiAgentId\":\"019daefc-34d8-79ad-b905-05f8aa5a1178\",\"title\":\"General Chat - 04/28/2026\"}"
+      }
+    },
+    {
+      "id": "req-134",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd356-0059-7cc8-8add-0ca442468a8c",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-136",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd356-0059-7cc8-8add-0ca442468a8c/messages/list",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-135",
+      "method": "GET",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/a2a-connections/list",
+      "status": 200,
+      "resource_type": "xhr",
+      "post_data": null
+    },
+    {
+      "id": "req-137",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd356-0059-7cc8-8add-0ca442468a8c/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"Is this patient safe to discharge today?\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:35:21+05:30\"}"
+      }
+    },
+    {
+      "id": "req-138",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd356-0059-7cc8-8add-0ca442468a8c/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"What hidden risk changed that answer? Show me the contradiction and the evidence.\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:35:21+05:30\"}"
+      }
+    },
+    {
+      "id": "req-139",
+      "method": "POST",
+      "url": "https://app.promptopinion.ai/api/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd356-0059-7cc8-8add-0ca442468a8c/prompt-stream",
+      "status": 200,
+      "resource_type": "fetch",
+      "post_data": {
+        "kind": "json",
+        "shape": {
+          "messages": [
+            {
+              "message": "string",
+              "senderType": "string",
+              "attachments": "array"
+            }
+          ],
+          "includeStructuredData": "boolean",
+          "includeDocumentResources": "boolean",
+          "dataStartDate": "string"
+        },
+        "preview": "{\"messages\":[{\"message\":\"What exactly must happen before discharge, and prepare the transition package.\",\"senderType\":\"User\",\"attachments\":[]}],\"includeStructuredData\":true,\"includeDocumentResources\":true,\"dataStartDate\":\"2025-04-28T14:35:21+05:30\"}"
+      }
+    }
+  ],
+  "runtime_browser_calls": [],
+  "websocket_count": 6
+}
