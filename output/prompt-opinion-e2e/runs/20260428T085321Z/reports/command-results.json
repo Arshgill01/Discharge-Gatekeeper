@@ -1,0 +1,129 @@
+{
+  "run_id": "20260428T085321Z",
+  "generated_at": "2026-04-28T09:07:58.311Z",
+  "branch": "feat/phase8.5-direct-mcp-green",
+  "commit": "2e1d8152ba3497157b9f786e31dc86a10c8e107c",
+  "checks": [
+    {
+      "label": "Install dependencies (Discharge Gatekeeper MCP)",
+      "command": "npm --prefix po-community-mcp-main/typescript ci",
+      "status": "green",
+      "durationMs": 5389,
+      "logFile": "logs/00-npm-ci-typescript.log"
+    },
+    {
+      "label": "Install dependencies (Clinical Intelligence MCP)",
+      "command": "npm --prefix po-community-mcp-main/clinical-intelligence-typescript ci",
+      "status": "green",
+      "durationMs": 2408,
+      "logFile": "logs/00-npm-ci-clinical-intelligence.log"
+    },
+    {
+      "label": "Install dependencies (external A2A orchestrator)",
+      "command": "npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript ci",
+      "status": "green",
+      "durationMs": 2180,
+      "logFile": "logs/00-npm-ci-external-a2a.log"
+    },
+    {
+      "label": "Full system validation",
+      "command": "./po-community-mcp-main/scripts/run-full-system-validation.sh",
+      "status": "green",
+      "durationMs": 44328,
+      "logFile": "logs/01-run-full-system-validation.log"
+    },
+    {
+      "label": "Boot two MCP runtimes",
+      "command": "./po-community-mcp-main/scripts/start-two-mcp-local.sh",
+      "status": "green",
+      "durationMs": 602,
+      "logFile": "logs/02-start-two-mcp-local.log"
+    },
+    {
+      "label": "Boot external A2A runtime",
+      "command": "./po-community-mcp-main/scripts/start-a2a-local.sh",
+      "status": "green",
+      "durationMs": 654,
+      "logFile": "logs/03-start-a2a-local.log"
+    },
+    {
+      "label": "Two-MCP readiness check",
+      "command": "./po-community-mcp-main/scripts/check-two-mcp-readiness.sh",
+      "status": "green",
+      "durationMs": 853,
+      "logFile": "logs/04-check-two-mcp-readiness.log"
+    },
+    {
+      "label": "A2A readiness check",
+      "command": "./po-community-mcp-main/scripts/check-a2a-readiness.sh",
+      "status": "green",
+      "durationMs": 956,
+      "logFile": "logs/05-check-a2a-readiness.log"
+    },
+    {
+      "label": "Prompt Opinion rehearsal smoke",
+      "command": "PROMPT_OPINION_E2E_OUTPUT_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/output/prompt-opinion-e2e' PROMPT_OPINION_E2E_RUN_ID='20260428T085321Z' npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal",
+      "status": "green",
+      "durationMs": 1771,
+      "logFile": "logs/06-smoke-prompt-opinion-rehearsal.log"
+    },
+    {
+      "label": "Boot two MCP runtimes for browser proof",
+      "command": "./po-community-mcp-main/scripts/start-two-mcp-local.sh",
+      "status": "green",
+      "durationMs": 437,
+      "logFile": "logs/07-start-two-mcp-browser-proof.log"
+    },
+    {
+      "label": "Boot external A2A runtime for browser proof",
+      "command": "./po-community-mcp-main/scripts/start-a2a-local.sh",
+      "status": "green",
+      "durationMs": 845,
+      "logFile": "logs/08-start-a2a-browser-proof.log"
+    },
+    {
+      "label": "Authenticated Prompt Opinion browser proof",
+      "command": "PROMPT_OPINION_E2E_RUN_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/output/prompt-opinion-e2e/runs/20260428T085321Z' PROMPT_OPINION_E2E_RUN_ID='20260428T085321Z' ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh",
+      "status": "red",
+      "durationMs": 814913,
+      "logFile": "logs/09-prompt-opinion-browser-proof.log"
+    }
+  ],
+  "totals": {
+    "green": 11,
+    "red": 1
+  },
+  "local_totals": {
+    "green": 9,
+    "red": 0
+  },
+  "lane_status_defaults": [
+    {
+      "lane": "Local automated rehearsal lane",
+      "status": "green",
+      "reason": "All automated local checks passed in the current run folder."
+    },
+    {
+      "lane": "Prompt Opinion A2A-main workspace lane",
+      "status": "yellow",
+      "reason": "Manual workspace execution proof is required outside local smoke."
+    },
+    {
+      "lane": "Prompt Opinion Direct-MCP fallback workspace lane",
+      "status": "yellow",
+      "reason": "Manual workspace transcript proof is required outside local smoke."
+    }
+  ],
+  "manual_status_defaults": [
+    {
+      "gate": "Prompt Opinion A2A chat execution",
+      "status": "yellow",
+      "reason": "Manual workspace execution proof is required outside local smoke."
+    },
+    {
+      "gate": "Dual-tool BYO Prompt 2/3 transcript persistence",
+      "status": "yellow",
+      "reason": "Manual workspace transcript evidence is required outside local smoke."
+    }
+  ]
+}

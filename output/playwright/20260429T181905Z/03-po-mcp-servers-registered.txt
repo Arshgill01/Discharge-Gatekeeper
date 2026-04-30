@@ -1,0 +1,47 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+Solutions
+Clinical Trials
+Patient Data
+List
+Import
+Groups
+Agents
+Configuration
+Settings
+Subscriptions
+Marketplace Studio
+Marketplace
+MCP Servers
+Add and manage Model Context Protocol (MCP) endpoints for your agents.
+My MCP Servers
+Search Marketplace
+Add MCP Server
+Name
+	
+Endpoint
+	
+Transport Type
+	
+FHIR Context Ext Enabled
+	
+Actions
+
+Clinical Intelligence MCP	https://bdych-38-137-53-117.run.pinggy-free.link/mcp	StreamableHttp	No	
+Edit
+Delete
+
+Discharge Gatekeeper MCP	https://lamud-38-137-53-117.run.pinggy-free.link/mcp	StreamableHttp	No	
+Edit
+Delete
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

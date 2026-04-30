@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-04-29T17:44:07.998Z",
+  "run_id": "20260429T174258Z",
+  "attempts": [
+    {
+      "run": 1,
+      "prompt": "Is this patient safe to discharge today?",
+      "promptMode": "prompt_1",
+      "requestId": "b2818b87-6c14-4560-baaa-30ae970ff468",
+      "taskId": "efcc11b7-30ac-407c-9b44-8dc42fac0f8f",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "f6e1e109-d0ae-4e77-b198-f9fc4dae980d",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "62f8c915-484b-439a-b876-740a58612e57",
+      "clinicalExchangeStatus": 200
+    },
+    {
+      "run": 1,
+      "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+      "promptMode": "prompt_2",
+      "requestId": "7b23bf28-4827-4684-b116-9525da359a56",
+      "taskId": "e1dcd4d7-d2a4-497c-b38f-4da906969b6b",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "9f2d541d-5007-40da-a7ff-c7a59d6d0dc1",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "a52f02ab-4ecf-4434-b2be-35ab9acdac2d",
+      "clinicalExchangeStatus": 200
+    },
+    {
+      "run": 1,
+      "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+      "promptMode": "prompt_3",
+      "requestId": "f9ab61b1-df32-459e-a433-36f6e2fb4210",
+      "taskId": "3ca70511-95ea-4f80-a529-d96c0e3d5275",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "a0e72841-e536-45e4-b1b4-db1b66fb9d99",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "a6ad6c2d-3f8e-4bab-b944-63afc5ba92e9",
+      "clinicalExchangeStatus": 200
+    },
+    {
+      "run": 2,
+      "prompt": "Is this patient safe to discharge today?",
+      "promptMode": "prompt_1",
+      "requestId": "6b00cf81-d9a4-4c1b-98fb-5230dd239d56",
+      "taskId": "f092ad8a-6830-48ff-9777-9e0cc01da4a3",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "d8eaaf9a-1f13-4d56-ab4d-06518ea5d84d",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "57c8b559-57b8-4ace-8083-e5500c72d014",
+      "clinicalExchangeStatus": 200
+    },
+    {
+      "run": 2,
+      "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+      "promptMode": "prompt_2",
+      "requestId": "040d1c0b-320d-4b83-9cfe-f661f6f75da5",
+      "taskId": "abdf2f52-b4f9-43fb-b86a-fb62d4cd7971",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "f4288ec2-e717-4c78-8851-5e00ac1acb63",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "afb5d842-6dae-454f-bbdf-3b5c3b997b06",
+      "clinicalExchangeStatus": 200
+    },
+    {
+      "run": 2,
+      "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+      "promptMode": "prompt_3",
+      "requestId": "1f96300c-5a35-48e3-96b2-3b5e65606714",
+      "taskId": "509e089a-67b3-4b8d-b0c9-e42e2e3713f6",
+      "incomingHeaders": {
+        "content-type": "application/json",
+        "accept": "*/*",
+        "user-agent": "node"
+      },
+      "deterministicCallId": "b701caa2-0a8d-4458-9116-a2cfc5dab011",
+      "deterministicExchangeStatus": 200,
+      "clinicalCallId": "37d4b466-b92c-4de6-855e-0efde66925c1",
+      "clinicalExchangeStatus": 200
+    }
+  ]
+}

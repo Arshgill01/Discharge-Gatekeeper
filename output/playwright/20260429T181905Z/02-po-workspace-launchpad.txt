@@ -1,0 +1,49 @@
+Workspace Hub
+Arshdeep Singh
+Arshgill's org
+Start new session
+Previous sessions
+1
+Select a Scope
+Workspace
+Patient
+Group
+8 compatible agent(s)
+2
+Select an Agent
+Care Transitions Command A2A Router Debug
+Minimal BYO agent that should defer to the selected external agent.
+Workspace
+Care Transitions Command BYO Fallback
+BYO fallback agent for direct-MCP 3-prompt demo using Discharge Gatekeeper MCP and Clinical Intelligence MCP tools.
+Workspace
+Care Transitions Command CI Hidden Risk Debug
+Single-tool Clinical Intelligence agent for Prompt 2 transcript debugging.
+Workspace
+Care Transitions Command CI Only Debug
+Debug agent with only Clinical Intelligence MCP bound.
+Workspace
+Care Transitions Command CI Transition Debug
+Single-tool Clinical Intelligence agent for Prompt 3 transcript debugging.
+Workspace
+Care Transitions Command DGK Baseline Debug
+Single-tool Discharge Gatekeeper agent for Prompt 1 baseline validation.
+Workspace
+Care Transitions Command Dual Tool Lean Debug
+Lean two-tool debug agent for Prompt Opinion transcript testing.
+Workspace
+General Chat Agent
+A multipurpose chat agent that can help answer healthcare related questions
+Workspace
+Patient
+Group
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

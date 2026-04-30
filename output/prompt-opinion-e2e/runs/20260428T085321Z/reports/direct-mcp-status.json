@@ -1,0 +1,236 @@
+{
+  "generated_at": "2026-04-28T09:07:57.876Z",
+  "lane": "Direct-MCP fallback",
+  "status": "red",
+  "blocker": "chat_path_not_routed",
+  "attempts": [
+    {
+      "attempt_id": "FALLBACK-P1-01",
+      "lane": "Direct-MCP fallback",
+      "prompt": "Is this patient safe to discharge today?",
+      "expected_tool": "assess_discharge_readiness",
+      "started_at": "2026-04-28T09:04:44.729Z",
+      "finished_at": "2026-04-28T09:07:51.502Z",
+      "status": "red",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd355-58cb-7337-9c73-728253b51dbf",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "final posture is not_ready",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "structured posture is summarized",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "hidden narrative contradiction is surfaced",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "patient-specific evidence is mentioned",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org Care Transitions Command BYO Fallback Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Is this patient safe to discharge today? Consult with another agent: None Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-28T09:07:16.248Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:18.254Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:20.260Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:22.265Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:24.272Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:26.277Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:28.282Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:30.288Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:32.295Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:34.311Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:36.327Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:38.344Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:40.361Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:42.379Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:44.385Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-28T09:07:46.406Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "FALLBACK-P1-01 result",
+          "screenshot": "screenshots/fallback-p1-01-result.png",
+          "output_screenshot": "output/playwright/20260428T085321Z/fallback-p1-01-result.png",
+          "text": "screenshots/fallback-p1-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dd355-58cb-7337-9c73-728253b51dbf"
+        }
+      ]
+    }
+  ]
+}

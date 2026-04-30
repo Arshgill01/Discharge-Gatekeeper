@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-04-28T08:54:46.758Z",
+  "update_requested": true,
+  "before_fetch": {
+    "mcp_status": 200,
+    "a2a_status": 200
+  },
+  "after_fetch": {
+    "mcp_status": 200,
+    "a2a_status": 200
+  },
+  "updates": [],
+  "registrations": [
+    {
+      "kind": "mcp",
+      "name": "Discharge Gatekeeper MCP",
+      "id": "019daeaf-1359-702d-80fc-59b6fbf1db60",
+      "expected_url": null,
+      "before_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+      "after_url": "https://jzsxi-38-183-11-105.run.pinggy-free.link/mcp",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": null,
+      "current_url_verified": false,
+      "status": "red"
+    },
+    {
+      "kind": "mcp",
+      "name": "Clinical Intelligence MCP",
+      "id": "019daeb1-76db-7cb3-b5a9-8dc68afc2bae",
+      "expected_url": null,
+      "before_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+      "after_url": "https://szqzk-38-183-11-105.run.pinggy-free.link/mcp",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": null,
+      "current_url_verified": false,
+      "status": "red"
+    },
+    {
+      "kind": "a2a",
+      "name": "external A2A orchestrator",
+      "id": "019db14c-a5c7-7fd7-b0fc-c65abb8255f8",
+      "expected_url": null,
+      "before_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+      "after_url": "https://hlzun-38-183-11-105.run.pinggy-free.link",
+      "update_requested": true,
+      "update_result": null,
+      "connection_check": null,
+      "current_url_verified": false,
+      "status": "red"
+    }
+  ]
+}

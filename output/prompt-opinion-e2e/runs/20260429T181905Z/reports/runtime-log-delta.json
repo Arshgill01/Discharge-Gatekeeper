@@ -1,0 +1,30 @@
+{
+  "FALLBACK-P1-01": {
+    "a2a_request_count": 0,
+    "a2a_task_started_count": 0,
+    "a2a_task_finished_count": 0,
+    "a2a_paths": [],
+    "a2a_request_ids": [],
+    "a2a_task_ids": [],
+    "discharge_gatekeeper_mcp_request_count": 7,
+    "clinical_intelligence_mcp_request_count": 6,
+    "both_mcps_hit": true,
+    "discharge_gatekeeper_request_ids": [
+      "a17dadb2-9dc6-40f3-aa47-e006fc804675",
+      "8360ee9d-54a9-421f-ab1e-0f680ce22006",
+      "a691f2fd-2d4d-4000-8e73-3805c370dbd4",
+      "69c1afb2-7c1e-4406-b36f-fbac27be2b54",
+      "80160b85-646a-431d-bdd1-dad298d056cb",
+      "30b6ef8c-226c-4662-a8c2-3e931abe652a",
+      "dd0aaf08-8455-44e1-ae1f-f2a8938f5570"
+    ],
+    "clinical_intelligence_request_ids": [
+      "8baef688-e4b5-49e0-bb61-0a3f159e2f69",
+      "b74cb693-f29b-4677-acc1-c11fe3853a3e",
+      "fb89529f-4b85-4530-ba6b-9c23c0bce19a",
+      "2cad4914-b894-4db7-ada1-e05a97f1061c",
+      "f4ac32b8-3b70-4303-a810-e03b39d1bd95",
+      "33f9f259-221d-4808-acbf-ce6654c82532"
+    ]
+  }
+}

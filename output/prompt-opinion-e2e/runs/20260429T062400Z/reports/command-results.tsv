@@ -1,0 +1,11 @@
+Install dependencies (Discharge Gatekeeper MCP)|npm --prefix po-community-mcp-main/typescript ci|green|4034|logs/00-npm-ci-typescript.log
+Install dependencies (Clinical Intelligence MCP)|npm --prefix po-community-mcp-main/clinical-intelligence-typescript ci|green|2340|logs/00-npm-ci-clinical-intelligence.log
+Install dependencies (external A2A orchestrator)|npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript ci|green|2131|logs/00-npm-ci-external-a2a.log
+Full system validation|./po-community-mcp-main/scripts/run-full-system-validation.sh|green|36127|logs/01-run-full-system-validation.log
+Boot two MCP runtimes|./po-community-mcp-main/scripts/start-two-mcp-local.sh|green|1504|logs/02-start-two-mcp-local.log
+Boot external A2A runtime|./po-community-mcp-main/scripts/start-a2a-local.sh|green|1317|logs/03-start-a2a-local.log
+Two-MCP readiness check|./po-community-mcp-main/scripts/check-two-mcp-readiness.sh|green|438|logs/04-check-two-mcp-readiness.log
+A2A readiness check|./po-community-mcp-main/scripts/check-a2a-readiness.sh|green|444|logs/05-check-a2a-readiness.log
+Prompt Opinion rehearsal smoke|PROMPT_OPINION_E2E_OUTPUT_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/output/prompt-opinion-e2e' PROMPT_OPINION_E2E_RUN_ID='20260429T062400Z' npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal|green|2191|logs/06-smoke-prompt-opinion-rehearsal.log
+Boot two MCP runtimes for browser proof|./po-community-mcp-main/scripts/start-two-mcp-local.sh|green|1333|logs/07-start-two-mcp-browser-proof.log
+Boot external A2A runtime for browser proof|./po-community-mcp-main/scripts/start-a2a-local.sh|green|1365|logs/08-start-a2a-browser-proof.log
