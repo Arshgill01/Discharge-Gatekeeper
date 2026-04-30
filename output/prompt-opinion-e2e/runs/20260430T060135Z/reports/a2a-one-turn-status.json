@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-04-30T06:11:36.316Z",
+  "lane": "A2A-main",
+  "status": "yellow",
+  "blocker": "runtime_hit_but_downstream_failure",
+  "best_variant": {
+    "attempt_id": "A2A-VB-01",
+    "variant_id": "B",
+    "variant_name": "Exact external agent name included",
+    "status": "green"
+  },
+  "green_criteria": {
+    "selected_agent_verified": true,
+    "browser_network_request_observed": true,
+    "runtime_post_observed": true,
+    "runtime_2xx_observed": true,
+    "request_task_message_correlation_observed": true,
+    "both_mcps_hit": true,
+    "assembled_answer_visible": true
+  }
+}

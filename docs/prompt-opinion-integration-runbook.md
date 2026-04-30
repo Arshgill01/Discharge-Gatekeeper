@@ -18,6 +18,8 @@ Phase 8.5 route-boundary note:
 - treat one-turn A2A proof as architecture evidence: selected external agent, Prompt Opinion POST, runtime acceptance, both MCP hits, and visible assembled answer
 - local green checks are not the same as a Google/Gemini-backed Clinical Intelligence proof when `CLINICAL_INTELLIGENCE_LLM_PROVIDER` is unset; the local boot scripts default to the heuristic provider
 - a Phase 9 promotion run must explicitly set `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` with `GOOGLE_API_KEY` or `GEMINI_API_KEY`, or the run folder must mark the Google-backed path as not proven
+- 2026-04-30 authenticated Prompt Opinion run status: registration and routing were green, A2A variants B/C reached the external runtime and both MCPs, but the A2A clinical answer remained downgraded because prompt-only A2A requests did not include or hydrate the canonical narrative evidence bundle. Direct-MCP Prompt 2 and Prompt 3 were green on retry, while Prompt 1 remained yellow because it returned only the structured `ready` baseline. Current Phase 9 call remains NO-GO until those two repo-side issues are fixed and rerun.
+- Prompt Opinion latency control: avoid allowing the conversation to grow into 400k+ input-token turns before Prompt 3. Prefer compact tool responses, concise transition-package output, and a fresh run-folder retry after any context-size change. A longer harness timeout can prevent false-negative capture, but it cannot prevent Prompt Opinion's own LLM timeout.
 
 ## 1. Registration surfaces
 
@@ -111,6 +113,7 @@ Artifact bundle contract:
 - downstream MCP hit summary in `reports/a2a-downstream-mcp-hit-summary.json`
 - final one-turn lane status in `reports/a2a-one-turn-status.json`
 - dependency bootstrap via `npm ci` runs automatically for all three runtimes unless `PROMPT_OPINION_SKIP_NPM_CI=1` is set
+- supplemental browser retries may be kept in their own run folders, but they must not replace the latest full run unless they exercised all required lanes. If a direct-only retry is used to investigate latency, record it as supplemental evidence and keep the full A2A plus Direct-MCP run as the Phase 8.5 source of truth.
 
 Run-folder operator workflow:
 1. use `reports/status-summary.md` to confirm the local prerequisite lane is still green

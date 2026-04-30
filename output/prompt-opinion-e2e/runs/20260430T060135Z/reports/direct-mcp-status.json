@@ -1,0 +1,754 @@
+{
+  "generated_at": "2026-04-30T06:11:36.321Z",
+  "lane": "Direct-MCP fallback",
+  "status": "yellow",
+  "blocker": "runtime_hit_but_downstream_failure",
+  "attempts": [
+    {
+      "attempt_id": "FALLBACK-P1-01",
+      "lane": "Direct-MCP fallback",
+      "prompt": "Is this patient safe to discharge today?",
+      "route_lock_variant": null,
+      "expected_tool": "assess_discharge_readiness",
+      "started_at": "2026-04-30T06:06:09.578Z",
+      "finished_at": "2026-04-30T06:09:16.261Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion -> both MCPs",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093",
+      "selected_agent_verified": null,
+      "selected_agent_text": null,
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 7,
+        "clinical_intelligence_mcp_request_count": 6,
+        "both_mcps_hit": true,
+        "discharge_gatekeeper_request_ids": [
+          "612114e8-77e7-4921-a871-7849debbf074",
+          "41c16487-24c1-42e5-aaa4-b698325d969b",
+          "58b5c359-6d4c-4621-bc63-32373600b7e5",
+          "fb42e390-0730-410d-8536-32ee057dd9cb",
+          "3d10bd41-7049-4535-ab92-be1cd0f5b42d",
+          "fae857f4-ae80-46aa-b171-e4cbf64efd2e",
+          "45da3856-26a2-44f6-a06d-06830104cbb9"
+        ],
+        "clinical_intelligence_request_ids": [
+          "261eaac1-fb1a-4fe8-9f2d-b411be944ae8",
+          "c2a8ff9d-cf98-4b3e-afe4-0dd8866c1b3b",
+          "183568ac-661b-477b-839d-5f449d3bd92c",
+          "ec485edb-e5c8-466b-8a48-5ffdae35f871",
+          "123eb2ba-fab1-4596-9653-196116469421",
+          "46ead4c2-6264-4fc0-bf5f-6791d2c5b7dc"
+        ]
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": true,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "assembled_answer_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "final posture is not_ready",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "structured posture is summarized",
+            "passed": true,
+            "matched_pattern": "/structured baseline/i"
+          },
+          {
+            "name": "hidden narrative contradiction is surfaced",
+            "passed": false,
+            "matched_pattern": null
+          },
+          {
+            "name": "patient-specific evidence is mentioned",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org Care Transitions Command BYO Fallback Data Scope Show Tool calls Input: 41,086 - Output: 207 Arshdeep Singh Is this patient safe to discharge today? Tool: assess_discharge_readiness Po Based on the current structured baseline review, the patient is ready for discharge. Summary: No active discharge blockers were detected across the eight evaluated domains. Final disposition remains with the clinical team. Input: 41086 Output: 207 Consult with another agent: None Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": true,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-04-30T06:08:41.054Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:43.071Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:45.087Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:47.105Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:49.126Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:51.133Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:53.149Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:55.163Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:57.175Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:08:59.180Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:01.191Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:03.202Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:05.137Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:07.143Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:09.158Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:11.180Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "FALLBACK-P1-01 result",
+          "screenshot": "screenshots/fallback-p1-01-result.png",
+          "output_screenshot": "output/playwright/20260430T060135Z/fallback-p1-01-result.png",
+          "text": "screenshots/fallback-p1-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093"
+        }
+      ]
+    },
+    {
+      "attempt_id": "FALLBACK-P2-01",
+      "lane": "Direct-MCP fallback",
+      "prompt": "What hidden risk changed that answer? Show me the contradiction and the evidence.",
+      "route_lock_variant": null,
+      "expected_tool": "surface_hidden_risks",
+      "started_at": "2026-04-30T06:09:16.304Z",
+      "finished_at": "2026-04-30T06:10:22.286Z",
+      "status": "green",
+      "observed_route": "Prompt Opinion -> both MCPs",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093",
+      "selected_agent_verified": null,
+      "selected_agent_text": null,
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 6,
+        "clinical_intelligence_mcp_request_count": 7,
+        "both_mcps_hit": true,
+        "discharge_gatekeeper_request_ids": [
+          "127617bf-ff21-45a9-a222-a3d1bf39e6cb",
+          "9f56d2a5-3831-45d3-82ad-f68d588e51dc",
+          "977da387-7563-4dc1-bf3c-9b3ea444a0b4",
+          "16595cb5-6d89-4cca-8b6c-5549c4940d24",
+          "5835755c-5bb1-441a-9d5e-a31730d13a76",
+          "8c06a003-3781-4861-a742-1e14162798ab"
+        ],
+        "clinical_intelligence_request_ids": [
+          "e08187e1-dcf3-48c1-b50f-f7e73b3a11ac",
+          "aaf3dd1d-a598-4c4b-b596-bb3756d6aa6f",
+          "70388c14-0403-4a23-9928-6f7805d1f79e",
+          "5861b14b-1561-4e44-81d7-f26a709d6464",
+          "4392aa89-48e8-45a6-b904-671c1a99b80f",
+          "04c007ba-69d4-43e0-8e5e-cfc6602953fc",
+          "d556db9c-4e81-451a-8eb5-67ad9be0edde"
+        ]
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": true,
+        "assistant_transcript_persisted": true,
+        "expected_text_visible": true,
+        "assembled_answer_visible": true,
+        "semantic_anchor_passed": true,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": true,
+        "groups": [
+          {
+            "name": "final posture remains not_ready",
+            "passed": true,
+            "matched_pattern": "/not[_ -]?ready/i"
+          },
+          {
+            "name": "recommendation changes because of hidden narrative risk",
+            "passed": true,
+            "matched_pattern": "/hidden risk/i"
+          },
+          {
+            "name": "structured posture and note contradiction are both visible",
+            "passed": true,
+            "matched_pattern": "/structured baseline/i"
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org Care Transitions Command BYO Fallback Data Scope Show Tool calls Input: 208,098 - Output: 4,667 Arshdeep Singh Is this patient safe to discharge today? Po Based on the current structured baseline review, the patient is ready for discharge. Summary: No active discharge blockers were detected across the eight evaluated domains. Final disposition remains with the clinical team. Input: 41086 Output: 207 Arshdeep Singh What hidden risk changed that answer? Show me the contradiction and the evidence. Po The initial \"Ready\" verdict was based on structured resting data; however, a hidden-risk review of the narrative notes has changed the disposition to Not Ready due to a critical contradiction regarding the patient's stability and home support. The Contradiction While earlier notes (Hospitalist and Respiratory Therapy) indicated the patient was stable on room air at rest, a late-evening assessment revealed significant exertional instability that makes discharging to a third-floor walk-up unsafe. Evidence Anchors Clinical Instability: According to the Nursing Note 2026-04-18 20:40, a pre-discharge stair trial showed that while the patient's $\\text{SpO}_2$ was 94% at rest, it dropped to 82% after walking 20 feet and climbing 6 stairs, leaving the patient visibly dyspneic. Equipment & Support Gap: The same Nursing Note and the Case Management Addendum 2026-04-18 20:55 confirm that the patient lives alone in a third-floor walk-up (18 stairs), has no oxygen at home, and the oxygen vendor cannot deliver a concentrator until tomorrow morning. Additionally, the patient's daughter is unavailable to provide overnight support. Impact: The patient cannot safely navigate their home environment without oxygen, and the necessary equipment is not yet available. Discharge must be held pending reassessment and equipment delivery. Input: 167012 Output: 4460 Consult with another agent: None Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "settled_with_runtime",
+        "timed_out": false,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": true,
+        "final_transcript_visible": true,
+        "trace": [
+          {
+            "at": "2026-04-30T06:09:49.091Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:51.102Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:53.116Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:55.124Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:57.131Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:09:59.142Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:01.150Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:03.158Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:05.165Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:07.171Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:09.178Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:11.184Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:13.189Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:15.196Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:17.202Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:10:19.209Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "FALLBACK-P2-01 result",
+          "screenshot": "screenshots/fallback-p2-01-result.png",
+          "output_screenshot": "output/playwright/20260430T060135Z/fallback-p2-01-result.png",
+          "text": "screenshots/fallback-p2-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093"
+        }
+      ]
+    },
+    {
+      "attempt_id": "FALLBACK-P3-01",
+      "lane": "Direct-MCP fallback",
+      "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+      "route_lock_variant": null,
+      "expected_tool": "synthesize_transition_narrative",
+      "started_at": "2026-04-30T06:10:22.326Z",
+      "finished_at": "2026-04-30T06:11:36.315Z",
+      "status": "green",
+      "observed_route": "Prompt Opinion -> both MCPs",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093",
+      "selected_agent_verified": null,
+      "selected_agent_text": null,
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 6,
+        "clinical_intelligence_mcp_request_count": 7,
+        "both_mcps_hit": true,
+        "discharge_gatekeeper_request_ids": [
+          "84af1682-2034-4bfd-9161-374d893726f1",
+          "851e6457-067c-469f-b0f2-3e63ff23f6c1",
+          "def133f5-8923-49cc-a99c-00861d8ff4f3",
+          "4230d728-b064-42c0-90b8-717635367afc",
+          "f600f43f-0b7a-48e1-a120-9ce918bc371e",
+          "1dcc88cb-2008-49c9-b508-c23de9345def"
+        ],
+        "clinical_intelligence_request_ids": [
+          "87029606-85ed-44f1-9f6c-f701192f2d96",
+          "c37b50fa-3617-4c69-893e-6079a09e84ea",
+          "9b7876d1-258f-4053-8c12-2eab58faa280",
+          "83ed6be8-05ec-448d-b860-2cd633f48455",
+          "eeae1103-219a-4933-bdef-8ff84b8defc8",
+          "36401104-2d94-4442-ae2c-4ffcb1d6a93f",
+          "7b9b78a5-8165-4e4b-b4ab-99b19fd31695"
+        ]
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": true,
+        "tool_response_persisted": true,
+        "assistant_message_present": true,
+        "assistant_transcript_persisted": true,
+        "expected_text_visible": true,
+        "assembled_answer_visible": true,
+        "semantic_anchor_passed": true,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": true,
+        "groups": [
+          {
+            "name": "transition package or handoff is prepared",
+            "passed": true,
+            "matched_pattern": "/transition package/i"
+          },
+          {
+            "name": "posture stays conservative and contradiction-aware",
+            "passed": true,
+            "matched_pattern": "/not[_ -]?ready/i"
+          },
+          {
+            "name": "actions are concrete",
+            "passed": true,
+            "matched_pattern": "/case management/i"
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org Care Transitions Command BYO Fallback Data Scope Show Tool calls Input: 469,689 - Output: 6,717 Arshdeep Singh Is this patient safe to discharge today? Tool: assess_discharge_readiness Po Based on the current structured baseline review, the patient is ready for discharge. Summary: No active discharge blockers were detected across the eight evaluated domains. Final disposition remains with the clinical team. Input: 41086 Output: 207 Arshdeep Singh What hidden risk changed that answer? Show me the contradiction and the evidence. Tool: surface_hidden_risks Po The initial \"Ready\" verdict was based on structured resting data; however, a hidden-risk review of the narrative notes has changed the disposition to Not Ready due to a critical contradiction regarding the patient's stability and home support. The Contradiction While earlier notes (Hospitalist and Respiratory Therapy) indicated the patient was stable on room air at rest, a late-evening assessment revealed significant exertional instability that makes discharging to a third-floor walk-up unsafe. Evidence Anchors Clinical Instability: According to the Nursing Note 2026-04-18 20:40, a pre-discharge stair trial showed that while the patient's $\\text{SpO}_2$ was 94% at rest, it dropped to 82% after walking 20 feet and climbing 6 stairs, leaving the patient visibly dyspneic. Equipment & Support Gap: The same Nursing Note and the Case Management Addendum 2026-04-18 20:55 confirm that the patient lives alone in a third-floor walk-up (18 stairs), has no oxygen at home, and the oxygen vendor cannot deliver a concentrator until tomorrow morning. Additionally, the patient's daughter is unavailable to provide overnight support. Impact: The patient cannot safely navigate their home environment without oxygen, and the necessary equipment is not yet available. Discharge must be held pending reassessment and equipment delivery. Input: 167012 Output: 4460 Arshdeep Singh What exactly must happen before discharge, and prepare the transition package. Tool: synthesize_transition_narrative Po The final disposition is Not Ready. The following transition package must be executed and verified before the patient can be safely discharged. Pre-Discharge Action Plan These items are high-priority and must be resolved to clear the current safety blockers: Respiratory Re-assessment (Bedside RN & Covering Clinician): Repeat the exertional respiratory stability assessment. The patient must be evaluated for safe ambulation and stair climbing, as the previous trial resulted in a desaturation to 82% $\\text{Sp Input: 261591 Output: 2050 Consult with another agent: None Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected Error The LLM took too long to respond and the operation was cancelled"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "settled_with_runtime",
+        "timed_out": false,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": true,
+        "final_transcript_visible": true,
+        "trace": [
+          {
+            "at": "2026-04-30T06:11:03.139Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:05.148Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:07.155Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:09.164Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:11.170Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:13.179Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:15.186Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:17.193Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:19.200Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:21.207Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:23.214Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:25.219Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:27.225Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:29.232Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:31.237Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          },
+          {
+            "at": "2026-04-30T06:11:33.241Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": true,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "FALLBACK-P3-01 result",
+          "screenshot": "screenshots/fallback-p3-01-result.png",
+          "output_screenshot": "output/playwright/20260430T060135Z/fallback-p3-01-result.png",
+          "text": "screenshots/fallback-p3-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019ddcfe-94ad-7ca6-8724-f5f4c0185093"
+        }
+      ]
+    }
+  ]
+}

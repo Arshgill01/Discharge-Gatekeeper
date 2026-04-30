@@ -33,6 +33,7 @@ Current workspace note:
 - if that blocker is still present on demo day, the narrowest stable workspace fallback is to use the dedicated single-tool Clinical Intelligence BYO agents for Prompt 2 and Prompt 3 while keeping the architecture explanation accurate.
 - Phase 8.5 route-lock: Direct-MCP is the judged live lane until the current run folder proves a stronger option.
 - the stable A2A claim is one-turn assembled proof only unless a current run folder proves the full 3-prompt A2A lane green.
+- 2026-04-30 authenticated browser evidence did not prove either target lane fully green. Direct-MCP Prompt 2 and Prompt 3 are usable, but Prompt 1 still lands on the structured-only `ready` baseline. A2A route-lock variants B/C prove Prompt Opinion can reach the external runtime and both MCPs, but the assembled clinical answer is not yet acceptable because the runtime is not hydrating the canonical narrative bundle from Prompt Opinion prompt-only A2A calls.
 
 Run-status source of truth before any demo:
 - `output/prompt-opinion-e2e/latest/reports/status-summary.md`
@@ -99,6 +100,9 @@ Judge should notice at this moment:
 ## Prompt 3
 User prompt:
 `What exactly must happen before discharge, and prepare the transition package.`
+
+Operator constraint:
+- keep the requested transition package concise enough for Prompt Opinion to finish without platform LLM timeout. The 2026-04-30 full run hit a visible timeout on Prompt 3 after partial output; the immediate direct-lane retry completed without the timeout banner, but the safe fix is still to reduce context/tool-response size and cap transition-package verbosity.
 
 Show on screen:
 - prioritized next steps with owner and timing

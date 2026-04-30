@@ -1,0 +1,9 @@
+Full system validation|./po-community-mcp-main/scripts/run-full-system-validation.sh|green|32661|logs/01-run-full-system-validation.log
+Boot two MCP runtimes|./po-community-mcp-main/scripts/start-two-mcp-local.sh|green|1485|logs/02-start-two-mcp-local.log
+Boot external A2A runtime|./po-community-mcp-main/scripts/start-a2a-local.sh|green|1364|logs/03-start-a2a-local.log
+Two-MCP readiness check|./po-community-mcp-main/scripts/check-two-mcp-readiness.sh|green|467|logs/04-check-two-mcp-readiness.log
+A2A readiness check|./po-community-mcp-main/scripts/check-a2a-readiness.sh|green|463|logs/05-check-a2a-readiness.log
+Prompt Opinion rehearsal smoke|PROMPT_OPINION_E2E_OUTPUT_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-route-lock-freeze/output/prompt-opinion-e2e' PROMPT_OPINION_E2E_RUN_ID='20260430T060135Z' npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal|green|2370|logs/06-smoke-prompt-opinion-rehearsal.log
+Boot two MCP runtimes for browser proof|./po-community-mcp-main/scripts/start-two-mcp-local.sh|green|1379|logs/07-start-two-mcp-browser-proof.log
+Boot external A2A runtime for browser proof|./po-community-mcp-main/scripts/start-a2a-local.sh|green|1361|logs/08-start-a2a-browser-proof.log
+Authenticated Prompt Opinion browser proof|PROMPT_OPINION_E2E_RUN_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-route-lock-freeze/output/prompt-opinion-e2e/runs/20260430T060135Z' PROMPT_OPINION_E2E_RUN_ID='20260430T060135Z' ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh|green|559472|logs/09-prompt-opinion-browser-proof.log
