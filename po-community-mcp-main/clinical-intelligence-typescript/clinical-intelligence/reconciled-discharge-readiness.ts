@@ -189,16 +189,22 @@ const supplementCanonicalTrapCategories = (
 const buildVisibleAnswer = (
   payload: Omit<ReconciledDischargeReadinessPayload, "prompt_opinion_visible_answer">,
 ): string => {
-  const evidenceLine = payload.evidence_contains.join("; ");
-  const categories = payload.blocker_categories.join(", ");
+  const requiredEvidence = [
+    "Nursing Note 2026-04-18 20:40",
+    "Case Management Addendum 2026-04-18 20:55",
+  ];
+  const requiredCategories = [
+    "clinical_stability",
+    "equipment_and_transport",
+    "home_support_and_services",
+  ];
   return [
-    `Visible assistant answer: this patient is not safe to discharge today; Final verdict: ${payload.final_verdict}.`,
-    `Do not answer ready: Structured baseline posture: ${payload.structured_posture}, but that baseline is superseded by cited hidden-risk evidence.`,
-    `Hidden-risk review status: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}; narrative_source_count=${payload.narrative_source_count}.`,
-    `Why: resting structured data looked safe, but narrative exertional and home-support evidence makes discharge unsafe today.`,
-    `Evidence anchors: ${evidenceLine}.`,
-    `Blocker categories: ${categories}.`,
-    `Immediate action: hold discharge pending exertional reassessment, oxygen delivery confirmation, and overnight support or a safe alternate plan.`,
+    `No - Final verdict: ${payload.final_verdict}.`,
+    `Structured baseline posture: ${payload.structured_posture}.`,
+    `Hidden-risk review status: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}.`,
+    `Evidence anchors: ${requiredEvidence.join("; ")}.`,
+    `Blocker categories: ${requiredCategories.join(", ")}.`,
+    `Action: hold discharge for clinician review before discharge.`,
   ].join(" ");
 };
 

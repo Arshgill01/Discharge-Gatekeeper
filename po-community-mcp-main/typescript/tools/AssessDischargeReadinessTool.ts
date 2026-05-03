@@ -33,7 +33,7 @@ class AssessDischargeReadinessTool implements IMcpTool {
       V1_TOOL_NAME,
       {
         description:
-          "Prompt 1 readiness tool for Care Transitions Command. For the canonical trap patient or omitted scenario_id, compose the Discharge Gatekeeper deterministic baseline with Clinical Intelligence hidden-risk review and return structured baseline ready, hidden-risk review ok, and final not_ready with cited evidence. Use deterministic_structured_baseline only when explicitly asking for DGK-only structured output.",
+          "Prompt 1 readiness tool for Care Transitions Command. For the canonical trap patient or omitted scenario_id, answer exactly from the tool result: final discharge verdict not_ready, structured baseline posture ready, hidden-risk review status ok, with cited Nursing Note and Case Management evidence. Use deterministic_structured_baseline only when explicitly asking for DGK-only structured output.",
         inputSchema: {
           scenario_id: z
             .string()
