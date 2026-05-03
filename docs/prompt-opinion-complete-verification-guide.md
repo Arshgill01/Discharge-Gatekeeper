@@ -68,10 +68,18 @@ These are the repo-grounded and workspace-grounded facts from the last validatio
 From repo root:
 
 ```bash
+./po-community-mcp-main/scripts/link-shared-env.sh
+./po-community-mcp-main/scripts/check-runtime-provider-config.sh
 ./po-community-mcp-main/scripts/run-prompt-opinion-rehearsal-capture.sh
 ```
 
 Expected result:
+- `.env.local` is a symlink to `CTC_SHARED_ENV_PATH`, defaulting to `~/.config/care-transitions-command/phase8.env`
+- provider status is explicit:
+  - `GREEN` means `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` and a Google/Gemini key is present
+  - `YELLOW` means heuristic mode is configured and may only be used for deterministic local regression
+  - `RED` means Google was requested without `GOOGLE_API_KEY` or `GEMINI_API_KEY`
+- the default Google model is `gemma-4-31B-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set
 - the wrapper runs and records:
   - `./po-community-mcp-main/scripts/run-full-system-validation.sh`
   - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
@@ -84,6 +92,14 @@ Expected result:
 - by default the wrapper performs `npm ci` in all three runtime packages; set `PROMPT_OPINION_SKIP_NPM_CI=1` only when dependencies are already known-good
 
 If these fail, do not continue into Prompt Opinion yet.
+
+For Google/Gemini proof runs, require the provider preflight before browser evidence:
+
+```bash
+PROMPT_OPINION_REQUIRE_GOOGLE_PROVIDER=1 ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh
+```
+
+Do not mark a run folder as Google/Gemini-backed unless provider evidence shows `provider=google`, model `gemma-4-31B-it` or the explicitly configured replacement, and key presence. Heuristic output can stay green for local regression, but it is not Google/Gemini proof.
 
 ## Step 2: Start local runtimes
 

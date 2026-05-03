@@ -1,6 +1,7 @@
 # PLAN.md
 
 ## Latest update
+- 2026-05-03, Phase 8.6 Runtime Consistency: lock shared env setup, provider preflight, and runtime provider diagnostics so Google/Gemini proof cannot be confused with heuristic local regression.
 - 2026-04-28, Coordinator: added Phase 8.5 route-lock + demo-safe freeze so worker lanes can harden the green live demo path without reopening architecture.
 
 ## Objective
@@ -24,6 +25,19 @@ Care Transitions Command uses a deterministic discharge spine plus bounded note 
 - keep the final demo to 3 prompts
 
 ## Current phase
+### Phase 8.6: runtime consistency hardening
+Goal:
+- eliminate env/model/provider drift across Discharge Gatekeeper MCP, Clinical Intelligence MCP, and the external A2A orchestrator
+- make new worktrees use the same ignored `.env.local` source without copying secrets into git
+- prevent browser-proof or Phase 9 notes from claiming Google/Gemini when Clinical Intelligence ran in heuristic mode
+
+Phase 8.6 deliverables:
+- shared-env symlink script for new worktrees
+- provider preflight script with red/yellow/green status
+- Clinical Intelligence `/readyz` provider/model/key-present/fallback diagnostics without secret values
+- A2A task diagnostics that record hidden-risk provider/model/status from Clinical Intelligence readiness
+- browser proof provider evidence and Google-proof enforcement switch
+
 ### Phase 8.5: route-lock + demo-safe freeze
 Goal:
 - freeze the live demo route on the lane that is actually green

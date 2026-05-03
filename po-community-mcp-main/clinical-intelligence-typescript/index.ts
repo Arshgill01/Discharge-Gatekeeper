@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
+import { getHiddenRiskLlmRuntimeDiagnostics } from "./llm/client";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const startTimeMs = Date.now();
@@ -53,6 +54,7 @@ const formatError = (error: unknown): Record<string, unknown> => {
 app.use(cors());
 
 const buildHealthPayload = () => {
+  const llm = getHiddenRiskLlmRuntimeDiagnostics(process.env as Record<string, string | undefined>);
   return {
     status: "ok",
     server_name: config.serverName,
@@ -62,6 +64,14 @@ const buildHealthPayload = () => {
     tools: REGISTERED_TOOL_NAMES,
     allowed_hosts: config.allowedHosts,
     disable_host_validation: config.disableHostValidation,
+    hidden_risk_provider: {
+      provider: llm.provider,
+      model: llm.model,
+      key_present: llm.key_present,
+      google_key_present: llm.google_key_present,
+      gemini_key_present: llm.gemini_key_present,
+      fallback_mode: llm.fallback_mode,
+    },
     endpoints: {
       mcp: "/mcp",
       healthz: "/healthz",

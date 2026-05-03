@@ -3,8 +3,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PO_COMMUNITY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PO_COMMUNITY_ROOT}/.." && pwd)"
 PID_DIR="${PO_COMMUNITY_ROOT}/.pids"
 mkdir -p "${PID_DIR}"
+
+if [[ -f "${REPO_ROOT}/.env.local" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/.env.local"
+  set +a
+fi
 
 DISCHARGE_GATEKEEPER_HOST="${DISCHARGE_GATEKEEPER_HOST:-127.0.0.1}"
 DISCHARGE_GATEKEEPER_PORT="${DISCHARGE_GATEKEEPER_PORT:-5055}"
