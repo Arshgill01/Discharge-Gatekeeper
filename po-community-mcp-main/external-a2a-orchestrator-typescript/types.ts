@@ -97,6 +97,13 @@ export type TaskRuntimeDiagnostics = {
   execution_finished_at: string;
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
+  hidden_risk_provider: {
+    provider: string;
+    model: string | null;
+    key_present: boolean | null;
+    fallback_mode: string | null;
+    status: "reported" | "unavailable" | "skipped";
+  };
   fallbacks_applied: string[];
   incoming_request: IncomingRequestDiagnostic;
   downstream_correlation: Array<{
