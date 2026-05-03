@@ -4,6 +4,7 @@ import { z } from "zod";
 import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
 import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
+import { HiddenRiskOutput } from "../clinical-intelligence/contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
 
 export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
@@ -66,6 +67,33 @@ const inputSchema = {
 
 const toolInputSchema = z.object(inputSchema);
 
+const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): string => {
+  const categories = [
+    ...new Set(
+      payload.hidden_risk_findings
+        .filter((finding) => finding.recommended_orchestrator_action !== "ignore_duplicate")
+        .map((finding) => finding.category),
+    ),
+  ];
+  const anchors = payload.citations
+    .slice(0, 4)
+    .map((citation) => citation.source_label)
+    .join("; ");
+  const topFinding = payload.hidden_risk_findings[0];
+  const contradiction = topFinding
+    ? `${topFinding.title}: ${topFinding.rationale}`
+    : payload.hidden_risk_summary.summary;
+
+  return [
+    `Structured baseline posture: ${payload.baseline_verdict}.`,
+    `Hidden-risk review status: ${payload.status}; result=${payload.hidden_risk_summary.result}; final impact=${payload.hidden_risk_summary.overall_disposition_impact}.`,
+    `Contradiction: ${contradiction}`,
+    `Evidence anchors: ${anchors}.`,
+    `Blocker categories: ${categories.join(", ")}.`,
+    `Disposition change: hold as not_ready when hidden-risk impact is not_ready; final disposition remains with the clinical team.`,
+  ].join(" ");
+};
+
 class SurfaceHiddenRisksTool implements IMcpTool {
   registerTool(server: McpServer, _req: Request): void {
     server.registerTool(
@@ -86,6 +114,9 @@ class SurfaceHiddenRisksTool implements IMcpTool {
             responseMode: response_mode,
           });
           const isError = payload.status === "error";
+          if (response_mode === "prompt_opinion_slim") {
+            return McpUtilities.createTextResponse(formatPromptOpinionSlimHiddenRisk(payload), { isError });
+          }
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

@@ -5,6 +5,7 @@ import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
 import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
+import { TransitionNarrativeOutput } from "../clinical-intelligence/synthesize-transition-narrative";
 
 export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
   "Prompt 3 tool for pre-discharge execution. Use when asked what must happen before discharge and to prepare the transition package grounded in hidden-risk findings. Do not use this for Prompt 1 deterministic baseline-only assessment.";
@@ -66,6 +67,34 @@ const inputSchema = {
 
 const toolInputSchema = z.object(inputSchema);
 
+const formatPromptOpinionSlimTransitionPackage = (
+  payload: TransitionNarrativeOutput,
+): string => {
+  const actions = payload.recommended_actions
+    .slice(0, 4)
+    .map((action) => `${action.priority}: ${action.action}`)
+    .join(" | ");
+  const anchors = payload.citations
+    .slice(0, 4)
+    .map((citation) => citation.source_label)
+    .join("; ");
+  const handoff =
+    payload.key_points.find((point) => point.startsWith("Clinician handoff brief:")) ||
+    `Clinician handoff brief: baseline was ${payload.baseline_verdict}; final posture is ${payload.proposed_disposition}.`;
+  const patientGuidance =
+    payload.key_points.find((point) => point.startsWith("Patient-facing guidance:")) ||
+    "Patient-facing guidance: explain that discharge timing depends on clinical sign-off after safety blockers are cleared.";
+
+  return [
+    `Transition package: final posture ${payload.proposed_disposition}; structured baseline ${payload.baseline_verdict}.`,
+    `Before discharge: ${actions}.`,
+    handoff,
+    patientGuidance,
+    `Evidence anchors: ${anchors}.`,
+    payload.safety_boundary,
+  ].join(" ");
+};
+
 class SynthesizeTransitionNarrativeTool implements IMcpTool {
   registerTool(server: McpServer, _req: Request): void {
     server.registerTool(
@@ -87,6 +116,12 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
             responseMode: parsed.data.response_mode,
           });
           const isError = payload.status === "error";
+          if (parsed.data.response_mode === "prompt_opinion_slim") {
+            return McpUtilities.createTextResponse(
+              formatPromptOpinionSlimTransitionPackage(payload),
+              { isError },
+            );
+          }
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

@@ -20,11 +20,11 @@ const shouldUseReconciledPromptOne = (
   scenarioId: string | undefined,
   readinessMode: "reconciled_prompt_one" | "deterministic_structured_baseline" | undefined,
 ): boolean => {
-  if (readinessMode === "deterministic_structured_baseline") {
-    return false;
+  if (!scenarioId || scenarioId === V1_SCENARIO_3_ID) {
+    return true;
   }
 
-  return !scenarioId || scenarioId === V1_SCENARIO_3_ID || readinessMode === "reconciled_prompt_one";
+  return readinessMode === "reconciled_prompt_one";
 };
 
 class AssessDischargeReadinessTool implements IMcpTool {
@@ -45,7 +45,7 @@ class AssessDischargeReadinessTool implements IMcpTool {
             .enum(["reconciled_prompt_one", "deterministic_structured_baseline"])
             .optional()
             .describe(
-              "Use reconciled_prompt_one to force the Prompt Opinion demo answer; deterministic_structured_baseline returns DGK-only structured output.",
+              "Use reconciled_prompt_one to force the Prompt Opinion demo answer for non-canonical fixtures; canonical Prompt 1 always reconciles even if this is omitted.",
             ),
           response_mode: z
             .enum(["prompt_opinion_slim", "full"])
@@ -68,6 +68,11 @@ class AssessDischargeReadinessTool implements IMcpTool {
           const payload = await assessReconciledDischargeReadiness({
             responseMode: response_mode ?? DEFAULT_RESPONSE_MODE,
           });
+          if ((response_mode ?? DEFAULT_RESPONSE_MODE) === "prompt_opinion_slim") {
+            return McpUtilities.createTextResponse(payload.prompt_opinion_visible_answer, {
+              isError: payload.status === "error",
+            });
+          }
 
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), {
             isError: payload.status === "error",

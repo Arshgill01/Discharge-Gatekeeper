@@ -192,9 +192,9 @@ const buildVisibleAnswer = (
   const evidenceLine = payload.evidence_contains.join("; ");
   const categories = payload.blocker_categories.join(", ");
   return [
-    `Final verdict: ${payload.final_verdict}.`,
-    `Structured baseline posture: ${payload.structured_posture}.`,
-    `Hidden-risk narrative review: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}; narrative_source_count=${payload.narrative_source_count}.`,
+    `Visible assistant answer: this patient is not safe to discharge today; Final verdict: ${payload.final_verdict}.`,
+    `Do not answer ready: Structured baseline posture: ${payload.structured_posture}, but that baseline is superseded by cited hidden-risk evidence.`,
+    `Hidden-risk review status: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}; narrative_source_count=${payload.narrative_source_count}.`,
     `Why: resting structured data looked safe, but narrative exertional and home-support evidence makes discharge unsafe today.`,
     `Evidence anchors: ${evidenceLine}.`,
     `Blocker categories: ${categories}.`,
