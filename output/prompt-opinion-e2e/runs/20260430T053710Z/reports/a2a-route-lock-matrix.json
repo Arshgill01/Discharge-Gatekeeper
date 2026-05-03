@@ -1,9 +1,0 @@
-{
-  "lane": "A2A one-turn route-lock matrix",
-  "status": "yellow",
-  "current_run": "20260430T053710Z",
-  "variants_tested_in_current_run": [],
-  "reason": "Authenticated browser proof was not run because Prompt Opinion credentials and public endpoint environment variables were absent.",
-  "worker_b_reference_run": "output/prompt-opinion-e2e/runs/20260428T090256Z",
-  "phase9_blocking": true
-}

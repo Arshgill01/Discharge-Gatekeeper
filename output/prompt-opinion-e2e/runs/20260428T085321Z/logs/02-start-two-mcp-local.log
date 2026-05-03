@@ -1,7 +1,0 @@
-[two-mcp] started discharge-gatekeeper; pid 58837
-[two-mcp] started clinical-intelligence; pid 58840
-[two-mcp] Discharge Gatekeeper MCP is healthy at http://127.0.0.1:5055/healthz
-[two-mcp] Clinical Intelligence MCP is healthy at http://127.0.0.1:5056/healthz
-[two-mcp] logs:
-  /Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/po-community-mcp-main/.runtime/two-mcp/discharge-gatekeeper.log
-  /Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/po-community-mcp-main/.runtime/two-mcp/clinical-intelligence.log

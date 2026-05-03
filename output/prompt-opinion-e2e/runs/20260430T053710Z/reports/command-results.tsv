@@ -1,6 +1,0 @@
-Full system validation|./po-community-mcp-main/scripts/run-full-system-validation.sh|green|32255|logs/01-run-full-system-validation.log
-Boot two MCP runtimes|./po-community-mcp-main/scripts/start-two-mcp-local.sh|green|1467|logs/02-start-two-mcp-local.log
-Boot external A2A runtime|./po-community-mcp-main/scripts/start-a2a-local.sh|green|1346|logs/03-start-a2a-local.log
-Two-MCP readiness check|./po-community-mcp-main/scripts/check-two-mcp-readiness.sh|green|405|logs/04-check-two-mcp-readiness.log
-A2A readiness check|./po-community-mcp-main/scripts/check-a2a-readiness.sh|green|457|logs/05-check-a2a-readiness.log
-Prompt Opinion rehearsal smoke|PROMPT_OPINION_E2E_OUTPUT_DIR='/Users/arshdeepsingh/Developer/ctc-phase8-5-route-lock-freeze/output/prompt-opinion-e2e' PROMPT_OPINION_E2E_RUN_ID='20260430T053710Z' npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:prompt-opinion-rehearsal|green|2131|logs/06-smoke-prompt-opinion-rehearsal.log

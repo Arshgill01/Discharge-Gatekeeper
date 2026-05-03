@@ -1,9 +1,0 @@
-{
-  "run_id": "20260430T061830Z-direct-retry",
-  "generated_at": "2026-04-30T06:18:32Z",
-  "branch": "int/phase8.5-route-lock-freeze",
-  "commit": "1d45fcf9eb1304794d93a134ab5cbd50c0f505de",
-  "repo_root": "/Users/arshdeepsingh/Developer/ctc-phase8-5-route-lock-freeze",
-  "run_dir": "/Users/arshdeepsingh/Developer/ctc-phase8-5-route-lock-freeze/output/prompt-opinion-e2e/runs/20260430T061830Z-direct-retry",
-  "purpose": "direct-mcp lane retry after Prompt Opinion LLM timeout on prompt 3"
-}

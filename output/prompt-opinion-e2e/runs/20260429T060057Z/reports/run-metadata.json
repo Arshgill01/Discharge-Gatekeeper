@@ -1,9 +1,0 @@
-{
-  "run_id": "20260429T060057Z",
-  "generated_at": "2026-04-29T06:00:57Z",
-  "branch": "feat/phase8.5-direct-mcp-green",
-  "commit": "2e1d8152ba3497157b9f786e31dc86a10c8e107c",
-  "repo_root": "/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green",
-  "output_root": "/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/output/prompt-opinion-e2e",
-  "run_dir": "/Users/arshdeepsingh/Developer/ctc-phase8-5-direct-mcp-green/output/prompt-opinion-e2e/runs/20260429T060057Z"
-}
