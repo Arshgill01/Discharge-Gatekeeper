@@ -177,7 +177,7 @@ const defaultSemanticAnchorSets = {
     required_any: [
       {
         name: "final posture is not_ready",
-        patterns: [/not[_ -]?ready/i, /unsafe to discharge/i, /hold discharge/i],
+        patterns: [/final[_ ]verdict["': ]+not[_ -]?ready/i, /not[_ -]?ready/i, /unsafe to discharge/i, /hold discharge/i],
       },
       {
         name: "structured posture is summarized",
@@ -191,7 +191,15 @@ const defaultSemanticAnchorSets = {
       },
       {
         name: "hidden narrative contradiction is surfaced",
-        patterns: [/hidden risk/i, /contradiction/i, /narrative evidence/i, /note[- ]level/i],
+        patterns: [/clinical_intelligence_status["': ]+ok/i, /hidden[- ]risk narrative review[^.\n]{0,80}\bok\b/i, /hidden risk/i, /contradiction/i, /narrative evidence/i, /note[- ]level/i],
+      },
+      {
+        name: "narrative sources were reviewed",
+        patterns: [/narrative_source_count["': ]+[1-9]/i, /narrative source count[^.\n]{0,40}[1-9]/i],
+      },
+      {
+        name: "hidden-risk result is present",
+        patterns: [/hidden_risk_result["': ]+hidden_risk_present/i, /result=hidden_risk_present/i],
       },
       {
         name: "patient-specific evidence is mentioned",
@@ -204,6 +212,14 @@ const defaultSemanticAnchorSets = {
           /stairs/i,
           /82%/i,
         ],
+      },
+      {
+        name: "nursing evidence anchor is visible",
+        patterns: [/Nursing Note 2026-04-18 20:40/i],
+      },
+      {
+        name: "case-management evidence anchor is visible",
+        patterns: [/Case Management Addendum 2026-04-18 20:55/i],
       },
     ],
     forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}\bready\b/i, /routine discharge/i],
@@ -2084,6 +2100,7 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
   await writeJson(path.join(reportsDir, "a2a-one-turn-status.json"), a2aOneTurnStatus);
   await writeJson(path.join(reportsDir, "browser-network-events.json"), networkEvents);
   await writeJson(path.join(reportsDir, "browser-network-summary.json"), networkSummary);
+  await writeJson(path.join(reportsDir, "provider-evidence.json"), providerEvidence);
   await writeJson(path.join(reportsDir, "runtime-log-delta.json"), runtimeDelta);
   await writeJson(path.join(reportsDir, "browser-proof-summary.json"), browserProofSummary);
   await writeJson(path.join(reportsDir, "direct-mcp-status.json"), {
@@ -2293,8 +2310,13 @@ const main = async () => {
         lane: "Direct-MCP fallback",
         attemptId: "FALLBACK-P1-01",
         prompt: PROMPTS.prompt1,
-        expectedTokens: ["assess_discharge_readiness", "ready", "verdict"],
-        expectedTool: "assess_discharge_readiness",
+        expectedTokens: [
+          "assess_reconciled_discharge_readiness",
+          "structured_posture",
+          "hidden_risk_result",
+          "not_ready",
+        ],
+        expectedTool: "assess_reconciled_discharge_readiness",
       });
       await sendPrompt({
         page,

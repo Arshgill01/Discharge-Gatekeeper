@@ -41,6 +41,7 @@ const extractText = (payload: GoogleResponseShape): string | null => {
 };
 
 const buildGenerationConfig = (model: string) => {
+  const normalizedModel = normalizeGoogleModelCode(model);
   const config: GenerationConfig = {
     temperature: 0,
     candidateCount: 1,
@@ -48,14 +49,14 @@ const buildGenerationConfig = (model: string) => {
     responseMimeType: "application/json",
   };
 
-  if (model.startsWith("gemini-3")) {
+  if (normalizedModel.startsWith("gemini-3")) {
     config.thinkingConfig = {
       thinkingLevel: "low",
     };
     return config;
   }
 
-  if (model.startsWith("gemini-2.5")) {
+  if (normalizedModel.startsWith("gemini-2.5")) {
     config.thinkingConfig = {
       thinkingBudget: 0,
     };
@@ -63,6 +64,8 @@ const buildGenerationConfig = (model: string) => {
 
   return config;
 };
+
+const normalizeGoogleModelCode = (model: string): string => model.trim().toLowerCase();
 
 export const generateGoogleResponse = async (request: GoogleRequest): Promise<string> => {
   const controller = new AbortController();
@@ -72,7 +75,8 @@ export const generateGoogleResponse = async (request: GoogleRequest): Promise<st
   let attempt = 0;
 
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${request.model}:generateContent`;
+    const modelCode = normalizeGoogleModelCode(request.model);
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelCode}:generateContent`;
     while (attempt < maxAttempts) {
       attempt += 1;
       const response = await fetch(endpoint, {
@@ -98,7 +102,7 @@ export const generateGoogleResponse = async (request: GoogleRequest): Promise<st
 
       if (!response.ok) {
         const detail = await response.text();
-        const transient = response.status === 429 || response.status === 503;
+        const transient = response.status === 429 || response.status >= 500;
         const elapsedMs = Date.now() - startedAt;
         const remainingMs = request.timeoutMs - elapsedMs;
         if (transient && attempt < maxAttempts && remainingMs > 1500) {

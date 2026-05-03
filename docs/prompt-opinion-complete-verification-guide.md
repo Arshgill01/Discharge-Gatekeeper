@@ -161,6 +161,7 @@ Expected tools for `Discharge Gatekeeper MCP`:
 - `draft_patient_discharge_instructions`
 
 Expected tools for `Clinical Intelligence MCP`:
+- `assess_reconciled_discharge_readiness`
 - `surface_hidden_risks`
 - `synthesize_transition_narrative`
 
@@ -216,10 +217,12 @@ Is this patient safe to discharge today?
 ```
 
 Expected visible result:
-- a visible call to `assess_discharge_readiness`
+- a visible call to `assess_reconciled_discharge_readiness`
 - a visible structured baseline of `ready`
+- a visible Clinical Intelligence review status of `ok`
+- a final reconciled verdict of `not_ready` with the nursing and case-management evidence anchors
 
-This is the deterministic baseline.
+This is the reconciled Prompt 1 answer; it must preserve the deterministic baseline instead of replacing it.
 
 ### Prompt 2
 ```text

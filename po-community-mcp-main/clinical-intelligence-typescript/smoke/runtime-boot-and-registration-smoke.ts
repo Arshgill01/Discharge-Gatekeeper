@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
+import { ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION } from "../tools/AssessReconciledDischargeReadinessTool";
 import { SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION } from "../tools/SurfaceHiddenRisksTool";
 import { SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION } from "../tools/SynthesizeTransitionNarrativeTool";
 
@@ -43,7 +44,11 @@ const reserveOpenPort = async (): Promise<number> => {
 const assertToolRegistrationSurface = (): void => {
   assert.deepEqual(
     REGISTERED_TOOL_NAMES,
-    ["surface_hidden_risks", "synthesize_transition_narrative"],
+    [
+      "assess_reconciled_discharge_readiness",
+      "surface_hidden_risks",
+      "synthesize_transition_narrative",
+    ],
     "Registered tool names must match canonical Clinical Intelligence MCP tools.",
   );
 
@@ -64,6 +69,11 @@ const assertToolRegistrationSurface = (): void => {
     registeredToolNames,
     REGISTERED_TOOL_NAMES,
     `Runtime registration surface must be exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
+  );
+  assert.equal(
+    descriptions.get("assess_reconciled_discharge_readiness"),
+    ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION,
+    "Reconciled readiness tool description should preserve the canonical Prompt 1 routing hint.",
   );
   assert.equal(
     descriptions.get("surface_hidden_risks"),

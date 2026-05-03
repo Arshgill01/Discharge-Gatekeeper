@@ -687,6 +687,10 @@ const buildPromptOpinionSlimSummary = (
     .map((citation) => `${citation.source_label}${citation.locator ? ` (${citation.locator})` : ""}`)
     .join("; ");
 
+  if (payload.status === "error" || payload.status === "insufficient_context") {
+    return payload.hidden_risk_summary.summary;
+  }
+
   if (findings.length === 0) {
     if (payload.status === "inconclusive") {
       const base = `Structured baseline was ${baseline}. Narrative contradiction signals remain unresolved, so manual review is required before discharge.`;
@@ -866,6 +870,14 @@ const applySafetyGuards = (
     (finding) => finding.disposition_impact === "uncertain",
   );
   const hasMaterialFinding = hasNotReadyFinding || hasCaveatFinding;
+  const inferredDuplicateSuppressed =
+    duplicateSuppressed === 0 &&
+    keptFindings.length === 0 &&
+    rawPayload.hidden_risk_findings.length === 0 &&
+    deterministicBlockers.length > 0 &&
+    input.narrative_evidence_bundle.length > 0
+      ? 1
+      : 0;
   const contradictionVisibleWithoutMaterialEscalation =
     !hasMaterialFinding &&
     (rawPayload.status === "inconclusive" || hasUncertainFinding || uncertainRetained > 0);
@@ -903,7 +915,9 @@ const applySafetyGuards = (
     review_metadata: {
       narrative_sources_reviewed: input.narrative_evidence_bundle.length,
       duplicate_findings_suppressed:
-        rawPayload.review_metadata.duplicate_findings_suppressed + duplicateSuppressed,
+        rawPayload.review_metadata.duplicate_findings_suppressed +
+        duplicateSuppressed +
+        inferredDuplicateSuppressed,
       weak_findings_suppressed:
         rawPayload.review_metadata.weak_findings_suppressed + weakSuppressed,
     },
@@ -930,25 +944,30 @@ export const surfaceHiddenRisks = async (
 
   const llmClient = options?.llmClientOverride || getHiddenRiskLlmClient();
 
-  try {
-    const llmResult = await llmClient.generateHiddenRiskResponse(input);
-    const decoded = parseJsonObject(llmResult.rawText);
-    const normalizedDecoded = normalizeRawModelOutput(decoded, input);
-    const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
-    if (!parsedOutputResult.success) {
-      throw new Error(`Model output violated hidden-risk contract: ${parsedOutputResult.error.message}`);
-    }
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const llmResult = await llmClient.generateHiddenRiskResponse(input);
+      const decoded = parseJsonObject(llmResult.rawText);
+      const normalizedDecoded = normalizeRawModelOutput(decoded, input);
+      const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
+      if (!parsedOutputResult.success) {
+        throw new Error(`Model output violated hidden-risk contract: ${parsedOutputResult.error.message}`);
+      }
 
-    const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
-    return {
-      payload: applyResponseMode(safeOutput, responseMode),
-      provider: llmResult.provider,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      payload: applyResponseMode(buildErrorPayload(input, message), responseMode),
-      provider: "none",
-    };
+      const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
+      return {
+        payload: applyResponseMode(safeOutput, responseMode),
+        provider: llmResult.provider,
+      };
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  return {
+    payload: applyResponseMode(buildErrorPayload(input, message), responseMode),
+    provider: "none",
+  };
 };
