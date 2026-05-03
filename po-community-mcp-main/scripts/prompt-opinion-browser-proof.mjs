@@ -79,7 +79,7 @@ const getenv = (name, fallback = "") => {
 
 const providerEvidence = {
   provider: getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic"),
-  model: getenv("CLINICAL_INTELLIGENCE_GOOGLE_MODEL", "gemma-4-31B-it"),
+  model: getenv("CLINICAL_INTELLIGENCE_GOOGLE_MODEL", "gemma-4-31b-it"),
   google_api_key_present: Boolean(getenv("GOOGLE_API_KEY")),
   gemini_api_key_present: Boolean(getenv("GEMINI_API_KEY")),
   google_proof_eligible:

@@ -79,7 +79,7 @@ Expected result:
   - `GREEN` means `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` and a Google/Gemini key is present
   - `YELLOW` means heuristic mode is configured and may only be used for deterministic local regression
   - `RED` means Google was requested without `GOOGLE_API_KEY` or `GEMINI_API_KEY`
-- the default Google model is `gemma-4-31B-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set
+- the default Google model is `gemma-4-31b-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set
 - the wrapper runs and records:
   - `./po-community-mcp-main/scripts/run-full-system-validation.sh`
   - `./po-community-mcp-main/scripts/check-two-mcp-readiness.sh`
@@ -99,7 +99,7 @@ For Google/Gemini proof runs, require the provider preflight before browser evid
 PROMPT_OPINION_REQUIRE_GOOGLE_PROVIDER=1 ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh
 ```
 
-Do not mark a run folder as Google/Gemini-backed unless provider evidence shows `provider=google`, model `gemma-4-31B-it` or the explicitly configured replacement, and key presence. Heuristic output can stay green for local regression, but it is not Google/Gemini proof.
+Do not mark a run folder as Google/Gemini-backed unless provider evidence shows `provider=google`, model `gemma-4-31b-it` or the explicitly configured replacement, and key presence. Heuristic output can stay green for local regression, but it is not Google/Gemini proof.
 
 ## Step 2: Start local runtimes
 

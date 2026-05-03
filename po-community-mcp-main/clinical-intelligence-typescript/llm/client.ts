@@ -85,7 +85,7 @@ export const getLlmClientConfigFromEnv = (
     provider: parseProvider(loadedEnv["CLINICAL_INTELLIGENCE_LLM_PROVIDER"]),
     timeoutMs,
     googleApiKey: loadedEnv["GOOGLE_API_KEY"] || loadedEnv["GEMINI_API_KEY"],
-    googleModel: loadedEnv["CLINICAL_INTELLIGENCE_GOOGLE_MODEL"] || "gemma-4-31B-it",
+    googleModel: loadedEnv["CLINICAL_INTELLIGENCE_GOOGLE_MODEL"] || "gemma-4-31b-it",
   };
 };
 

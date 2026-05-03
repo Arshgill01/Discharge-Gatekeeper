@@ -80,7 +80,7 @@ Provider status rules:
 - `GREEN`: `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` and `GOOGLE_API_KEY` or `GEMINI_API_KEY` is present.
 - `YELLOW`: heuristic mode; acceptable only for deterministic local regression and release-gate stability.
 - `RED`: Google provider requested without a Google/Gemini key; do not continue to Google/Gemini proof.
-- default model: `gemma-4-31B-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set.
+- default model: `gemma-4-31b-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set.
 
 For browser proof that claims Google/Gemini, run:
 

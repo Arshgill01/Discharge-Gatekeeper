@@ -18,7 +18,7 @@ const main = async (): Promise<void> => {
   assert.equal(payload.hidden_risk_result, "hidden_risk_present");
   assert.equal(payload.final_verdict, "not_ready");
   assert.equal(payload.provider_evidence.configured_provider, "google");
-  assert.equal(payload.provider_evidence.model, "gemma-4-31B-it");
+  assert.equal(payload.provider_evidence.model, "gemma-4-31b-it");
   assert.equal(payload.provider_evidence.key_present, true);
   assert.equal(payload.provider_evidence.hidden_risk_output_provider, "google");
 
