@@ -107,6 +107,48 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 };
 
+const buildSkippedHiddenRiskProviderDiagnostic = (): TaskRuntimeDiagnostics["hidden_risk_provider"] => ({
+  provider: "none",
+  model: null,
+  key_present: null,
+  fallback_mode: "skipped",
+  status: "skipped",
+});
+
+const fetchHiddenRiskProviderDiagnostic = async (): Promise<TaskRuntimeDiagnostics["hidden_risk_provider"]> => {
+  const readyzUrl = config.clinicalIntelligenceMcpUrl.replace(/\/mcp\/?$/, "/readyz");
+  try {
+    const response = await fetch(readyzUrl, { headers: { accept: "application/json" } });
+    if (!response.ok) {
+      return {
+        provider: "unknown",
+        model: null,
+        key_present: null,
+        fallback_mode: null,
+        status: "unavailable",
+      };
+    }
+
+    const payload = asRecord(await response.json());
+    const provider = asRecord(payload?.["hidden_risk_provider"]);
+    return {
+      provider: typeof provider?.["provider"] === "string" ? provider["provider"] : "unknown",
+      model: typeof provider?.["model"] === "string" ? provider["model"] : null,
+      key_present: typeof provider?.["key_present"] === "boolean" ? provider["key_present"] : null,
+      fallback_mode: typeof provider?.["fallback_mode"] === "string" ? provider["fallback_mode"] : null,
+      status: "reported",
+    };
+  } catch {
+    return {
+      provider: "unknown",
+      model: null,
+      key_present: null,
+      fallback_mode: null,
+      status: "unavailable",
+    };
+  }
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -456,6 +498,7 @@ const buildHealthPayload = () => {
     dependencies: {
       discharge_gatekeeper_mcp_url: config.dischargeGatekeeperMcpUrl,
       clinical_intelligence_mcp_url: config.clinicalIntelligenceMcpUrl,
+      hidden_risk_provider_evidence: "reported per task from Clinical Intelligence MCP /readyz",
     },
     uptime_seconds: Math.floor((Date.now() - startTimeMs) / 1000),
   };
@@ -570,6 +613,7 @@ const runTask = async (
   const downstreamCalls: TaskRuntimeDiagnostics["downstream_calls"] = [];
   const fallbacks: string[] = [];
   const promptMode = detectPromptMode(taskInput.prompt);
+  let hiddenRiskProvider = buildSkippedHiddenRiskProviderDiagnostic();
 
   const deterministicInvocation = await invoker.invokeDeterministicReadiness(taskInput, {
     requestId,
@@ -593,6 +637,7 @@ const runTask = async (
       execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: false,
+      hidden_risk_provider: hiddenRiskProvider,
       fallbacks_applied: ["hidden_risk_skipped"],
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCallsWithSkipped),
@@ -622,6 +667,7 @@ const runTask = async (
 
   let hiddenRisk: ReconciliationResult["hidden_risk"] = null;
   try {
+    hiddenRiskProvider = await fetchHiddenRiskProviderDiagnostic();
     const hiddenRiskInvocation = await invoker.invokeHiddenRisk(deterministic, taskInput, {
       requestId,
       taskId,
@@ -645,6 +691,7 @@ const runTask = async (
       execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
+      hidden_risk_provider: hiddenRiskProvider,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
@@ -675,6 +722,7 @@ const runTask = async (
       execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
+      hidden_risk_provider: hiddenRiskProvider,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
@@ -703,6 +751,7 @@ const runTask = async (
       execution_finished_at: new Date().toISOString(),
       task_duration_ms: Date.now() - taskStartMs,
       hidden_risk_invoked: true,
+      hidden_risk_provider: hiddenRiskProvider,
       fallbacks_applied: fallbacks,
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
@@ -1059,6 +1108,7 @@ const executeParsedTaskRequest = async ({
       final_verdict: runResult.result.final_verdict,
       decision_matrix_row: runResult.result.decision_matrix_row,
       hidden_risk_run_status: runResult.result.hidden_risk_run_status,
+      hidden_risk_provider: runResult.diagnostics.hidden_risk_provider,
       task_duration_ms: runResult.diagnostics.task_duration_ms,
       downstream_call_ids: runResult.diagnostics.downstream_calls.map((call) => call.call_id),
       downstream_mcp_correlation: runResult.diagnostics.downstream_correlation,
@@ -1088,6 +1138,13 @@ const executeParsedTaskRequest = async ({
       task_duration_ms:
         new Date(taskRecord.completed_at).getTime() - new Date(taskRecord.created_at).getTime(),
       hidden_risk_invoked: true,
+      hidden_risk_provider: {
+        provider: "unknown",
+        model: null,
+        key_present: null,
+        fallback_mode: null,
+        status: "unavailable",
+      },
       fallbacks_applied: ["task_failure"],
       incoming_request: buildIncomingRequestDiagnostic(
         req,

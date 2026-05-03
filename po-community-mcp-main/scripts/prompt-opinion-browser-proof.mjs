@@ -77,6 +77,16 @@ const getenv = (name, fallback = "") => {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 };
 
+const providerEvidence = {
+  provider: getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic"),
+  model: getenv("CLINICAL_INTELLIGENCE_GOOGLE_MODEL", "gemma-4-31B-it"),
+  google_api_key_present: Boolean(getenv("GOOGLE_API_KEY")),
+  gemini_api_key_present: Boolean(getenv("GEMINI_API_KEY")),
+  google_proof_eligible:
+    getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic") === "google" &&
+    (Boolean(getenv("GOOGLE_API_KEY")) || Boolean(getenv("GEMINI_API_KEY"))),
+};
+
 const mustEnv = (name) => {
   const value = getenv(name);
   if (!value) {
@@ -1930,6 +1940,14 @@ const renderStatusSummary = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBl
     `| Commit | \`${runMetadata.commit || "unknown"}\` |`,
     `| Run folder | \`output/prompt-opinion-e2e/runs/${runId}\` |`,
     "",
+    "## Provider Evidence",
+    "| Field | Value |",
+    "| --- | --- |",
+    `| Hidden-risk provider | \`${providerEvidence.provider}\` |`,
+    `| Hidden-risk model | \`${providerEvidence.model}\` |`,
+    `| Google/Gemini key present | ${providerEvidence.google_api_key_present || providerEvidence.gemini_api_key_present ? "yes" : "no"} |`,
+    `| Google-backed proof eligible | ${providerEvidence.google_proof_eligible ? "yes" : "no"} |`,
+    "",
     "## Local automated checks",
     "| Check | Status | Duration (ms) | Log |",
     "| --- | --- | --- | --- |",
@@ -2045,6 +2063,7 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
     generated_at: nowIso(),
     run_id: runId,
     base_url: browserBaseUrl,
+    provider_evidence: providerEvidence,
     public_endpoints: publicEndpoints,
     registrations: registrationSummary,
     steps,
