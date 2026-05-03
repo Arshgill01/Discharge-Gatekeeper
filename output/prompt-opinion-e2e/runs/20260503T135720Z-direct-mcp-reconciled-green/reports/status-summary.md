@@ -1,13 +1,13 @@
 # Prompt Opinion Rehearsal Status
 
-Run ID: `20260503T140300Z-direct-only-reconciled`
+Run ID: `20260503T135720Z-direct-mcp-reconciled-green`
 
 ## Run metadata
 | Field | Value |
 | --- | --- |
 | Branch | `unknown` |
 | Commit | `unknown` |
-| Run folder | `output/prompt-opinion-e2e/runs/20260503T140300Z-direct-only-reconciled` |
+| Run folder | `output/prompt-opinion-e2e/runs/20260503T135720Z-direct-mcp-reconciled-green` |
 
 ## Provider Evidence
 | Field | Value |
@@ -26,7 +26,7 @@ Run ID: `20260503T140300Z-direct-only-reconciled`
 | Lane | Status | Reason |
 | --- | --- | --- |
 | Local automated rehearsal lane | RED | One or more automated local checks failed. |
-| Prompt Opinion A2A-main workspace lane | RED | Blocker: workspace_ui_unreachable. |
+| Prompt Opinion A2A-main workspace lane | YELLOW | Blocker: chat_path_not_routed. |
 | Prompt Opinion Direct-MCP fallback workspace lane | RED | Blocker: chat_path_not_routed. |
 
 ## Registration Endpoint Check
@@ -52,4 +52,4 @@ Run ID: `20260503T140300Z-direct-only-reconciled`
 ## Phase 9 call
 | Call | NO-GO |
 | --- | --- |
-| Basis | A2A-main=red; Direct-MCP fallback=red; A2A blocker=workspace_ui_unreachable; fallback blocker=chat_path_not_routed |
+| Basis | A2A-main=yellow; Direct-MCP fallback=red; A2A blocker=chat_path_not_routed; fallback blocker=chat_path_not_routed |

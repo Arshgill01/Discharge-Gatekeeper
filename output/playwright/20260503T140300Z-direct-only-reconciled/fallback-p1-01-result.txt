@@ -1,0 +1,25 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+Care Transitions Command BYO Fallback
+Data Scope
+Show Tool calls
+Input: 32,490 - Output: 0
+Arshdeep Singh
+
+Is this patient safe to discharge today?
+
+Tool:  
+assess_discharge_readiness
+Consult with another agent:
+None
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected

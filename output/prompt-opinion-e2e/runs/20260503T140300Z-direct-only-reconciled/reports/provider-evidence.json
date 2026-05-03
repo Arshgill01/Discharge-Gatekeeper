@@ -1,0 +1,7 @@
+{
+  "provider": "google",
+  "model": "gemma-4-31B-it",
+  "google_api_key_present": true,
+  "gemini_api_key_present": true,
+  "google_proof_eligible": true
+}

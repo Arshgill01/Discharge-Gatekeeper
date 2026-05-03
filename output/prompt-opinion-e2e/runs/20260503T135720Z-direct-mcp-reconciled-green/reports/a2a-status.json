@@ -1,0 +1,873 @@
+{
+  "generated_at": "2026-05-03T14:12:56.666Z",
+  "lane": "A2A-main",
+  "status": "yellow",
+  "blocker": "chat_path_not_routed",
+  "attempts": [
+    {
+      "attempt_id": "A2A-VA-01",
+      "lane": "A2A-main",
+      "prompt": "Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes.",
+      "route_lock_variant": {
+        "id": "A",
+        "attemptId": "A2A-VA-01",
+        "name": "Prompt 2 as first A2A turn",
+        "prompt": "Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes.",
+        "expectedTokens": [
+          "care transitions command",
+          "structured",
+          "hidden",
+          "not_ready",
+          "contradiction"
+        ]
+      },
+      "expected_tool": null,
+      "started_at": "2026-05-03T13:58:34.621Z",
+      "finished_at": "2026-05-03T13:59:00.378Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9",
+      "selected_agent_verified": true,
+      "selected_agent_text": "external A2A orchestrator",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": true,
+        "assistant_transcript_persisted": true,
+        "expected_text_visible": true,
+        "assembled_answer_visible": true,
+        "semantic_anchor_passed": true,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": true,
+        "groups": [],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 0 - Output: 0 Arshdeep Singh Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes. Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "settled_transcript_runtime_missing",
+        "timed_out": false,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": true,
+        "trace": [
+          {
+            "at": "2026-05-03T13:58:37.190Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:39.217Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:41.233Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:43.242Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:45.252Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:47.262Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:49.272Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:51.287Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:53.297Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:55.303Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:58:57.308Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A consult selection",
+          "screenshot": "screenshots/a2a-consult-selected.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-consult-selected.png",
+          "text": "screenshots/a2a-consult-selected.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        },
+        {
+          "label": "A2A-VA-01 result",
+          "screenshot": "screenshots/a2a-va-01-result.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-va-01-result.png",
+          "text": "screenshots/a2a-va-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        }
+      ]
+    },
+    {
+      "attempt_id": "A2A-VB-01",
+      "lane": "A2A-main",
+      "prompt": "Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient.",
+      "route_lock_variant": {
+        "id": "B",
+        "attemptId": "A2A-VB-01",
+        "name": "Exact external agent name included",
+        "prompt": "Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient.",
+        "expectedTokens": [
+          "care transitions command",
+          "clinical intelligence",
+          "hidden",
+          "not_ready",
+          "evidence"
+        ]
+      },
+      "expected_tool": null,
+      "started_at": "2026-05-03T13:59:00.423Z",
+      "finished_at": "2026-05-03T13:59:50.382Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9",
+      "selected_agent_verified": true,
+      "selected_agent_text": "external A2A orchestrator",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": true,
+        "assistant_transcript_persisted": true,
+        "expected_text_visible": true,
+        "assembled_answer_visible": true,
+        "semantic_anchor_passed": true,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": true,
+        "groups": [],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 75,180 - Output: 44 Arshdeep Singh Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes. Arshdeep Singh Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient. Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "settled_transcript_runtime_missing",
+        "timed_out": false,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": true,
+        "trace": [
+          {
+            "at": "2026-05-03T13:59:17.040Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:19.057Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:21.068Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:23.084Z",
+            "input_ready": false,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:25.120Z",
+            "input_ready": true,
+            "responding": true,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:27.164Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:29.203Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:31.222Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:33.235Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:35.245Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:37.252Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:39.257Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:41.265Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:43.281Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:45.291Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:47.303Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A consult selection",
+          "screenshot": "screenshots/a2a-consult-selected.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-consult-selected.png",
+          "text": "screenshots/a2a-consult-selected.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        },
+        {
+          "label": "A2A-VB-01 result",
+          "screenshot": "screenshots/a2a-vb-01-result.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-vb-01-result.png",
+          "text": "screenshots/a2a-vb-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        }
+      ]
+    },
+    {
+      "attempt_id": "A2A-VC-01",
+      "lane": "A2A-main",
+      "prompt": "Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today?",
+      "route_lock_variant": {
+        "id": "C",
+        "attemptId": "A2A-VC-01",
+        "name": "Explicit forward instruction",
+        "prompt": "Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today?",
+        "expectedTokens": [
+          "care transitions command",
+          "not_ready",
+          "structured",
+          "hidden",
+          "forward"
+        ]
+      },
+      "expected_tool": null,
+      "started_at": "2026-05-03T13:59:50.431Z",
+      "finished_at": "2026-05-03T14:00:16.321Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9",
+      "selected_agent_verified": true,
+      "selected_agent_text": "external A2A orchestrator",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": true,
+        "assistant_transcript_persisted": true,
+        "expected_text_visible": true,
+        "assembled_answer_visible": true,
+        "semantic_anchor_passed": true,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": true,
+        "groups": [],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 75,180 - Output: 44 Arshdeep Singh Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes. Arshdeep Singh Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient. Tool: FindPatientId Arshdeep Singh Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today? Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "settled_transcript_runtime_missing",
+        "timed_out": false,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": true,
+        "trace": [
+          {
+            "at": "2026-05-03T13:59:52.949Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:54.962Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:56.975Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T13:59:58.989Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:00.998Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:03.010Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:05.021Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:07.037Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:09.108Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:11.166Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:00:13.202Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": true,
+            "semantic_anchor_passed": true,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A consult selection",
+          "screenshot": "screenshots/a2a-consult-selected.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-consult-selected.png",
+          "text": "screenshots/a2a-consult-selected.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        },
+        {
+          "label": "A2A-VC-01 result",
+          "screenshot": "screenshots/a2a-vc-01-result.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-vc-01-result.png",
+          "text": "screenshots/a2a-vc-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        }
+      ]
+    },
+    {
+      "attempt_id": "A2A-VD-01",
+      "lane": "A2A-main",
+      "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+      "route_lock_variant": {
+        "id": "D",
+        "attemptId": "A2A-VD-01",
+        "name": "Existing Prompt 3 control",
+        "prompt": "What exactly must happen before discharge, and prepare the transition package.",
+        "expectedTokens": [
+          "transition",
+          "handoff",
+          "before discharge",
+          "not_ready"
+        ]
+      },
+      "expected_tool": null,
+      "started_at": "2026-05-03T14:00:16.391Z",
+      "finished_at": "2026-05-03T14:03:23.351Z",
+      "status": "yellow",
+      "observed_route": "Prompt Opinion prompt-stream without observed external runtime hit",
+      "conversation_url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9",
+      "selected_agent_verified": true,
+      "selected_agent_text": "external A2A orchestrator",
+      "runtime_summary": {
+        "a2a_request_count": 0,
+        "a2a_response_count": 0,
+        "a2a_2xx_response_count": 0,
+        "a2a_task_started_count": 0,
+        "a2a_task_finished_count": 0,
+        "a2a_paths": [],
+        "a2a_response_paths": [],
+        "a2a_status_codes": [],
+        "a2a_request_ids": [],
+        "a2a_task_ids": [],
+        "a2a_correlation_ids": [],
+        "discharge_gatekeeper_mcp_request_count": 0,
+        "clinical_intelligence_mcp_request_count": 0,
+        "both_mcps_hit": false,
+        "discharge_gatekeeper_request_ids": [],
+        "clinical_intelligence_request_ids": []
+      },
+      "transcript_flags": {
+        "user_prompt_persisted": true,
+        "function_call_persisted": false,
+        "tool_response_persisted": true,
+        "assistant_message_present": false,
+        "assistant_transcript_persisted": false,
+        "expected_text_visible": false,
+        "assembled_answer_visible": false,
+        "semantic_anchor_passed": false,
+        "forbidden_text_present": false,
+        "wrong_clinical_recommendation": false
+      },
+      "semantic_anchors": {
+        "passed": false,
+        "groups": [
+          {
+            "name": "transition package or handoff is prepared",
+            "passed": true,
+            "matched_pattern": "/transition package/i"
+          },
+          {
+            "name": "posture stays conservative and contradiction-aware",
+            "passed": true,
+            "matched_pattern": "/before discharge/i"
+          },
+          {
+            "name": "actions are concrete",
+            "passed": false,
+            "matched_pattern": null
+          }
+        ],
+        "forbidden_matches": [],
+        "checked_text": "Launchpad Arshdeep Singh Arshgill's org General Chat Agent Data Scope Show Tool calls Input: 189,272 - Output: 196 Arshdeep Singh Consult Care Transitions Command and ask: Is this patient safe to discharge today? Reconcile the structured discharge posture with hidden narrative risks from the notes. Arshdeep Singh Ask Care Transitions Command to reconcile structured discharge readiness with Clinical Intelligence hidden-risk findings for the canonical trap patient. Arshdeep Singh Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today? Arshdeep Singh What exactly must happen before discharge, and prepare the transition package. Consult with another agent: external A2A orchestrator Prompt Opinion, Inc. © 2026 | Terms of Service | Privacy Policy | Documentation | Discord Server Connected"
+      },
+      "assistant_text_preview": "",
+      "error_signals": [],
+      "settle": {
+        "reason": "timeout",
+        "timed_out": true,
+        "final_settle_delay_ms": 3000,
+        "post_settle_runtime_grace_ms": 20000,
+        "expected_runtime_hit": false,
+        "final_transcript_visible": false,
+        "trace": [
+          {
+            "at": "2026-05-03T14:02:47.935Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:02:49.950Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:02:51.964Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:02:53.971Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:02:55.985Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:02:57.998Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:00.032Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:02.047Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:04.067Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:06.104Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:08.141Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:10.178Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:12.196Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:14.208Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:16.223Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          },
+          {
+            "at": "2026-05-03T14:03:18.236Z",
+            "input_ready": true,
+            "responding": false,
+            "assistant_message_present": false,
+            "semantic_anchor_passed": false,
+            "expected_runtime_hit": false,
+            "error_signals": []
+          }
+        ]
+      },
+      "prompt_stream_request_count": 1,
+      "evidence": [
+        {
+          "label": "A2A consult selection",
+          "screenshot": "screenshots/a2a-consult-selected.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-consult-selected.png",
+          "text": "screenshots/a2a-consult-selected.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        },
+        {
+          "label": "A2A-VD-01 result",
+          "screenshot": "screenshots/a2a-vd-01-result.png",
+          "output_screenshot": "output/playwright/20260503T135720Z-direct-mcp-reconciled-green/a2a-vd-01-result.png",
+          "text": "screenshots/a2a-vd-01-result.txt",
+          "url": "https://app.promptopinion.ai/workspaces/019da8ef-cb09-71b0-9d7e-4e11591d55db/conversations/019dee22-1ec1-7444-8081-1fdfba76dae9"
+        }
+      ]
+    }
+  ]
+}
