@@ -4,6 +4,7 @@ import { z } from "zod";
 import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
 import { assessDischargeReadinessV1 } from "../discharge-readiness/assess-discharge-readiness";
+import { buildReconciledPromptOneToolResult } from "../discharge-readiness/reconciled-prompt-one";
 import {
   V1_SCENARIO_3_ID,
   V1_SUPPORTED_SCENARIO_IDS,
@@ -20,11 +21,15 @@ const shouldUseReconciledPromptOne = (
   scenarioId: string | undefined,
   readinessMode: "reconciled_prompt_one" | "deterministic_structured_baseline" | undefined,
 ): boolean => {
+  if (readinessMode === "deterministic_structured_baseline") {
+    return false;
+  }
+
   if (!scenarioId || scenarioId === V1_SCENARIO_3_ID) {
     return true;
   }
 
-  return readinessMode === "reconciled_prompt_one";
+  return false;
 };
 
 class AssessDischargeReadinessTool implements IMcpTool {
@@ -48,7 +53,7 @@ class AssessDischargeReadinessTool implements IMcpTool {
             .enum(["reconciled_prompt_one", "deterministic_structured_baseline"])
             .optional()
             .describe(
-              "Use reconciled_prompt_one to force the Prompt Opinion demo answer for non-canonical fixtures; canonical Prompt 1 always reconciles even if this is omitted.",
+              "Canonical Prompt 1 reconciles by default. Use deterministic_structured_baseline only when explicitly asking for DGK-only structured output.",
             ),
           response_mode: z
             .enum(["prompt_opinion_slim", "full"])
@@ -65,43 +70,7 @@ class AssessDischargeReadinessTool implements IMcpTool {
         }
 
         if (shouldUseReconciledPromptOne(scenario_id, readiness_mode)) {
-          const { assessReconciledDischargeReadiness } = await import(
-            "../../clinical-intelligence-typescript/clinical-intelligence/reconciled-discharge-readiness"
-          );
-          const payload = await assessReconciledDischargeReadiness({
-            responseMode: response_mode ?? DEFAULT_RESPONSE_MODE,
-          });
-          if ((response_mode ?? DEFAULT_RESPONSE_MODE) === "prompt_opinion_slim") {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: payload.prompt_opinion_visible_answer,
-                },
-              ],
-              structuredContent: {
-                final_verdict: payload.final_verdict,
-                structured_baseline_posture: payload.structured_posture,
-                hidden_risk_review_status: payload.clinical_intelligence_status,
-                hidden_risk_result: payload.hidden_risk_result,
-                narrative_source_count: payload.narrative_source_count,
-                evidence_anchors: [
-                  "Nursing Note 2026-04-18 20:40",
-                  "Case Management Addendum 2026-04-18 20:55",
-                ],
-                blocker_categories: [
-                  "clinical_stability",
-                  "equipment_and_transport",
-                  "home_support_and_services",
-                ],
-              },
-              isError: payload.status === "error",
-            };
-          }
-
-          return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), {
-            isError: payload.status === "error",
-          });
+          return buildReconciledPromptOneToolResult(response_mode ?? DEFAULT_RESPONSE_MODE);
         }
 
         const { input } = await resolveWorkflowInputForRequest(req, {
