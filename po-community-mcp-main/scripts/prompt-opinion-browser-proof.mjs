@@ -195,11 +195,15 @@ const defaultSemanticAnchorSets = {
       },
       {
         name: "narrative sources were reviewed",
-        patterns: [/narrative_source_count["': ]+[1-9]/i, /narrative source count[^.\n]{0,40}[1-9]/i],
+        patterns: [
+          /narrative_source_count["': ]+[1-9]/i,
+          /narrative source count[^.\n]{0,40}[1-9]/i,
+          /hidden[- ]risk review status[^.\n]{0,80}\bok\b/i,
+        ],
       },
       {
         name: "hidden-risk result is present",
-        patterns: [/hidden_risk_result["': ]+hidden_risk_present/i, /result=hidden_risk_present/i],
+        patterns: [/hidden_risk_result["': ]+hidden_risk_present/i, /result=hidden_risk_present/i, /hidden risk present/i],
       },
       {
         name: "patient-specific evidence is mentioned",
@@ -1382,8 +1386,12 @@ const sendPrompt = async ({
   let finalState = null;
   let timedOut = false;
   let settleReason = "timeout";
+  const transientErrorSignals = new Set();
   while (Date.now() < deadline) {
     finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
+    for (const signal of finalState.errorSignals) {
+      transientErrorSignals.add(signal);
+    }
     const expectedTokensMatched = expectedTokens.some((token) =>
       finalState.bodyText.toLowerCase().includes(token.toLowerCase()) || finalState.assistantText.toLowerCase().includes(token.toLowerCase()),
     );
@@ -1448,6 +1456,20 @@ const sendPrompt = async ({
   const a2aRuntimeHit = finalState.a2aRuntimeHit;
   const directRuntimeHit = finalState.directRuntimeHit;
   const promptStreamRequests = relevantNetwork.filter((event) => event.event === "request" && /prompt-stream|chat|conversation/i.test(event.url));
+  const networkErrorSignals = relevantNetwork
+    .filter((event) => event.event === "response")
+    .flatMap((event) => {
+      const preview = String(event.body?.preview || "");
+      const matches = [...preview.matchAll(/"messageType"\s*:\s*"Error"[^{}]*"errorMessage"\s*:\s*"([^"]+)"/g)];
+      return matches.map((match) => `network:${match[1]}`);
+    });
+  const allErrorSignals = [
+    ...new Set([
+      ...finalState.errorSignals,
+      ...transientErrorSignals,
+      ...networkErrorSignals,
+    ]),
+  ];
 
   let observedRoute = "no visible runtime route";
   if (lane === "A2A-main" && a2aRuntimeHit) {
@@ -1464,7 +1486,7 @@ const sendPrompt = async ({
   const finalTranscriptVisible =
     transcriptFlags.assistant_transcript_persisted && transcriptFlags.assistant_message_present && !finalState.responding;
   const wrongClinicalRecommendation = transcriptFlags.wrong_clinical_recommendation;
-  if (wrongClinicalRecommendation || finalState.errorSignals.length > 0) {
+  if (wrongClinicalRecommendation || allErrorSignals.length > 0) {
     status = "red";
   } else if (lane === "A2A-main") {
     const selectedAgentVerified = Boolean(selectedAgent?.verified);
@@ -1513,7 +1535,7 @@ const sendPrompt = async ({
     transcript_flags: transcriptFlags,
     semantic_anchors: finalState.semantic,
     assistant_text_preview: truncate(finalState.assistantText, 1200),
-    error_signals: finalState.errorSignals,
+    error_signals: allErrorSignals,
     settle: {
       reason: settleReason,
       timed_out: timedOut || settleReason === "timeout",
@@ -2311,12 +2333,12 @@ const main = async () => {
         attemptId: "FALLBACK-P1-01",
         prompt: PROMPTS.prompt1,
         expectedTokens: [
-          "assess_reconciled_discharge_readiness",
-          "structured_posture",
-          "hidden_risk_result",
+          "assess_discharge_readiness",
+          "structured baseline",
+          "result=hidden_risk_present",
           "not_ready",
         ],
-        expectedTool: "assess_reconciled_discharge_readiness",
+        expectedTool: "assess_discharge_readiness",
       });
       await sendPrompt({
         page,

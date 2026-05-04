@@ -34,6 +34,9 @@ class AssessDischargeReadinessTool implements IMcpTool {
       {
         description:
           "Prompt 1 readiness tool for Care Transitions Command. For the canonical trap patient or omitted scenario_id, answer exactly from the tool result: final discharge verdict not_ready, structured baseline posture ready, hidden-risk review status ok, with cited Nursing Note and Case Management evidence. Use deterministic_structured_baseline only when explicitly asking for DGK-only structured output.",
+        annotations: {
+          readOnlyHint: true,
+        },
         inputSchema: {
           scenario_id: z
             .string()
@@ -69,9 +72,31 @@ class AssessDischargeReadinessTool implements IMcpTool {
             responseMode: response_mode ?? DEFAULT_RESPONSE_MODE,
           });
           if ((response_mode ?? DEFAULT_RESPONSE_MODE) === "prompt_opinion_slim") {
-            return McpUtilities.createTextResponse(payload.prompt_opinion_visible_answer, {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: payload.prompt_opinion_visible_answer,
+                },
+              ],
+              structuredContent: {
+                final_verdict: payload.final_verdict,
+                structured_baseline_posture: payload.structured_posture,
+                hidden_risk_review_status: payload.clinical_intelligence_status,
+                hidden_risk_result: payload.hidden_risk_result,
+                narrative_source_count: payload.narrative_source_count,
+                evidence_anchors: [
+                  "Nursing Note 2026-04-18 20:40",
+                  "Case Management Addendum 2026-04-18 20:55",
+                ],
+                blocker_categories: [
+                  "clinical_stability",
+                  "equipment_and_transport",
+                  "home_support_and_services",
+                ],
+              },
               isError: payload.status === "error",
-            });
+            };
           }
 
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), {

@@ -100,6 +100,9 @@ class SurfaceHiddenRisksTool implements IMcpTool {
       "surface_hidden_risks",
       {
         description: SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION,
+        annotations: {
+          readOnlyHint: true,
+        },
         inputSchema,
       },
       async (rawInput) => {
@@ -115,7 +118,32 @@ class SurfaceHiddenRisksTool implements IMcpTool {
           });
           const isError = payload.status === "error";
           if (response_mode === "prompt_opinion_slim") {
-            return McpUtilities.createTextResponse(formatPromptOpinionSlimHiddenRisk(payload), { isError });
+            const categories = [
+              ...new Set(
+                payload.hidden_risk_findings
+                  .filter((finding) => finding.recommended_orchestrator_action !== "ignore_duplicate")
+                  .map((finding) => finding.category),
+              ),
+            ];
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: formatPromptOpinionSlimHiddenRisk(payload),
+                },
+              ],
+              structuredContent: {
+                baseline_verdict: payload.baseline_verdict,
+                hidden_risk_review_status: payload.status,
+                hidden_risk_result: payload.hidden_risk_summary.result,
+                final_impact: payload.hidden_risk_summary.overall_disposition_impact,
+                evidence_anchors: payload.citations
+                  .slice(0, 4)
+                  .map((citation) => citation.source_label),
+                blocker_categories: categories,
+              },
+              isError,
+            };
           }
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {

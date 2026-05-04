@@ -101,6 +101,9 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
       "synthesize_transition_narrative",
       {
         description: SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION,
+        annotations: {
+          readOnlyHint: true,
+        },
         inputSchema,
       },
       async (rawInput) => {
@@ -117,10 +120,26 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
           });
           const isError = payload.status === "error";
           if (parsed.data.response_mode === "prompt_opinion_slim") {
-            return McpUtilities.createTextResponse(
-              formatPromptOpinionSlimTransitionPackage(payload),
-              { isError },
-            );
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: formatPromptOpinionSlimTransitionPackage(payload),
+                },
+              ],
+              structuredContent: {
+                proposed_disposition: payload.proposed_disposition,
+                baseline_verdict: payload.baseline_verdict,
+                recommended_actions: payload.recommended_actions
+                  .slice(0, 4)
+                  .map((action) => action.action),
+                evidence_anchors: payload.citations
+                  .slice(0, 4)
+                  .map((citation) => citation.source_label),
+                safety_boundary: payload.safety_boundary,
+              },
+              isError,
+            };
           }
           return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
         } catch (error) {

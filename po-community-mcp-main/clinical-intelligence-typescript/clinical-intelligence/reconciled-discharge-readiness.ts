@@ -201,7 +201,7 @@ const buildVisibleAnswer = (
   return [
     `No - Final verdict: ${payload.final_verdict}.`,
     `Structured baseline posture: ${payload.structured_posture}.`,
-    `Hidden-risk review status: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}.`,
+    `Hidden-risk review status: ${payload.clinical_intelligence_status}; result=${payload.hidden_risk_result}; narrative_source_count=${payload.narrative_source_count}.`,
     `Evidence anchors: ${requiredEvidence.join("; ")}.`,
     `Blocker categories: ${requiredCategories.join(", ")}.`,
     `Action: hold discharge for clinician review before discharge.`,
