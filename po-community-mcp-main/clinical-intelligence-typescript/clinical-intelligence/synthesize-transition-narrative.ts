@@ -318,6 +318,21 @@ const applyResponseMode = (
   return output;
 };
 
+const surfaceHiddenRisksForNarrative = async (
+  input: HiddenRiskInput,
+  responseMode: HiddenRiskResponseMode,
+) => {
+  const firstAttempt = await surfaceHiddenRisks(input, { responseMode });
+  if (responseMode === "prompt_opinion_slim") {
+    return firstAttempt;
+  }
+  if (firstAttempt.payload.status !== "error") {
+    return firstAttempt;
+  }
+
+  return await surfaceHiddenRisks(input, { responseMode });
+};
+
 export const synthesizeTransitionNarrative = async (
   rawInput: unknown,
   options?: TransitionNarrativeOptions,
@@ -330,7 +345,7 @@ export const synthesizeTransitionNarrative = async (
     );
   }
   const input = parsed.data;
-  const hiddenRisk = await surfaceHiddenRisks(input, { responseMode });
+  const hiddenRisk = await surfaceHiddenRisksForNarrative(input, responseMode);
   const hiddenRiskOutput = hiddenRisk.payload;
 
   const proposedDisposition = mapDisposition(

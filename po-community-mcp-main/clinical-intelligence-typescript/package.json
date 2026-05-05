@@ -8,10 +8,11 @@
     "pretypecheck": "node -e \"const fs=require('node:fs'); const missing=['typescript','tsx','@modelcontextprotocol/sdk'].filter((pkg)=>!fs.existsSync('node_modules/'+pkg)); if(missing.length){console.error('Missing dependencies: '+missing.join(', ')+'. Run: npm ci'); process.exit(1);}\"",
     "typecheck": "npx tsc --noEmit",
     "smoke:runtime": "npx tsx smoke/runtime-boot-and-registration-smoke.ts",
+    "smoke:reconciled-readiness": "npx tsx smoke/reconciled-readiness-smoke.ts",
     "smoke:hidden-risk": "npx tsx smoke/hidden-risk-detection-smoke.ts",
     "smoke:narrative": "npx tsx smoke/transition-narrative-smoke.ts",
     "smoke:phase2-two-mcp": "npx tsx smoke/two-mcp-integration-smoke.ts",
-    "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:hidden-risk && npm run smoke:narrative",
+    "smoke:release-gate": "npm run typecheck && npm run smoke:runtime && npm run smoke:reconciled-readiness && npm run smoke:hidden-risk && npm run smoke:narrative",
     "test": "npm run smoke:release-gate"
   },
   "author": "Clinical Intelligence Team",

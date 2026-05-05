@@ -290,6 +290,7 @@ export class McpToolInvoker {
           name: "assess_discharge_readiness",
           arguments: {
             scenario_id: scenarioId,
+            readiness_mode: "deterministic_structured_baseline",
           },
         });
       },
@@ -340,6 +341,7 @@ export class McpToolInvoker {
             },
             narrative_evidence_bundle: narrative,
             optional_context_metadata: input.patient_context?.optional_context_metadata,
+            response_mode: "full",
           },
         });
       },

@@ -88,10 +88,10 @@ const run = async (): Promise<void> => {
   const dgCwd = `${root}/../typescript`;
   const ciCwd = `${root}/../clinical-intelligence-typescript`;
 
-  const dgPort = "5055";
-  const ciPort = "5056";
-  const a2aPort = "5057";
-  const a2aFallbackPort = "5058";
+  const dgPort = process.env.ORCHESTRATOR_SMOKE_DG_PORT || "5055";
+  const ciPort = process.env.ORCHESTRATOR_SMOKE_CI_PORT || "5056";
+  const a2aPort = process.env.ORCHESTRATOR_SMOKE_A2A_PORT || "5057";
+  const a2aFallbackPort = process.env.ORCHESTRATOR_SMOKE_A2A_FALLBACK_PORT || "5058";
 
   const dg = spawnService("discharge", "npx", ["tsx", "index.ts"], dgCwd, {
     PORT: dgPort,
@@ -101,7 +101,7 @@ const run = async (): Promise<void> => {
   const ci = spawnService("clinical", "npx", ["tsx", "index.ts"], ciCwd, {
     PORT: ciPort,
     MCP_SERVER_NAME: "Clinical Intelligence MCP",
-    CLINICAL_INTELLIGENCE_PROVIDER: "heuristic",
+    CLINICAL_INTELLIGENCE_LLM_PROVIDER: "heuristic",
   });
 
   const a2a = spawnService("a2a", "npx", ["tsx", "index.ts"], root, {

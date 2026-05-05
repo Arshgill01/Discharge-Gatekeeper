@@ -42,6 +42,7 @@ Must expose:
 - health endpoint
 - stable tool metadata
 - hidden-risk JSON contract with citations
+- compact reconciled Prompt 1 contract that preserves DGK structured baseline and returns final hidden-risk posture
 
 ### Surface C: `external A2A orchestrator`
 Role:
@@ -79,7 +80,7 @@ Provider status rules:
 - `GREEN`: `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` and `GOOGLE_API_KEY` or `GEMINI_API_KEY` is present.
 - `YELLOW`: heuristic mode; acceptable only for deterministic local regression and release-gate stability.
 - `RED`: Google provider requested without a Google/Gemini key; do not continue to Google/Gemini proof.
-- default model: `gemma-4-31B-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set.
+- default model: `gemma-4-31b-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set.
 
 For browser proof that claims Google/Gemini, run:
 
@@ -202,6 +203,7 @@ They start and stop shared local runtimes as part of their own cleanup.
 - Prompt Opinion shows the MCP as reachable
 - tool metadata clearly maps to hidden-risk and contradiction review
 - discovery does not duplicate the deterministic discharge tools
+- discovery includes `assess_reconciled_discharge_readiness` for compact Prompt 1 Direct-MCP reconciliation
 - a smoke invocation returns the hidden-risk JSON schema with citations
 - trap-patient smoke returns `hidden_risk_present` with contradiction-note citations
 - control smoke returns explicit `no_hidden_risk` with no fabricated escalation

@@ -383,6 +383,7 @@ const run = async (): Promise<void> => {
           name: "assess_discharge_readiness",
           arguments: {
             scenario_id: "third_synthetic_discharge_slice_ready_v1",
+            readiness_mode: "deterministic_structured_baseline",
           },
         }),
       ),

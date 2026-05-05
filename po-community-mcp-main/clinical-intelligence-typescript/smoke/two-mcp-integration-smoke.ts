@@ -387,6 +387,6 @@ const main = async (): Promise<void> => {
 
 void main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
+  console.error(error instanceof Error && error.stack ? error.stack : message);
   process.exitCode = 1;
 });

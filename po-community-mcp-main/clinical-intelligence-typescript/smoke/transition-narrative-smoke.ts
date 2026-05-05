@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
 import {
+  DEFAULT_HIDDEN_RISK_SCENARIO_ID,
+  resolveHiddenRiskToolInput,
+} from "../tools/canonical-hidden-risk-input";
+import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
   INCONCLUSIVE_CONTEXT_INPUT,
   NO_RISK_CONTROL_INPUT,
@@ -183,17 +187,35 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
   }
 };
 
+const assertPromptOpinionScenarioShortcutResolvesCanonicalInput = (): void => {
+  const input = resolveHiddenRiskToolInput(
+    { scenario_id: DEFAULT_HIDDEN_RISK_SCENARIO_ID },
+    "Prompt 3 Direct-MCP concise transition package using compact canonical scenario input.",
+  );
+
+  assert.equal(input.deterministic_snapshot.baseline_verdict, "ready");
+  assert.equal(
+    input.narrative_evidence_bundle.length,
+    PHASE0_TRAP_PATIENT_INPUT.narrative_evidence_bundle.length,
+  );
+  assert.equal(
+    input.optional_context_metadata?.explicit_task_goal,
+    "Prompt 3 Direct-MCP concise transition package using compact canonical scenario input.",
+  );
+};
+
 const main = async (): Promise<void> => {
   await assertTrapNarrative();
   await assertAlternativeNarrative();
   await assertControlNarrative();
   await assertInconclusiveNarrative();
   await assertPromptOpinionSlimNarrativeStaysRenderSafe();
+  assertPromptOpinionScenarioShortcutResolvesCanonicalInput();
   console.log("SMOKE PASS: transition narrative synthesis");
 };
 
 void main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
+  console.error(error instanceof Error && error.stack ? error.stack : message);
   process.exitCode = 1;
 });
