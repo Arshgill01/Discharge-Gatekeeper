@@ -323,6 +323,9 @@ const surfaceHiddenRisksForNarrative = async (
   responseMode: HiddenRiskResponseMode,
 ) => {
   const firstAttempt = await surfaceHiddenRisks(input, { responseMode });
+  if (responseMode === "prompt_opinion_slim") {
+    return firstAttempt;
+  }
   if (firstAttempt.payload.status !== "error") {
     return firstAttempt;
   }

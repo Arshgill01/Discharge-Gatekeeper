@@ -2,6 +2,7 @@ import { HiddenRiskInput } from "../clinical-intelligence/contract";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
+  buildHiddenRiskCompactUserPrompt,
   buildHiddenRiskUserPrompt,
   HIDDEN_RISK_SYSTEM_PROMPT,
 } from "../clinical-intelligence/prompt-contract";
@@ -31,8 +32,15 @@ export type HiddenRiskLlmResult = {
   provider: LlmProvider;
 };
 
+export type HiddenRiskLlmOptions = {
+  responseMode?: "full" | "prompt_opinion_slim";
+};
+
 export interface HiddenRiskLlmClient {
-  generateHiddenRiskResponse: (input: HiddenRiskInput) => Promise<HiddenRiskLlmResult>;
+  generateHiddenRiskResponse: (
+    input: HiddenRiskInput,
+    options?: HiddenRiskLlmOptions,
+  ) => Promise<HiddenRiskLlmResult>;
 }
 
 const parseProvider = (value: string | undefined): LlmProvider => {
@@ -109,7 +117,10 @@ export const getHiddenRiskLlmRuntimeDiagnostics = (
 class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
   constructor(private readonly config: ClientConfig) {}
 
-  async generateHiddenRiskResponse(input: HiddenRiskInput): Promise<HiddenRiskLlmResult> {
+  async generateHiddenRiskResponse(
+    input: HiddenRiskInput,
+    options?: HiddenRiskLlmOptions,
+  ): Promise<HiddenRiskLlmResult> {
     if (this.config.provider === "google") {
       if (!this.config.googleApiKey) {
         throw new Error(
@@ -117,13 +128,17 @@ class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
         );
       }
 
-      const userPrompt = buildHiddenRiskUserPrompt(input);
+      const useCompactPrompt = options?.responseMode === "prompt_opinion_slim";
+      const userPrompt = useCompactPrompt
+        ? buildHiddenRiskCompactUserPrompt(input)
+        : buildHiddenRiskUserPrompt(input);
       const rawText = await generateGoogleResponse({
         apiKey: this.config.googleApiKey,
         model: this.config.googleModel,
         timeoutMs: this.config.timeoutMs,
         systemPrompt: HIDDEN_RISK_SYSTEM_PROMPT,
         userPrompt,
+        maxOutputTokens: useCompactPrompt ? 384 : 2048,
       });
       return { rawText, provider: "google" };
     }

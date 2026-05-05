@@ -13,12 +13,36 @@ type SurfaceHiddenRiskResult = {
   provider: string;
 };
 
+type CachedHiddenRiskOutput = {
+  payload: HiddenRiskOutput;
+  provider: string;
+};
+
 export const HIDDEN_RISK_RESPONSE_MODES = ["full", "prompt_opinion_slim"] as const;
 export type HiddenRiskResponseMode = (typeof HIDDEN_RISK_RESPONSE_MODES)[number];
 
 export type SurfaceHiddenRiskOptions = {
   llmClientOverride?: HiddenRiskLlmClient;
   responseMode?: HiddenRiskResponseMode;
+};
+
+const hiddenRiskOutputCache = new Map<string, CachedHiddenRiskOutput>();
+
+const cloneHiddenRiskOutput = (payload: HiddenRiskOutput): HiddenRiskOutput =>
+  JSON.parse(JSON.stringify(payload)) as HiddenRiskOutput;
+
+const buildPromptOpinionCacheKey = (input: HiddenRiskInput): string => {
+  const narrativeKey = input.narrative_evidence_bundle.map((source) => ({
+    source_id: source.source_id,
+    source_label: source.source_label,
+    locator: source.locator || "",
+    excerpt: source.excerpt,
+  }));
+
+  return JSON.stringify({
+    baseline_verdict: input.deterministic_snapshot.baseline_verdict,
+    narrative: narrativeKey,
+  });
 };
 
 export const parseJsonObject = (text: string): unknown => {
@@ -942,12 +966,26 @@ export const surfaceHiddenRisks = async (
     };
   }
 
+  const cacheKey = responseMode === "prompt_opinion_slim" && !options?.llmClientOverride
+    ? buildPromptOpinionCacheKey(input)
+    : null;
+  if (cacheKey) {
+    const cached = hiddenRiskOutputCache.get(cacheKey);
+    if (cached) {
+      return {
+        payload: applyResponseMode(cloneHiddenRiskOutput(cached.payload), responseMode),
+        provider: cached.provider,
+      };
+    }
+  }
+
   const llmClient = options?.llmClientOverride || getHiddenRiskLlmClient();
 
   let lastError: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const maxAttempts = responseMode === "prompt_opinion_slim" ? 1 : 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const llmResult = await llmClient.generateHiddenRiskResponse(input);
+      const llmResult = await llmClient.generateHiddenRiskResponse(input, { responseMode });
       const decoded = parseJsonObject(llmResult.rawText);
       const normalizedDecoded = normalizeRawModelOutput(decoded, input);
       const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
@@ -956,6 +994,12 @@ export const surfaceHiddenRisks = async (
       }
 
       const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
+      if (cacheKey && safeOutput.status !== "error") {
+        hiddenRiskOutputCache.set(cacheKey, {
+          payload: cloneHiddenRiskOutput(safeOutput),
+          provider: llmResult.provider,
+        });
+      }
       return {
         payload: applyResponseMode(safeOutput, responseMode),
         provider: llmResult.provider,

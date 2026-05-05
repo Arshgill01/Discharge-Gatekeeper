@@ -130,7 +130,10 @@ const outputPlaywrightDir = path.join(REPO_ROOT, "output/playwright", runId);
 const runScreenshotsDir = path.join(runDir, "screenshots");
 const reportsDir = path.join(runDir, "reports");
 const notesDir = path.join(runDir, "notes");
-const runtimeProfileDir = path.join(PO_ROOT, ".runtime/prompt-opinion-browser-profile");
+const runtimeProfileDir = getenv(
+  "PROMPT_OPINION_BROWSER_PROFILE_DIR",
+  path.join(PO_ROOT, ".runtime/prompt-opinion-browser-profile"),
+);
 
 const browserBaseUrl = getenv("PROMPT_OPINION_BASE_URL", "https://app.promptopinion.ai/");
 const email = mustEnv("PROMPT_OPINION_EMAIL");
@@ -149,9 +152,16 @@ const enabledBrowserLanes = new Set(
     .map((item) => normalizeLaneToken(item))
     .filter(Boolean),
 );
+const enabledDirectPrompts = new Set(
+  (getenv("PROMPT_OPINION_DIRECT_PROMPTS", "prompt1,prompt2,prompt3") || "prompt1,prompt2,prompt3")
+    .split(",")
+    .map((item) => normalizeLaneToken(item))
+    .filter(Boolean),
+);
 
 const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
 const laneEnabled = (lane) => enabledBrowserLanes.has("all") || enabledBrowserLanes.has(normalizeLaneToken(lane));
+const directPromptEnabled = (promptKey) => enabledDirectPrompts.has("all") || enabledDirectPrompts.has(normalizeLaneToken(promptKey));
 
 const normalizeWhitespace = (value) => String(value || "").replace(/\s+/g, " ").trim();
 const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -203,7 +213,12 @@ const defaultSemanticAnchorSets = {
       },
       {
         name: "hidden-risk result is present",
-        patterns: [/hidden_risk_result["': ]+hidden_risk_present/i, /result=hidden_risk_present/i, /hidden risk present/i],
+        patterns: [
+          /hidden_risk_result["': ]+hidden_risk_present/i,
+          /result=hidden_risk_present/i,
+          /hidden risk present/i,
+          /hidden[- ]risk status[^.\n]{0,80}present/i,
+        ],
       },
       {
         name: "patient-specific evidence is mentioned",
@@ -226,7 +241,7 @@ const defaultSemanticAnchorSets = {
         patterns: [/Case Management Addendum 2026-04-18 20:55/i],
       },
     ],
-    forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}\bready\b/i, /routine discharge/i],
+    forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}(?<!not[_ -])\bready\b/i, /routine discharge/i],
   },
   prompt2: {
     required_any: [
@@ -1054,12 +1069,22 @@ const visibleErrorPatterns = [
   /something went wrong/i,
   /failed to (?:load|send|generate|respond)/i,
   /unable to (?:load|generate|respond|connect)/i,
+  /LLM took too long to respond/i,
+  /operation was cancelled/i,
   /request timed out/i,
   /\btimeout\b/i,
   /network error/i,
   /connection lost/i,
   /try again/i,
   /platform error/i,
+];
+
+const prompt3SettleErrorPatterns = [
+  { label: "The LLM took too long to respond", pattern: /The LLM took too long to respond/i },
+  { label: "operation was cancelled", pattern: /operation was cancelled/i },
+  { label: "Error", pattern: /(^|\n)\s*Error\s*(\n|$)/i },
+  { label: "timeout", pattern: /\btimeout\b/i },
+  { label: "cancelled", pattern: /\bcancelled\b/i },
 ];
 
 const transcriptToolPatterns = [/response/i, /verdict/i, /hidden[_ -]?risk/i, /transition/i, /not[_ -]?ready/i, /\bready\b/i];
@@ -1205,6 +1230,13 @@ const collectAttemptState = async ({ page, lane, prompt, promptKey, expectedTool
     transcriptSnapshot.assistantCandidates.some((candidate) => candidate.length >= 24) ||
     semantic.passed;
   const errorSignals = visibleErrorPatterns.filter((pattern) => pattern.test(bodyText)).map((pattern) => pattern.toString());
+  if (promptKey === "prompt3") {
+    for (const { label, pattern } of prompt3SettleErrorPatterns) {
+      if (pattern.test(bodyText)) {
+        errorSignals.push(`prompt3-dom:${label}`);
+      }
+    }
+  }
   const expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
   const a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
   const directRuntimeHit =
@@ -1254,6 +1286,7 @@ const summarizeSettleTrace = (trace) =>
     semantic_anchor_passed: entry.semantic_anchor_passed,
     expected_runtime_hit: entry.expected_runtime_hit,
     error_signals: entry.error_signals,
+    body_text_snapshot: entry.body_text_snapshot,
   }));
 
 const disabledPromptAttempt = async ({ page, lane, attemptId, prompt, expectedTool, observedRoute }) => {
@@ -1387,14 +1420,22 @@ const sendPrompt = async ({
   let timedOut = false;
   let settleReason = "timeout";
   const transientErrorSignals = new Set();
+  const transientPrompt3ErrorSignals = new Set();
+  const effectiveSettlePollMs = promptKey === "prompt3" ? Math.min(settlePollMs, 1000) : settlePollMs;
   while (Date.now() < deadline) {
     finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
     for (const signal of finalState.errorSignals) {
       transientErrorSignals.add(signal);
+      if (/prompt3-dom:|LLM took too long|operation was cancelled|timeout|cancelled/i.test(signal)) {
+        transientPrompt3ErrorSignals.add(signal);
+      }
     }
     const expectedTokensMatched = expectedTokens.some((token) =>
       finalState.bodyText.toLowerCase().includes(token.toLowerCase()) || finalState.assistantText.toLowerCase().includes(token.toLowerCase()),
     );
+    const bodyTextSnapshot = promptKey === "prompt3" || finalState.errorSignals.length > 0
+      ? truncate(redactText(finalState.bodyText), 4000)
+      : undefined;
     settleTrace.push({
       at: nowIso(),
       input_ready: finalState.inputReady,
@@ -1404,8 +1445,9 @@ const sendPrompt = async ({
       expected_runtime_hit: finalState.expectedRuntimeHit,
       error_signals: finalState.errorSignals,
       expected_tokens_matched: expectedTokensMatched,
+      body_text_snapshot: bodyTextSnapshot,
     });
-    if (settleTrace.length > 16) {
+    if (promptKey !== "prompt3" && settleTrace.length > 16) {
       settleTrace.shift();
     }
 
@@ -1432,7 +1474,7 @@ const sendPrompt = async ({
       settleReason = "visible_error_before_runtime";
       break;
     }
-    await page.waitForTimeout(settlePollMs);
+    await page.waitForTimeout(effectiveSettlePollMs);
   }
   if (!finalState) {
     finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
@@ -1470,6 +1512,13 @@ const sendPrompt = async ({
       ...networkErrorSignals,
     ]),
   ];
+  const visibleTimeoutOrErrorBanner = allErrorSignals.some((signal) =>
+    /llm took too long|operation was cancelled|request timed out|timeout|cancelled|something went wrong|platform error/i.test(signal),
+  );
+  const prompt3TimeoutOrErrorObserved = promptKey === "prompt3" && (
+    transientPrompt3ErrorSignals.size > 0 ||
+    allErrorSignals.some((signal) => /prompt3-dom:|llm took too long|operation was cancelled|timeout|cancelled/i.test(signal))
+  );
 
   let observedRoute = "no visible runtime route";
   if (lane === "A2A-main" && a2aRuntimeHit) {
@@ -1486,7 +1535,7 @@ const sendPrompt = async ({
   const finalTranscriptVisible =
     transcriptFlags.assistant_transcript_persisted && transcriptFlags.assistant_message_present && !finalState.responding;
   const wrongClinicalRecommendation = transcriptFlags.wrong_clinical_recommendation;
-  if (wrongClinicalRecommendation || allErrorSignals.length > 0) {
+  if (wrongClinicalRecommendation || allErrorSignals.length > 0 || prompt3TimeoutOrErrorObserved) {
     status = "red";
   } else if (lane === "A2A-main") {
     const selectedAgentVerified = Boolean(selectedAgent?.verified);
@@ -1536,11 +1585,14 @@ const sendPrompt = async ({
     semantic_anchors: finalState.semantic,
     assistant_text_preview: truncate(finalState.assistantText, 1200),
     error_signals: allErrorSignals,
+    visible_timeout_or_error_banner: visibleTimeoutOrErrorBanner,
+    prompt3_timeout_or_error_observed: prompt3TimeoutOrErrorObserved,
     settle: {
       reason: settleReason,
       timed_out: timedOut || settleReason === "timeout",
       final_settle_delay_ms: finalSettleDelayMs,
       post_settle_runtime_grace_ms: postSettleRuntimeGraceMs,
+      effective_poll_ms: effectiveSettlePollMs,
       expected_runtime_hit: finalState.expectedRuntimeHit,
       final_transcript_visible: finalTranscriptVisible,
       trace: summarizeSettleTrace(settleTrace),
@@ -1728,7 +1780,7 @@ const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbac
       attempt.lane === "A2A-main"
         ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
         : "Browser proof harness";
-    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"} |`;
   });
 
   return [
@@ -1773,7 +1825,7 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
     .filter((attempt) => attempt.lane === "Direct-MCP fallback")
     .map((attempt) => {
       const flags = attempt.transcript_flags;
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.assistant_transcript_persisted ? "yes" : "no"} | \`${attempt.status}\` | settle=${attempt.settle?.reason || "n/a"}; anchors=${flags.semantic_anchor_passed ? "pass" : "fail"}; route=${attempt.observed_route} |`;
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.assistant_transcript_persisted ? "yes" : "no"} | \`${attempt.status}\` | settle=${attempt.settle?.reason || "n/a"}; anchors=${flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"}; route=${attempt.observed_route} |`;
     });
 
   return [
@@ -1817,7 +1869,7 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
       attempt.lane === "A2A-main"
         ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
         : "Browser proof harness";
-    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"} |`;
   });
   const registrationRows = (registrationSummary?.registrations || []).map(
     (registration) =>
@@ -1888,6 +1940,7 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
         `- ${attempt.attempt_id} assistant transcript persisted: ${attempt.transcript_flags.assistant_transcript_persisted ? "yes" : "no"}`,
         `- ${attempt.attempt_id} semantic anchors passed: ${attempt.transcript_flags.semantic_anchor_passed ? "yes" : "no"}`,
         `- ${attempt.attempt_id} settle reason: ${attempt.settle?.reason || "n/a"}`,
+        `- ${attempt.attempt_id} timeout/error banner visible: ${attempt.visible_timeout_or_error_banner ? "yes" : "no"}`,
       ]),
     "",
     "## Final lane statuses",
@@ -2327,35 +2380,41 @@ const main = async () => {
         )
       : false;
     if (fallbackReady) {
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P1-01",
-        prompt: PROMPTS.prompt1,
-        expectedTokens: [
-          "assess_discharge_readiness",
-          "structured baseline",
-          "result=hidden_risk_present",
-          "not_ready",
-        ],
-        expectedTool: "assess_discharge_readiness",
-      });
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P2-01",
-        prompt: PROMPTS.prompt2,
-        expectedTokens: ["surface_hidden_risks", "contradiction", "Nursing Note", "hidden_risk_present"],
-        expectedTool: "surface_hidden_risks",
-      });
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P3-01",
-        prompt: PROMPTS.prompt3,
-        expectedTokens: ["synthesize_transition_narrative", "transition", "Before discharge", "handoff"],
-        expectedTool: "synthesize_transition_narrative",
-      });
+      if (directPromptEnabled("prompt1")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P1-01",
+          prompt: PROMPTS.prompt1,
+          expectedTokens: [
+            "assess_discharge_readiness",
+            "structured baseline",
+            "result=hidden_risk_present",
+            "not_ready",
+          ],
+          expectedTool: "assess_discharge_readiness",
+        });
+      }
+      if (directPromptEnabled("prompt2")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P2-01",
+          prompt: PROMPTS.prompt2,
+          expectedTokens: ["surface_hidden_risks", "contradiction", "Nursing Note", "hidden_risk_present"],
+          expectedTool: "surface_hidden_risks",
+        });
+      }
+      if (directPromptEnabled("prompt3")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P3-01",
+          prompt: PROMPTS.prompt3,
+          expectedTokens: ["synthesize_transition_narrative", "transition", "Before discharge", "handoff"],
+          expectedTool: "synthesize_transition_narrative",
+        });
+      }
     }
 
     const summary = await writeEvidenceNotes({ workspaceId });

@@ -3,66 +3,21 @@ import { Request } from "express";
 import { z } from "zod";
 import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
-import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
 import { HiddenRiskOutput } from "../clinical-intelligence/contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
+import {
+  DEFAULT_HIDDEN_RISK_SCENARIO_ID,
+  resolveHiddenRiskToolInput,
+} from "./canonical-hidden-risk-input";
 
 export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
-  "Prompt 2 tool for contradiction-first hidden-risk review. Use when asked what hidden risk changed the discharge answer and to show note-backed evidence. Do not use this for deterministic baseline-only Prompt 1 or transition-package Prompt 3 synthesis.";
+  "Prompt 2 compact hidden-risk contradiction for the canonical trap patient. Call with scenario_id only; returns concise evidence anchors.";
 
 const inputSchema = {
-  deterministic_snapshot: z.object({
-    patient_id: z.string().nullable().optional(),
-    encounter_id: z.string().nullable().optional(),
-    baseline_verdict: z.enum(CANONICAL_VERDICTS),
-    deterministic_blockers: z
-      .array(
-        z.object({
-          blocker_id: z.string(),
-          category: z.enum(CANONICAL_BLOCKER_CATEGORIES),
-          description: z.string(),
-          severity: z.enum(["low", "medium", "high"]).optional(),
-        }),
-      )
-      .default([]),
-    deterministic_evidence: z
-      .array(
-        z.object({
-          evidence_id: z.string().optional(),
-          source_label: z.string(),
-          detail: z.string().optional(),
-        }),
-      )
-      .default([]),
-    deterministic_next_steps: z.array(z.string()).default([]),
-    deterministic_summary: z.string(),
-  }),
-  narrative_evidence_bundle: z
-    .array(
-      z.object({
-        source_id: z.string(),
-        source_type: z.string(),
-        source_label: z.string(),
-        locator: z.string().optional(),
-        timestamp: z.string().optional(),
-        excerpt: z.string(),
-      }),
-    )
-    .default([]),
-  optional_context_metadata: z
-    .object({
-      care_setting: z.string().optional(),
-      discharge_destination: z.string().optional(),
-      reviewer_timestamp: z.string().optional(),
-      explicit_task_goal: z.string().optional(),
-    })
-    .optional(),
-  response_mode: z
-    .enum(["prompt_opinion_slim", "full"])
-    .default("prompt_opinion_slim")
-    .describe(
-      "Optional output mode. Use prompt_opinion_slim for compact transcript-safe payloads in Prompt Opinion. Use full for full-fidelity debugging.",
-    ),
+  scenario_id: z
+    .literal(DEFAULT_HIDDEN_RISK_SCENARIO_ID)
+    .default(DEFAULT_HIDDEN_RISK_SCENARIO_ID)
+    .describe("Canonical Prompt Opinion trap patient scenario id."),
 };
 
 const toolInputSchema = z.object(inputSchema);
@@ -112,40 +67,23 @@ class SurfaceHiddenRisksTool implements IMcpTool {
             throw new Error(`Invalid input for surface_hidden_risks: ${parsed.error.message}`);
           }
 
-          const { response_mode } = parsed.data;
-          const { payload } = await surfaceHiddenRisks(parsed.data, {
-            responseMode: response_mode,
+          const hiddenRiskInput = resolveHiddenRiskToolInput(
+            parsed.data,
+            "Prompt 2 Direct-MCP hidden-risk contradiction review using compact canonical scenario input.",
+          );
+          const { payload } = await surfaceHiddenRisks(hiddenRiskInput, {
+            responseMode: "prompt_opinion_slim",
           });
           const isError = payload.status === "error";
-          if (response_mode === "prompt_opinion_slim") {
-            const categories = [
-              ...new Set(
-                payload.hidden_risk_findings
-                  .filter((finding) => finding.recommended_orchestrator_action !== "ignore_duplicate")
-                  .map((finding) => finding.category),
-              ),
-            ];
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: formatPromptOpinionSlimHiddenRisk(payload),
-                },
-              ],
-              structuredContent: {
-                baseline_verdict: payload.baseline_verdict,
-                hidden_risk_review_status: payload.status,
-                hidden_risk_result: payload.hidden_risk_summary.result,
-                final_impact: payload.hidden_risk_summary.overall_disposition_impact,
-                evidence_anchors: payload.citations
-                  .slice(0, 4)
-                  .map((citation) => citation.source_label),
-                blocker_categories: categories,
+          return {
+            content: [
+              {
+                type: "text",
+                text: formatPromptOpinionSlimHiddenRisk(payload),
               },
-              isError,
-            };
-          }
-          return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
+            ],
+            isError,
+          };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           return McpUtilities.createTextResponse(

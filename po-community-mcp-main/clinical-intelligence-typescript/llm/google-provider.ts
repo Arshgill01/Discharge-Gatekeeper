@@ -4,6 +4,7 @@ type GoogleRequest = {
   timeoutMs: number;
   systemPrompt: string;
   userPrompt: string;
+  maxOutputTokens?: number;
 };
 
 type GoogleResponseShape = {
@@ -40,12 +41,12 @@ const extractText = (payload: GoogleResponseShape): string | null => {
   return text && text.length > 0 ? text : null;
 };
 
-const buildGenerationConfig = (model: string) => {
+const buildGenerationConfig = (model: string, maxOutputTokens = 2048) => {
   const normalizedModel = normalizeGoogleModelCode(model);
   const config: GenerationConfig = {
     temperature: 0,
     candidateCount: 1,
-    maxOutputTokens: 2048,
+    maxOutputTokens,
     responseMimeType: "application/json",
   };
 
@@ -96,7 +97,7 @@ export const generateGoogleResponse = async (request: GoogleRequest): Promise<st
               parts: [{ text: request.userPrompt }],
             },
           ],
-          generationConfig: buildGenerationConfig(request.model),
+          generationConfig: buildGenerationConfig(request.model, request.maxOutputTokens),
         }),
       });
 
