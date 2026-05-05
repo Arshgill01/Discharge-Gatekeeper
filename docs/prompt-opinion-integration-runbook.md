@@ -65,6 +65,30 @@ Must expose:
   - `po-community-mcp-main/clinical-intelligence-typescript`
   - `po-community-mcp-main/external-a2a-orchestrator-typescript`
 
+### Shared env setup for every worktree
+Ignored `.env.local` files do not follow parallel worktrees. Before booting any runtime in a fresh worktree, link the shared env file:
+
+```bash
+./po-community-mcp-main/scripts/link-shared-env.sh
+./po-community-mcp-main/scripts/check-runtime-provider-config.sh
+```
+
+`link-shared-env.sh` reads `CTC_SHARED_ENV_PATH`, defaulting to `~/.config/care-transitions-command/phase8.env`, and creates `.env.local` as a symlink. It prints only key presence/absence and never secret values.
+
+Provider status rules:
+- `GREEN`: `CLINICAL_INTELLIGENCE_LLM_PROVIDER=google` and `GOOGLE_API_KEY` or `GEMINI_API_KEY` is present.
+- `YELLOW`: heuristic mode; acceptable only for deterministic local regression and release-gate stability.
+- `RED`: Google provider requested without a Google/Gemini key; do not continue to Google/Gemini proof.
+- default model: `gemma-4-31B-it` unless `CLINICAL_INTELLIGENCE_GOOGLE_MODEL` is explicitly set.
+
+For browser proof that claims Google/Gemini, run:
+
+```bash
+PROMPT_OPINION_REQUIRE_GOOGLE_PROVIDER=1 ./po-community-mcp-main/scripts/run-prompt-opinion-browser-proof.sh
+```
+
+No report may claim Google/Gemini backing when provider evidence says `heuristic`.
+
 Before registration, verify for every component:
 - identity string matches the frozen name
 - health check passes
