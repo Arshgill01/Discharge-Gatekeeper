@@ -4,6 +4,11 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import {
+  mergeRuntimeSummaryWithVisibleFallback,
+  selectA2AVariants,
+  summarizeVisibleA2AClinicalPayload,
+} from "./prompt-opinion-browser-proof-harness-lib.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(__filename);
@@ -76,6 +81,11 @@ const getenv = (name, fallback = "") => {
   const value = process.env[name];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 };
+
+const selectedA2aRouteLockVariants = selectA2AVariants(
+  A2A_ROUTE_LOCK_VARIANTS,
+  getenv("PROMPT_OPINION_A2A_VARIANTS", "all"),
+);
 
 const providerEvidence = {
   provider: getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic"),
@@ -517,6 +527,14 @@ const summarizeRuntimeDelta = (delta) => {
       ciMcpRequests.length > 0,
     discharge_gatekeeper_request_ids: [...new Set(dgkMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
     clinical_intelligence_request_ids: [...new Set(ciMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
+    runtime_evidence_sources:
+      a2aRequests.length > 0 || a2aTasksStarted.length > 0 || dgkMcpRequests.length > 0 || ciMcpRequests.length > 0
+        ? ["runtime_log_delta"]
+        : [],
+    a2a_route_evidence_source:
+      a2aRequests.length > 0 || a2aTasksStarted.length > 0
+        ? "runtime_log_delta"
+        : null,
   };
 };
 
@@ -1219,7 +1237,10 @@ const collectAttemptState = async ({ page, lane, prompt, promptKey, expectedTool
     transcriptTail: [],
   }));
   const assistantText = redactText(transcriptSnapshot.assistantText || "");
-  const runtimeSummary = summarizeRuntimeDelta(readLogDeltas(startOffsets));
+  const runtimeSummary = mergeRuntimeSummaryWithVisibleFallback(
+    summarizeRuntimeDelta(readLogDeltas(startOffsets)),
+    [bodyText, transcriptSnapshot.assistantText, ...transcriptSnapshot.assistantCandidates, ...transcriptSnapshot.transcriptTail],
+  );
   const inputReady = await isPromptInputReadyNow(page);
   const responding = hasRespondingIndicator(bodyText);
   const semantic = evaluateSemanticAnchors(promptKey, assistantText, bodyText);
@@ -1486,8 +1507,30 @@ const sendPrompt = async ({
   finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
   const evidence = await capture(page, `${attemptId.toLowerCase()}-result.png`, `${attemptId} result`);
   const runtimeDelta = readLogDeltas(startOffsets);
-  const runtimeSummary = summarizeRuntimeDelta(runtimeDelta);
   const relevantNetwork = networkEvents.slice(beforeNetworkCount);
+  const networkTextSources = relevantNetwork
+    .filter((event) => event.event === "response")
+    .flatMap((event) => [event.body?.preview])
+    .filter(Boolean);
+  const runtimeSummary = mergeRuntimeSummaryWithVisibleFallback(
+    summarizeRuntimeDelta(runtimeDelta),
+    [
+      finalState.bodyText,
+      finalState.assistantText,
+      ...finalState.transcriptSnapshot.assistantCandidates,
+      ...finalState.transcriptSnapshot.transcriptTail,
+      ...networkTextSources,
+    ],
+  );
+  const a2aClinicalPayload = lane === "A2A-main"
+    ? summarizeVisibleA2AClinicalPayload([
+        finalState.bodyText,
+        finalState.assistantText,
+        ...finalState.transcriptSnapshot.assistantCandidates,
+        ...finalState.transcriptSnapshot.transcriptTail,
+        ...networkTextSources,
+      ])
+    : null;
   finalState.runtimeSummary = runtimeSummary;
   finalState.expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
   finalState.a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
@@ -1522,7 +1565,9 @@ const sendPrompt = async ({
 
   let observedRoute = "no visible runtime route";
   if (lane === "A2A-main" && a2aRuntimeHit) {
-    observedRoute = "Prompt Opinion -> external A2A runtime";
+    observedRoute = runtimeSummary.a2a_route_evidence_source === "runtime_diagnostics_visible_fallback"
+      ? "Prompt Opinion -> external A2A runtime (runtime_diagnostics_visible_fallback)"
+      : "Prompt Opinion -> external A2A runtime";
   } else if (lane === "Direct-MCP fallback" && runtimeSummary.both_mcps_hit) {
     observedRoute = "Prompt Opinion -> both MCPs";
   } else if (lane === "Direct-MCP fallback" && directRuntimeHit) {
@@ -1540,12 +1585,14 @@ const sendPrompt = async ({
   } else if (lane === "A2A-main") {
     const selectedAgentVerified = Boolean(selectedAgent?.verified);
     const a2aAccepted = runtimeSummary.a2a_2xx_response_count > 0;
+    const a2aClinicalGreen = Boolean(a2aClinicalPayload?.clinical_green_criteria_passed);
     if (
       selectedAgentVerified &&
       finalTranscriptVisible &&
       transcriptFlags.assembled_answer_visible &&
       transcriptFlags.semantic_anchor_passed &&
       !wrongClinicalRecommendation &&
+      a2aClinicalGreen &&
       a2aRuntimeHit &&
       a2aAccepted &&
       runtimeSummary.both_mcps_hit
@@ -1581,6 +1628,7 @@ const sendPrompt = async ({
     selected_agent_verified: selectedAgent?.verified ?? null,
     selected_agent_text: selectedAgent?.selectedText ?? null,
     runtime_summary: runtimeSummary,
+    a2a_clinical_payload: a2aClinicalPayload,
     transcript_flags: transcriptFlags,
     semantic_anchors: finalState.semantic,
     assistant_text_preview: truncate(finalState.assistantText, 1200),
@@ -1741,6 +1789,8 @@ const buildA2ARouteLockMatrix = ({ a2aStatus, a2aBlocker }) => {
       response_status_codes: attempt?.runtime_summary?.a2a_status_codes || [],
       response_paths: attempt?.runtime_summary?.a2a_response_paths || [],
       both_mcps_hit: attempt?.runtime_summary?.both_mcps_hit || false,
+      route_evidence_source: attempt?.runtime_summary?.a2a_route_evidence_source || null,
+      clinical_payload: attempt?.a2a_clinical_payload || null,
       evidence: attempt?.evidence || [],
     };
   });
@@ -2107,7 +2157,10 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
       correlation_ids: attempt.runtime_summary.a2a_correlation_ids,
       response_paths: attempt.runtime_summary.a2a_response_paths,
       response_status_codes: attempt.runtime_summary.a2a_status_codes,
+      route_evidence_source: attempt.runtime_summary.a2a_route_evidence_source,
+      runtime_evidence_sources: attempt.runtime_summary.runtime_evidence_sources,
       both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      clinical_payload: attempt.a2a_clinical_payload,
       assembled_answer_visible: attempt.transcript_flags.assembled_answer_visible,
       status: attempt.status,
     }));
@@ -2119,6 +2172,9 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
       discharge_gatekeeper_mcp_request_count: attempt.runtime_summary.discharge_gatekeeper_mcp_request_count,
       clinical_intelligence_mcp_request_count: attempt.runtime_summary.clinical_intelligence_mcp_request_count,
       both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      route_evidence_source: attempt.runtime_summary.a2a_route_evidence_source,
+      runtime_evidence_sources: attempt.runtime_summary.runtime_evidence_sources,
+      clinical_payload: attempt.a2a_clinical_payload,
       discharge_gatekeeper_request_ids: attempt.runtime_summary.discharge_gatekeeper_request_ids,
       clinical_intelligence_request_ids: attempt.runtime_summary.clinical_intelligence_request_ids,
       status: attempt.status,
@@ -2148,6 +2204,8 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
         Boolean(bestVariant?.runtime_summary?.a2a_task_ids?.map((taskId) => `${taskId}-status-message`).length),
       both_mcps_hit: Boolean(bestVariant?.runtime_summary?.both_mcps_hit),
       assembled_answer_visible: Boolean(bestVariant?.transcript_flags?.assembled_answer_visible),
+      clinical_payload_green:
+        Boolean(bestVariant?.a2a_clinical_payload?.clinical_green_criteria_passed),
     },
   };
   const browserProofSummary = {
@@ -2356,7 +2414,7 @@ const main = async () => {
       : false;
     if (a2aReady) {
       const selectedAgent = await selectConsultAgent(page, "external A2A orchestrator");
-      for (const variant of A2A_ROUTE_LOCK_VARIANTS) {
+      for (const variant of selectedA2aRouteLockVariants) {
         await sendPrompt({
           page,
           lane: "A2A-main",
