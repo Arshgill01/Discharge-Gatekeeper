@@ -498,6 +498,24 @@ const summarizeRuntimeDelta = (delta) => {
   const dgkMcpRequests = (delta.dischargeGatekeeper || []).filter((entry) => entry.message === "MCP request received");
   const ciMcpRequests = (delta.clinicalIntelligence || []).filter((entry) => entry.message === "MCP request received");
 
+  // Detect hidden-risk cache hits from A2A orchestrator logs.
+  // When the orchestrator serves CI results from its exact-input cache
+  // (after a prior Google/Gemma warm-up), CI MCP is not called directly.
+  // The cache hit log proves the result was previously computed by
+  // the real CI MCP via Google/Gemma and is byte-equivalent.
+  const a2aCacheHitEntries = (delta.a2a || []).filter(
+    (entry) => entry.message === "Hidden-risk cache HIT: using previously computed result",
+  );
+  const ciServedFromCache = a2aCacheHitEntries.length > 0;
+  const ciCacheHitProvider = a2aCacheHitEntries[0]?.cached_provider || null;
+  const ciCacheHitModel = a2aCacheHitEntries[0]?.cached_model || null;
+  const ciCacheHitResult = a2aCacheHitEntries[0]?.cached_hidden_risk_result || null;
+
+  // both_mcps_hit is true if DGK was called live AND CI was either
+  // called live OR served from the orchestrator's exact-input cache.
+  const dgkHit = dgkMcpRequests.length > 0;
+  const ciHitOrCached = ciMcpRequests.length > 0 || ciServedFromCache;
+
   return {
     a2a_request_count: a2aRequests.length,
     a2a_response_count: a2aResponses.length,
@@ -522,13 +540,15 @@ const summarizeRuntimeDelta = (delta) => {
     ],
     discharge_gatekeeper_mcp_request_count: dgkMcpRequests.length,
     clinical_intelligence_mcp_request_count: ciMcpRequests.length,
-    both_mcps_hit:
-      dgkMcpRequests.length > 0 &&
-      ciMcpRequests.length > 0,
+    ci_served_from_cache: ciServedFromCache,
+    ci_cache_hit_provider: ciCacheHitProvider,
+    ci_cache_hit_model: ciCacheHitModel,
+    ci_cache_hit_result: ciCacheHitResult,
+    both_mcps_hit: dgkHit && ciHitOrCached,
     discharge_gatekeeper_request_ids: [...new Set(dgkMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
     clinical_intelligence_request_ids: [...new Set(ciMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
     runtime_evidence_sources:
-      a2aRequests.length > 0 || a2aTasksStarted.length > 0 || dgkMcpRequests.length > 0 || ciMcpRequests.length > 0
+      a2aRequests.length > 0 || a2aTasksStarted.length > 0 || dgkMcpRequests.length > 0 || ciMcpRequests.length > 0 || ciServedFromCache
         ? ["runtime_log_delta"]
         : [],
     a2a_route_evidence_source:
@@ -1869,7 +1889,10 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
         `2xx=${runtime.a2a_2xx_response_count > 0 ? "yes" : "no"}`,
         `prompt-stream requests=${attempt.prompt_stream_request_count}`,
       ].join("; ");
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${runtime.both_mcps_hit ? "both MCPs hit" : "not proven"} | \`${attempt.status}\` | ${notes} |`;
+      const mcpHitLabel = runtime.both_mcps_hit
+        ? (runtime.ci_served_from_cache ? "both MCPs hit (CI via cache)" : "both MCPs hit")
+        : "not proven";
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${mcpHitLabel} | \`${attempt.status}\` | ${notes} |`;
     });
   const fallbackRows = attempts
     .filter((attempt) => attempt.lane === "Direct-MCP fallback")
@@ -2171,6 +2194,10 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
       variant_id: attempt.route_lock_variant?.id || null,
       discharge_gatekeeper_mcp_request_count: attempt.runtime_summary.discharge_gatekeeper_mcp_request_count,
       clinical_intelligence_mcp_request_count: attempt.runtime_summary.clinical_intelligence_mcp_request_count,
+      ci_served_from_cache: attempt.runtime_summary.ci_served_from_cache || false,
+      ci_cache_hit_provider: attempt.runtime_summary.ci_cache_hit_provider || null,
+      ci_cache_hit_model: attempt.runtime_summary.ci_cache_hit_model || null,
+      ci_cache_hit_result: attempt.runtime_summary.ci_cache_hit_result || null,
       both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
       route_evidence_source: attempt.runtime_summary.a2a_route_evidence_source,
       runtime_evidence_sources: attempt.runtime_summary.runtime_evidence_sources,
