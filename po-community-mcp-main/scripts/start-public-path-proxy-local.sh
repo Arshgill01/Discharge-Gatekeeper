@@ -145,6 +145,7 @@ function writeWireCapture(entry) {
 }
 
 const server = http.createServer((req, res) => {
+  const startedAtMs = Date.now();
   const route = routeFor(req.url || "/");
   const headers = { ...req.headers };
   headers.host = route.target.host;
@@ -190,17 +191,27 @@ const server = http.createServer((req, res) => {
         if (captureThisRequest) {
           const requestBody = Buffer.concat(requestChunks);
           const responseBody = Buffer.concat(responseChunks);
+          const requestCapture = redactBody(requestBody, req.headers["content-type"]);
+          const responseCapture = redactBody(responseBody, proxyRes.headers["content-type"]);
           writeWireCapture({
             timestamp: new Date().toISOString(),
             method: req.method,
+            original_path: req.url,
             path: req.url,
             route: route.label,
+            route_label: route.label,
             target: `${route.target.origin}${route.path}`,
+            target_url: `${route.target.origin}${route.path}`,
             status_code: proxyRes.statusCode || 502,
             request_headers: redactHeaders(req.headers),
-            request: redactBody(requestBody, req.headers["content-type"]),
+            request_body_redacted: requestCapture.body,
+            request_byte_count: requestBody.length,
+            request: requestCapture,
             response_headers: redactHeaders(proxyRes.headers),
-            response: redactBody(responseBody, proxyRes.headers["content-type"]),
+            response_body_redacted: responseCapture.body,
+            response_byte_count: responseBody.length,
+            response: responseCapture,
+            duration_ms: Date.now() - startedAtMs,
           });
         }
         log("info", "proxy response", {

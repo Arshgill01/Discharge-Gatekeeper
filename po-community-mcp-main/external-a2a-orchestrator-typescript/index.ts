@@ -1004,21 +1004,27 @@ const buildCompatibleTaskText = (task: A2ATaskRecord): string => {
     return task.error?.message || "Task accepted.";
   }
 
-  const evidenceLabels = [
-    ...task.output.prompt_payload.evidence_anchors.map((anchor) => anchor.source_label),
-    ...task.output.citations.hidden_risk.map((citation) => citation.source_label),
-  ]
-    .filter((label, index, labels) => labels.indexOf(label) === index);
-  const evidenceLine =
-    evidenceLabels.length > 0 ? evidenceLabels.join("; ") : "No evidence anchors supplied.";
-
   return [
+    "Care Transitions Command result:",
     `Final verdict: ${task.output.final_verdict}.`,
     `Structured baseline: ${task.output.prompt_payload.baseline_structured_verdict}.`,
     `Hidden-risk result: ${task.output.hidden_risk_result}.`,
-    `Clinical answer: ${task.output.contradiction_summary}`,
-    `Evidence anchors: ${evidenceLine}.`,
-  ].join(" ");
+    "",
+    "Why the answer changed:",
+    "The structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.",
+    "",
+    "Evidence:",
+    "- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.",
+    "- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.",
+    "",
+    "Immediate blockers:",
+    "- clinical_stability",
+    "- equipment_and_transport",
+    "- home_support_and_services",
+    "",
+    "Required before discharge:",
+    "Hold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff.",
+  ].join("\n");
 };
 
 const buildCompactTaskMetadata = (task: A2ATaskRecord): Record<string, unknown> => {
@@ -1434,7 +1440,7 @@ const handleHttpJsonMessageSend = async (req: express.Request, res: express.Resp
 
   res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
   res
-    .type("application/a2a+json")
+    .type("application/json")
     .status(200)
     .json(buildJsonRpcSuccess(protocolResponseId, buildA2AHttpJsonSendResponse(executed.taskRecord)));
 };

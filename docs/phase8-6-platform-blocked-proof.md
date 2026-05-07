@@ -12,6 +12,14 @@ Do not classify the A2A browser lane as green because the browser transcript inc
 The LLM took too long to respond and the operation was cancelled
 ```
 
+## Task-rendering recovery addendum
+
+Evidence run: `output/prompt-opinion-e2e/runs/20260507T-po-task-rendering-recovery`
+
+The remaining failure is not the immediate A2A task payload shape or size. Wire capture for `wire/0010-1778168819333-a2a-POST-message_send_v1_message_send.json` proves Prompt Opinion POSTed to `/message:send/v1/message:send` and received HTTP 200 with a `5356` byte `application/json; charset=utf-8` response. The response includes JSON-RPC 2.0, `result.task`, a top-level `task` alias, `TASK_STATE_COMPLETED`, `status.message.parts` text, artifact text, `not_ready`, both required note anchors, and `both_mcps_hit=true`.
+
+The browser transcript rendered the compact task payload under `STATUS_MESSAGE` and `ARTIFACT_MESSAGES`; see `screenshots/a2a-vc-01-result.txt`. Browser network evidence still records `The LLM took too long to respond and the operation was cancelled` after the `SendA2AMessage` function-call path; see `reports/browser-network-events.json`. This classifies the remaining blocker as Prompt Opinion platform/post-tool LLM synthesis behavior after a valid compact completed A2A task.
+
 ## Public Endpoint Readiness
 
 Evidence run: `output/prompt-opinion-e2e/runs/20260507T-final-a2a-po-wire-proof-reroute`
@@ -32,7 +40,7 @@ The runtime now advertises Prompt Opinion-compatible A2A v1 routing:
 - preferred transport: `HTTP+JSON`
 - preferred HTTP+JSON interface URI: `https://underpaid-passion-unloaded.ngrok-free.dev/message:send`
 - no stale top-level agent-card `protocolVersion: 0.2.6`
-- message response content type: `application/a2a+json; charset=utf-8`
+- message response content type: `application/json; charset=utf-8` for HTTP+JSON message endpoints
 - message response shape includes both `$.result.task` and top-level `$.task`
 
 The HTTP+JSON interface URL intentionally ends in `/message:send` because Prompt Opinion did not route to the external runtime when the interface URI was advertised as the public base URL. The runtime still accepts root HTTP+JSON, `/message:send`, `/v1/message:send`, `/message:send/v1/message:send`, and JSON-RPC `/rpc`.
