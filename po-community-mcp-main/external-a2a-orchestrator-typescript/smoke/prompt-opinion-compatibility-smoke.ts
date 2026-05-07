@@ -65,6 +65,9 @@ const assertCompletedPromptOpinionTaskEnvelope = (
   assert.equal(payload.jsonrpc, "2.0");
   assert.equal(payload.id, expectedId);
   assert.equal(typeof payload.result?.task?.id, "string");
+  assert.equal(payload.result?.message?.role, "ROLE_AGENT");
+  assert.equal(typeof payload.result?.message?.messageId, "string");
+  assert.equal(typeof payload.result?.message?.parts?.[0]?.text, "string");
   assert.equal(typeof payload.task?.id, "string");
   assert.equal(payload.task.id, payload.result.task.id);
   assert.ok(
@@ -81,6 +84,8 @@ const assertCompletedPromptOpinionTaskEnvelope = (
   const textParts = collectTaskTextParts(task);
   assert.ok(textParts.length >= 1, "task should expose at least one non-empty text part");
   const visibleTaskText = textParts.join("\n");
+  assert.match(payload.result.message.parts[0].text, /Final verdict: not_ready/i);
+  assert.match(payload.result.message.parts[0].text, /Nursing Note 2026-04-18 20:40/i);
 
   assert.match(visibleTaskText, /Final verdict: not_ready/i);
   assert.match(visibleTaskText, /Structured baseline: ready/i);

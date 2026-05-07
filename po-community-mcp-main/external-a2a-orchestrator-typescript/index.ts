@@ -1103,9 +1103,26 @@ const buildA2ATaskPayload = (
   };
 };
 
+const buildA2AMessagePayload = (task: A2ATaskRecord): Record<string, unknown> => {
+  return {
+    messageId: `${task.task_id}-result-message`,
+    role: "ROLE_AGENT",
+    parts: [{ text: buildCompatibleTaskText(task) }],
+    contextId: task.input.patient_context?.encounter_id || task.input.patient_context?.patient_id || task.task_id,
+    taskId: task.task_id,
+    metadata: {
+      requestId: task.request_id,
+      taskId: task.task_id,
+      final_verdict: task.output?.final_verdict || null,
+      hidden_risk_result: task.output?.hidden_risk_result || null,
+    },
+  };
+};
+
 const buildA2AHttpJsonSendResponse = (task: A2ATaskRecord): A2AJsonRpcResult => {
   return {
     task: buildA2ATaskPayload(task),
+    message: buildA2AMessagePayload(task),
   };
 };
 
