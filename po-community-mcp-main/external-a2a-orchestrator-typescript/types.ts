@@ -113,6 +113,15 @@ export type TaskRuntimeDiagnostics = {
     propagated_correlation_id: string | null;
   }>;
   downstream_calls: DownstreamCallDiagnostic[];
+  hidden_risk_cache?: {
+    cache_enabled: boolean;
+    cache_warm_only: boolean;
+    cache_status: "hit" | "miss" | "disabled" | "warm_only_miss" | "rejected_error" | "rejected_no_anchors" | "rejected_no_hidden_risk" | "expired";
+    cache_key_hash: string | null;
+    cache_entry_count: number;
+    cache_entry_age_ms: number | null;
+    computed: boolean;
+  };
 };
 
 export type DeterministicResponse = {

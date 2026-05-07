@@ -17,8 +17,16 @@ import { McpInvocationError, McpToolInvoker } from "./mcp/invoker";
 import { reconcileOutputs } from "./orchestrator/reconcile";
 import { buildPromptPayload, renderBoundedSynthesis } from "./orchestrator/synthesis";
 import { TRAP_PATIENT_TASK_INPUT } from "./orchestrator/fixtures";
+import {
+  HiddenRiskCache,
+  HiddenRiskCacheDiagnostics,
+  buildCacheKey,
+  parseHiddenRiskCacheConfig,
+} from "./hidden-risk-cache";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
+const hiddenRiskCacheConfig = parseHiddenRiskCacheConfig(process.env as Record<string, string | undefined>);
+const hiddenRiskCache = new HiddenRiskCache(hiddenRiskCacheConfig);
 const app = express();
 const startTimeMs = Date.now();
 const tasks = new Map<string, A2ATaskRecord>();
@@ -535,6 +543,7 @@ const buildHealthPayload = () => {
       clinical_intelligence_mcp_url: config.clinicalIntelligenceMcpUrl,
       hidden_risk_provider_evidence: "reported per task from Clinical Intelligence MCP /readyz",
     },
+    hidden_risk_cache: hiddenRiskCache.toHealthSummary(),
     uptime_seconds: Math.floor((Date.now() - startTimeMs) / 1000),
   };
 };
@@ -649,6 +658,7 @@ const runTask = async (
   const fallbacks: string[] = [];
   const promptMode = detectPromptMode(taskInput.prompt);
   let hiddenRiskProvider = buildSkippedHiddenRiskProviderDiagnostic();
+  let hiddenRiskCacheDiag: HiddenRiskCacheDiagnostics | null = null;
 
   const deterministicInvocation = await invoker.invokeDeterministicReadiness(taskInput, {
     requestId,
@@ -701,49 +711,137 @@ const runTask = async (
   }
 
   let hiddenRisk: ReconciliationResult["hidden_risk"] = null;
-  try {
-    hiddenRiskProvider = await fetchHiddenRiskProviderDiagnostic();
-    const hiddenRiskInvocation = await invoker.invokeHiddenRisk(deterministic, taskInput, {
-      requestId,
-      taskId,
-      promptMode,
-    });
-    hiddenRisk = hiddenRiskInvocation.payload;
-    downstreamCalls.push(hiddenRiskInvocation.diagnostic);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof McpInvocationError) {
-      downstreamCalls.push(error.diagnostic);
-    }
-    fallbacks.push("clinical_intelligence_unavailable");
 
-    const fallback = buildFailureFallback(deterministic, message);
-    const diagnostics: TaskRuntimeDiagnostics = {
+  // --- Hidden-risk cache integration ---
+  hiddenRiskProvider = await fetchHiddenRiskProviderDiagnostic();
+  const cacheKeyHash = hiddenRiskCache.enabled
+    ? buildCacheKey(
+        deterministic,
+        taskInput,
+        config.clinicalIntelligenceMcpUrl,
+        hiddenRiskProvider.provider,
+        hiddenRiskProvider.model,
+      )
+    : null;
+
+  // Try cache lookup
+  const cachedEntry = cacheKeyHash ? hiddenRiskCache.get(cacheKeyHash) : null;
+
+  if (cachedEntry) {
+    // Cache hit - use previously computed Google/Gemma result
+    hiddenRisk = cachedEntry.result;
+    hiddenRiskCacheDiag = hiddenRiskCache.buildDiagnostics(cacheKeyHash, "hit", false);
+    fallbacks.push("hidden_risk_cache_hit");
+
+    log("info", "Hidden-risk cache HIT: using previously computed result", {
       request_id: requestId,
       task_id: taskId,
-      prompt_mode: promptMode,
-      execution_started_at: executionStartedAt,
-      execution_finished_at: new Date().toISOString(),
-      task_duration_ms: Date.now() - taskStartMs,
-      hidden_risk_invoked: true,
-      hidden_risk_provider: hiddenRiskProvider,
-      fallbacks_applied: fallbacks,
-      incoming_request: incomingRequest,
-      downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
-      downstream_calls: downstreamCalls,
-    };
+      cache_key_hash: cacheKeyHash,
+      cache_entry_age_ms: Date.now() - cachedEntry.timestamp,
+      cached_provider: cachedEntry.provider,
+      cached_model: cachedEntry.model,
+      cached_hidden_risk_result: cachedEntry.hiddenRiskResult,
+    });
 
-    return {
-      diagnostics,
-      result: withRuntimeDiagnostics(
-        {
-          ...fallback,
-          prompt_payload: buildPromptPayload(taskInput, fallback),
-        },
+    // Add a synthetic downstream call diagnostic for the cached CI hit
+    downstreamCalls.push({
+      call_id: randomUUID(),
+      component: "clinical_intelligence_mcp",
+      tool_name: "surface_hidden_risks",
+      mcp_url: config.clinicalIntelligenceMcpUrl,
+      status: "ok",
+      request_id: requestId,
+      task_id: taskId,
+      started_at: new Date().toISOString(),
+      duration_ms: 0,
+      propagated_headers: {
+        "x-request-id": requestId,
+        "request-id": requestId,
+        "x-correlation-id": taskId,
+        "x-a2a-task-id": taskId,
+        "x-a2a-prompt-mode": promptMode,
+        "x-hidden-risk-cache": "hit",
+      },
+      http_exchanges: [],
+    });
+  } else {
+    // Cache miss - compute via CI MCP normally
+    try {
+      const hiddenRiskInvocation = await invoker.invokeHiddenRisk(deterministic, taskInput, {
+        requestId,
+        taskId,
+        promptMode,
+      });
+      hiddenRisk = hiddenRiskInvocation.payload;
+      downstreamCalls.push(hiddenRiskInvocation.diagnostic);
+
+      // Store in cache after successful computation
+      if (cacheKeyHash && hiddenRisk) {
+        const stored = hiddenRiskCache.set(
+          cacheKeyHash,
+          hiddenRisk,
+          hiddenRiskProvider.provider,
+          hiddenRiskProvider.model,
+          taskInput.patient_context?.narrative_evidence_bundle?.length ?? 0,
+        );
+        hiddenRiskCacheDiag = hiddenRiskCache.buildDiagnostics(
+          cacheKeyHash,
+          "miss",
+          true,
+        );
+        log("info", `Hidden-risk cache MISS: computed and ${stored ? "stored" : "rejected"}`, {
+          request_id: requestId,
+          task_id: taskId,
+          cache_key_hash: cacheKeyHash,
+          stored,
+          provider: hiddenRiskProvider.provider,
+          model: hiddenRiskProvider.model,
+        });
+      } else if (!hiddenRiskCache.enabled) {
+        hiddenRiskCacheDiag = hiddenRiskCache.buildDiagnostics(null, "disabled", true);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof McpInvocationError) {
+        downstreamCalls.push(error.diagnostic);
+      }
+      fallbacks.push("clinical_intelligence_unavailable");
+      hiddenRiskCacheDiag = hiddenRiskCache.buildDiagnostics(
+        cacheKeyHash,
+        "miss",
+        false,
+      );
+
+      const fallback = buildFailureFallback(deterministic, message);
+      const diagnostics: TaskRuntimeDiagnostics = {
+        request_id: requestId,
+        task_id: taskId,
+        prompt_mode: promptMode,
+        execution_started_at: executionStartedAt,
+        execution_finished_at: new Date().toISOString(),
+        task_duration_ms: Date.now() - taskStartMs,
+        hidden_risk_invoked: true,
+        hidden_risk_provider: hiddenRiskProvider,
+        fallbacks_applied: fallbacks,
+        incoming_request: incomingRequest,
+        downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
+        downstream_calls: downstreamCalls,
+        hidden_risk_cache: hiddenRiskCacheDiag ?? undefined,
+      };
+
+      return {
         diagnostics,
-      ),
-    };
+        result: withRuntimeDiagnostics(
+          {
+            ...fallback,
+            prompt_payload: buildPromptPayload(taskInput, fallback),
+          },
+          diagnostics,
+        ),
+      };
+    }
   }
+  // --- End hidden-risk cache integration ---
 
   const reconciled = reconcileOutputs(taskInput, deterministic, hiddenRisk);
 
@@ -762,6 +860,7 @@ const runTask = async (
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
       downstream_calls: downstreamCalls,
+      hidden_risk_cache: hiddenRiskCacheDiag ?? undefined,
     };
 
     return {
@@ -791,6 +890,7 @@ const runTask = async (
       incoming_request: incomingRequest,
       downstream_correlation: buildDownstreamCorrelation(downstreamCalls),
       downstream_calls: downstreamCalls,
+      hidden_risk_cache: hiddenRiskCacheDiag ?? undefined,
     };
 
     return {
