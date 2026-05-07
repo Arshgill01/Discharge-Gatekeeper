@@ -4,8 +4,6 @@ const DEFAULT_HOST = "0.0.0.0";
 const DEFAULT_PORT = 5057;
 const SUPPORTED_PO_ENVS = new Set(["local", "dev", "prod"]);
 const DEFAULT_TASK_TIMEOUT_MS = 120000;
-const DEFAULT_HIDDEN_RISK_CACHE_TTL_MS = 30 * 60 * 1000;
-const DEFAULT_HIDDEN_RISK_CACHE_MAX_ENTRIES = 50;
 
 const normalizeHostEntry = (value: string): string => {
   const trimmed = value.trim();
@@ -93,35 +91,6 @@ const parseTaskTimeoutMs = (value: string | undefined): number => {
   return parsed;
 };
 
-const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
-  if (value === undefined) {
-    return defaultValue;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-
-  throw new Error(`Invalid boolean flag value '${value}'. Expected 1/0, true/false, yes/no, or on/off.`);
-};
-
-const parsePositiveInteger = (name: string, value: string | undefined, defaultValue: number): number => {
-  if (!value) {
-    return defaultValue;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid ${name} value '${value}'. Expected a positive integer.`);
-  }
-
-  return parsed;
-};
-
 const defaultAllowedHostsByPoEnv = (poEnv: string): string[] => {
   switch (poEnv) {
     case "dev":
@@ -144,9 +113,6 @@ export type RuntimeConfig = {
   clinicalIntelligenceMcpUrl: string;
   defaultStructuredScenarioId: string;
   taskTimeoutMs: number;
-  hiddenRiskCacheEnabled: boolean;
-  hiddenRiskCacheTtlMs: number;
-  hiddenRiskCacheMaxEntries: number;
 };
 
 export const getRuntimeConfig = (environment: Environment): RuntimeConfig => {
@@ -171,16 +137,5 @@ export const getRuntimeConfig = (environment: Environment): RuntimeConfig => {
     defaultStructuredScenarioId:
       environment["DEFAULT_STRUCTURED_SCENARIO_ID"]?.trim() || "third_synthetic_discharge_slice_ready_v1",
     taskTimeoutMs: parseTaskTimeoutMs(environment["A2A_TASK_TIMEOUT_MS"]),
-    hiddenRiskCacheEnabled: parseBooleanFlag(environment["A2A_HIDDEN_RISK_CACHE_ENABLED"], true),
-    hiddenRiskCacheTtlMs: parsePositiveInteger(
-      "A2A_HIDDEN_RISK_CACHE_TTL_MS",
-      environment["A2A_HIDDEN_RISK_CACHE_TTL_MS"],
-      DEFAULT_HIDDEN_RISK_CACHE_TTL_MS,
-    ),
-    hiddenRiskCacheMaxEntries: parsePositiveInteger(
-      "A2A_HIDDEN_RISK_CACHE_MAX_ENTRIES",
-      environment["A2A_HIDDEN_RISK_CACHE_MAX_ENTRIES"],
-      DEFAULT_HIDDEN_RISK_CACHE_MAX_ENTRIES,
-    ),
   };
 };

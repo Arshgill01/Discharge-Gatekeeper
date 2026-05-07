@@ -68,10 +68,6 @@ export type DownstreamCallDiagnostic = {
   tool_name: string;
   mcp_url: string;
   status: DownstreamCallStatus;
-  cache_status?: "hit" | "miss" | "disabled" | "stored";
-  cache_key?: string;
-  cached_from_request_id?: string;
-  cached_from_task_id?: string;
   request_id: string;
   task_id: string;
   started_at: string;

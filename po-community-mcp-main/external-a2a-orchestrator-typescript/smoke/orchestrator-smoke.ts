@@ -171,14 +171,6 @@ const run = async (): Promise<void> => {
     assert.equal(trapPrompt1Task.output.hidden_risk_result, "hidden_risk_present");
     assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
     assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
-    assert.equal(
-      trapPrompt1Task.output.runtime_diagnostics?.downstream_calls.some(
-        (call: { component: string; cache_status?: string }) =>
-          call.component === "clinical_intelligence_mcp" && call.cache_status === "stored",
-      ),
-      true,
-      "First trap-patient hidden-risk call should store the reusable cache entry.",
-    );
     assert.equal(trapPrompt1Task.output.prompt_payload.prompt_mode, "prompt_1");
     assert.equal(trapPrompt1Task.output.prompt_payload.baseline_structured_verdict, "ready");
     assert.equal(trapPrompt1Task.output.prompt_payload.final_verdict, "not_ready");
@@ -228,14 +220,6 @@ const run = async (): Promise<void> => {
     assert.equal(textPlainTask.status, "completed");
     assert.equal(textPlainTask.request_id, "po-text-request-id");
     assert.equal(textPlainTask.input.prompt, "Is this patient safe to discharge today?");
-    assert.equal(
-      textPlainTask.output.runtime_diagnostics?.downstream_calls.some(
-        (call: { component: string; cache_status?: string }) =>
-          call.component === "clinical_intelligence_mcp" && call.cache_status === "hit",
-      ),
-      true,
-      "Repeated canonical trap-patient hidden-risk input should use the cache.",
-    );
     assert.equal(textPlainTask.output.runtime_diagnostics?.incoming_request.input_surface, "raw_text");
     assert.equal(
       textPlainTask.output.runtime_diagnostics?.incoming_request.content_type?.includes("text/plain"),
