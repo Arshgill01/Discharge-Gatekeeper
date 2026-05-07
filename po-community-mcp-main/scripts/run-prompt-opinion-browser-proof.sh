@@ -32,6 +32,27 @@ OVERRIDE_ENV_VARS=(
   PROMPT_OPINION_PROMPT_TIMEOUT_MS
 )
 
+while IFS= read -r name; do
+  if [[ "${name}" == PROMPT_OPINION_* ]]; then
+    OVERRIDE_ENV_VARS+=("${name}")
+  fi
+done < <(compgen -e)
+
+deduped_override_env_vars=()
+for name in "${OVERRIDE_ENV_VARS[@]}"; do
+  already_listed=0
+  for existing in "${deduped_override_env_vars[@]}"; do
+    if [[ "${existing}" == "${name}" ]]; then
+      already_listed=1
+      break
+    fi
+  done
+  if [[ "${already_listed}" == "0" ]]; then
+    deduped_override_env_vars+=("${name}")
+  fi
+done
+OVERRIDE_ENV_VARS=("${deduped_override_env_vars[@]}")
+
 preserve_env_var() {
   local name="$1"
   local set_name="REQUESTED_${name}_SET"
