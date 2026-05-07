@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
 import { buildAgentCard } from "./agent-card";
 import {
@@ -8,6 +8,8 @@ import {
   A2ATaskError,
   A2ATaskInput,
   A2ATaskRecord,
+  DeterministicResponse,
+  HiddenRiskResponse,
   IncomingRequestDiagnostic,
   ParsedTaskInputSurface,
   ReconciliationResult,
@@ -24,6 +26,16 @@ const startTimeMs = Date.now();
 const tasks = new Map<string, A2ATaskRecord>();
 const invoker = new McpToolInvoker(config);
 const MAX_TASK_HISTORY = 200;
+
+type HiddenRiskCacheEntry = {
+  payload: HiddenRiskResponse;
+  cachedAtMs: number;
+  cachedAt: string;
+  requestId: string;
+  taskId: string;
+};
+
+const hiddenRiskCache = new Map<string, HiddenRiskCacheEntry>();
 
 class TaskTimeoutError extends Error {
   constructor(timeoutMs: number) {
@@ -553,6 +565,173 @@ const shouldInvokeHiddenRisk = (taskInput: A2ATaskInput): boolean => {
   );
 };
 
+const sortForStableJson = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortForStableJson(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, sortForStableJson(entryValue)]),
+    );
+  }
+
+  return value;
+};
+
+const stableJsonStringify = (value: unknown): string => JSON.stringify(sortForStableJson(value));
+
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+const buildHiddenRiskCacheKey = (
+  deterministic: DeterministicResponse,
+  taskInput: A2ATaskInput,
+): string => {
+  const patientContext = taskInput.patient_context;
+  const cacheInput = {
+    patient_id: patientContext?.patient_id || null,
+    encounter_id: patientContext?.encounter_id || null,
+    deterministic_snapshot: {
+      baseline_verdict: deterministic.verdict,
+      deterministic_blockers: deterministic.blockers.map((blocker) => ({
+        blocker_id: blocker.id,
+        category: blocker.category,
+        description: blocker.description,
+        severity: blocker.priority,
+      })),
+      deterministic_evidence: deterministic.evidence.map((evidence) => ({
+        evidence_id: evidence.id,
+        source_label: evidence.source_label,
+        detail: evidence.detail,
+      })),
+      deterministic_next_steps: deterministic.next_steps.map((step) => step.action),
+      deterministic_summary: deterministic.summary,
+    },
+    narrative_evidence_bundle: patientContext?.narrative_evidence_bundle || [],
+    optional_context_metadata: patientContext?.optional_context_metadata || null,
+  };
+
+  return createHash("sha256").update(stableJsonStringify(cacheInput)).digest("hex");
+};
+
+const evictExpiredHiddenRiskCacheEntries = (nowMs: number): void => {
+  for (const [key, entry] of hiddenRiskCache.entries()) {
+    if (nowMs - entry.cachedAtMs > config.hiddenRiskCacheTtlMs) {
+      hiddenRiskCache.delete(key);
+    }
+  }
+};
+
+const trimHiddenRiskCache = (): void => {
+  while (hiddenRiskCache.size > config.hiddenRiskCacheMaxEntries) {
+    const oldestKey = hiddenRiskCache.keys().next().value as string | undefined;
+    if (!oldestKey) {
+      return;
+    }
+    hiddenRiskCache.delete(oldestKey);
+  }
+};
+
+const buildCachedClinicalDiagnostic = (
+  requestId: string,
+  taskId: string,
+  promptMode: TaskRuntimeDiagnostics["prompt_mode"],
+  cacheKey: string,
+  cacheEntry: HiddenRiskCacheEntry,
+): TaskRuntimeDiagnostics["downstream_calls"][number] => ({
+  call_id: randomUUID(),
+  component: "clinical_intelligence_mcp",
+  tool_name: "surface_hidden_risks",
+  mcp_url: config.clinicalIntelligenceMcpUrl,
+  status: "ok",
+  cache_status: "hit",
+  cache_key: cacheKey,
+  cached_from_request_id: cacheEntry.requestId,
+  cached_from_task_id: cacheEntry.taskId,
+  request_id: requestId,
+  task_id: taskId,
+  started_at: new Date().toISOString(),
+  duration_ms: 0,
+  propagated_headers: {
+    "x-request-id": requestId,
+    "request-id": requestId,
+    "x-correlation-id": taskId,
+    "x-a2a-task-id": taskId,
+    "x-a2a-prompt-mode": promptMode,
+  },
+  http_exchanges: [],
+});
+
+const invokeHiddenRiskWithCache = async (
+  deterministic: DeterministicResponse,
+  taskInput: A2ATaskInput,
+  invocationContext: {
+    requestId: string;
+    taskId: string;
+    promptMode: TaskRuntimeDiagnostics["prompt_mode"];
+  },
+): Promise<{
+  payload: HiddenRiskResponse;
+  diagnostic: TaskRuntimeDiagnostics["downstream_calls"][number];
+}> => {
+  if (!config.hiddenRiskCacheEnabled) {
+    const invocation = await invoker.invokeHiddenRisk(deterministic, taskInput, invocationContext);
+    invocation.diagnostic.cache_status = "disabled";
+    return invocation;
+  }
+
+  const cacheKey = buildHiddenRiskCacheKey(deterministic, taskInput);
+  const nowMs = Date.now();
+  evictExpiredHiddenRiskCacheEntries(nowMs);
+
+  const cached = hiddenRiskCache.get(cacheKey);
+  if (cached) {
+    hiddenRiskCache.delete(cacheKey);
+    hiddenRiskCache.set(cacheKey, cached);
+    log("info", "Hidden-risk cache hit", {
+      request_id: invocationContext.requestId,
+      task_id: invocationContext.taskId,
+      cache_key: cacheKey,
+      cached_from_request_id: cached.requestId,
+      cached_from_task_id: cached.taskId,
+    });
+
+    return {
+      payload: cloneJson(cached.payload),
+      diagnostic: buildCachedClinicalDiagnostic(
+        invocationContext.requestId,
+        invocationContext.taskId,
+        invocationContext.promptMode,
+        cacheKey,
+        cached,
+      ),
+    };
+  }
+
+  const invocation = await invoker.invokeHiddenRisk(deterministic, taskInput, invocationContext);
+  invocation.diagnostic.cache_status = "stored";
+  invocation.diagnostic.cache_key = cacheKey;
+  hiddenRiskCache.set(cacheKey, {
+    payload: cloneJson(invocation.payload),
+    cachedAtMs: Date.now(),
+    cachedAt: new Date().toISOString(),
+    requestId: invocationContext.requestId,
+    taskId: invocationContext.taskId,
+  });
+  trimHiddenRiskCache();
+  log("info", "Hidden-risk cache stored", {
+    request_id: invocationContext.requestId,
+    task_id: invocationContext.taskId,
+    cache_key: cacheKey,
+    ttl_ms: config.hiddenRiskCacheTtlMs,
+    max_entries: config.hiddenRiskCacheMaxEntries,
+  });
+
+  return invocation;
+};
+
 const buildFailureFallback = (
   deterministic: ReconciliationResult["deterministic"],
   reason: string,
@@ -703,7 +882,7 @@ const runTask = async (
   let hiddenRisk: ReconciliationResult["hidden_risk"] = null;
   try {
     hiddenRiskProvider = await fetchHiddenRiskProviderDiagnostic();
-    const hiddenRiskInvocation = await invoker.invokeHiddenRisk(deterministic, taskInput, {
+    const hiddenRiskInvocation = await invokeHiddenRiskWithCache(deterministic, taskInput, {
       requestId,
       taskId,
       promptMode,
