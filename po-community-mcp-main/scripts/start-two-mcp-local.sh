@@ -75,7 +75,7 @@ start_server() {
 
   (
     cd "${working_dir}"
-    env "$@" npm run start >"${log_file}" 2>&1 &
+    nohup env "$@" npm run start >"${log_file}" 2>&1 </dev/null &
     echo $! >"${pid_file}"
   )
 

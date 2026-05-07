@@ -65,7 +65,7 @@ PORT="${EXTERNAL_A2A_PORT}" \
 PO_ENV="${PO_ENV:-local}" \
 DISCHARGE_GATEKEEPER_MCP_URL="http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/mcp" \
 CLINICAL_INTELLIGENCE_MCP_URL="http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/mcp" \
-npm run start >"${PID_DIR}/external-a2a.log" 2>&1 &
+nohup npm run start >"${PID_DIR}/external-a2a.log" 2>&1 </dev/null &
 
 echo $! > "${PID_DIR}/external-a2a.pid"
 popd >/dev/null
