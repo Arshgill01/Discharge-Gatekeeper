@@ -1,0 +1,29 @@
+{
+  "bytes_total": 5738,
+  "content_keys": [
+    "jsonrpc",
+    "id",
+    "result",
+    "task"
+  ],
+  "has_jsonrpc": true,
+  "has_result_task": true,
+  "has_top_level_task": true,
+  "task_id_match": true,
+  "status_state": "TASK_STATE_COMPLETED",
+  "has_status_message_parts": true,
+  "artifacts_count": 1,
+  "artifact_parts_count": 1,
+  "metadata_bytes": 440,
+  "artifacts_bytes": 1067,
+  "status_message_bytes": 1127,
+  "includes_not_ready": true,
+  "includes_ready_baseline": true,
+  "includes_hidden_risk_present": true,
+  "includes_nursing": true,
+  "includes_case_management": true,
+  "final_verdict": "not_ready",
+  "hidden_risk_result": "hidden_risk_present",
+  "both_mcps_hit": true,
+  "diagnostics_in_message_send_metadata": false
+}

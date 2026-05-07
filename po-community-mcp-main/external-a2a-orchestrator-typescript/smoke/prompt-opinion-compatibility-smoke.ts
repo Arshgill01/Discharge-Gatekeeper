@@ -65,6 +65,12 @@ const assertCompletedPromptOpinionTaskEnvelope = (
   assert.equal(payload.jsonrpc, "2.0");
   assert.equal(payload.id, expectedId);
   assert.equal(typeof payload.result?.task?.id, "string");
+  assert.equal(typeof payload.task?.id, "string");
+  assert.equal(payload.task.id, payload.result.task.id);
+  assert.ok(
+    Buffer.byteLength(JSON.stringify(payload), "utf8") <= 15000,
+    "Prompt Opinion message:send response should stay compact",
+  );
 
   const task = payload.result.task;
   assert.equal(typeof task.contextId, "string");
@@ -83,12 +89,13 @@ const assertCompletedPromptOpinionTaskEnvelope = (
   assert.match(visibleTaskText, /Case Management Addendum 2026-04-18 20:55/i);
   assert.match(visibleTaskText, /Clinical answer:/i);
 
-  const diagnosticsText = JSON.stringify(task.metadata?.diagnostics || {});
-  assert.notEqual(
-    diagnosticsText.includes("hidden_risk_present") && !visibleTaskText.includes("hidden_risk_present"),
-    true,
-    "clinical answer must live in task message/artifact text, not only runtime diagnostics",
-  );
+  assert.equal(task.metadata?.diagnostics, undefined);
+  assert.equal(task.metadata?.output, undefined);
+  assert.equal(task.metadata?.runtime_summary, "compact_prompt_opinion_response");
+  assert.equal(task.metadata?.both_mcps_hit, true);
+  assert.equal(task.metadata?.final_verdict, "not_ready");
+  assert.equal(task.metadata?.hidden_risk_result, "hidden_risk_present");
+  assert.equal(typeof task.metadata?.diagnostics_available_via, "string");
 
   return task;
 };
@@ -127,6 +134,7 @@ const run = async (): Promise<void> => {
       method: "POST",
       headers: {
         "content-type": "application/a2a+json",
+        "A2A-Version": "1.0",
         "x-request-id": "po-http-json-request",
         "x-correlation-id": "po-http-json-correlation",
       },
@@ -148,18 +156,15 @@ const run = async (): Promise<void> => {
       "po-http-json-id-1",
     );
     assert.equal(
-      httpJsonTask.metadata.diagnostics.incoming_request.selected_binding,
-      "http_json",
-    );
-    assert.equal(
-      httpJsonTask.metadata.diagnostics.incoming_request.correlation_id,
-      "po-http-json-correlation",
+      httpJsonTask.metadata.diagnostics_available_via,
+      `/tasks/${httpJsonTask.id}`,
     );
 
     const v1HttpJsonResponse = await fetch(`${baseUrl}/v1/message:send`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         id: "po-http-json-id-2",
@@ -180,6 +185,7 @@ const run = async (): Promise<void> => {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         id: "po-http-json-id-3",
@@ -197,18 +203,33 @@ const run = async (): Promise<void> => {
     );
     assert.equal(typeof nestedHttpJsonTask.status.message.messageId, "string");
     assert.equal(
-      nestedHttpJsonTask.metadata.diagnostics.incoming_request.selected_binding,
-      "http_json",
-    );
-    assert.equal(
-      nestedHttpJsonTask.metadata.diagnostics.incoming_request.protocol_request_id,
+      nestedHttpJsonTask.status.message.metadata.requestId,
       "po-http-json-id-3",
     );
+
+    const rootHttpJsonResponse = await fetch(`${baseUrl}/`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/a2a+json",
+        "A2A-Version": "1.0",
+      },
+      body: JSON.stringify({
+        id: "po-http-json-id-4",
+        message: {
+          role: "ROLE_USER",
+          parts: [{ text: "Is this patient safe to discharge today?" }],
+        },
+      }),
+    });
+    assert.equal(rootHttpJsonResponse.status, 200);
+    const rootHttpJsonPayload = await rootHttpJsonResponse.json();
+    assertCompletedPromptOpinionTaskEnvelope(rootHttpJsonPayload, "po-http-json-id-4");
 
     const jsonRpcResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
         "x-request-id": "po-jsonrpc-request",
       },
       body: JSON.stringify({
@@ -230,18 +251,15 @@ const run = async (): Promise<void> => {
     const jsonRpcPayload = await jsonRpcResponse.json();
     const jsonRpcTask = assertCompletedPromptOpinionTaskEnvelope(jsonRpcPayload, "po-rpc-id-1");
     assert.equal(
-      jsonRpcTask.metadata.diagnostics.incoming_request.selected_binding,
-      "jsonrpc",
-    );
-    assert.equal(
-      jsonRpcTask.metadata.diagnostics.incoming_request.protocol_request_id,
-      "po-rpc-id-1",
+      jsonRpcTask.status.message.metadata.requestId,
+      "po-jsonrpc-request",
     );
 
     const slashMethodResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -265,18 +283,15 @@ const run = async (): Promise<void> => {
       "po-rpc-id-2",
     );
     assert.equal(
-      Array.isArray(slashMethodTask.metadata.diagnostics.downstream_correlation),
-      true,
-    );
-    assert.equal(
-      slashMethodTask.metadata.diagnostics.downstream_correlation.length >= 1,
-      true,
+      slashMethodTask.metadata.diagnostics_available_via,
+      `/tasks/${slashMethodTask.id}`,
     );
 
     const getTaskResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",

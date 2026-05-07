@@ -58,6 +58,11 @@ if [[ -f "${PID_DIR}/external-a2a.pid" ]]; then
   fi
 fi
 
+if curl -sSf "http://${EXTERNAL_A2A_HOST}:${EXTERNAL_A2A_PORT}/healthz" >/dev/null 2>&1; then
+  echo "[start-a2a-local] external A2A already healthy at http://${EXTERNAL_A2A_HOST}:${EXTERNAL_A2A_PORT}/healthz"
+  exit 0
+fi
+
 pushd "${PO_COMMUNITY_ROOT}/external-a2a-orchestrator-typescript" >/dev/null
 
 HOST="${EXTERNAL_A2A_HOST}" \
@@ -65,6 +70,9 @@ PORT="${EXTERNAL_A2A_PORT}" \
 PO_ENV="${PO_ENV:-local}" \
 DISCHARGE_GATEKEEPER_MCP_URL="http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/mcp" \
 CLINICAL_INTELLIGENCE_MCP_URL="http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/mcp" \
+A2A_TASK_TIMEOUT_MS="${A2A_TASK_TIMEOUT_MS:-120000}" \
+A2A_PO_RESPONSE_MODE="${A2A_PO_RESPONSE_MODE:-compact}" \
+A2A_INCLUDE_VERBOSE_DIAGNOSTICS="${A2A_INCLUDE_VERBOSE_DIAGNOSTICS:-0}" \
 nohup npm run start >"${PID_DIR}/external-a2a.log" 2>&1 </dev/null &
 
 echo $! > "${PID_DIR}/external-a2a.pid"

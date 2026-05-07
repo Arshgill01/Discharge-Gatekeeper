@@ -1,0 +1,18 @@
+# A2A endpoint matrix
+
+| Lane | Surface | Path | Method | HTTP | Content-Type | Bytes | result.task | top task | Task status | not_ready | Nursing anchor | Case-management anchor | both MCPs | Evidence |
+| --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- |
+| local | root-http-json | `/` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5743 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-root-http-json.json` |
+| local | message-send | `/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5733 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-message-send.json` |
+| local | v1-message-send | `/v1/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5748 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-v1-message-send.json` |
+| local | nested-message-send | `/message:send/v1/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5768 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-nested-message-send.json` |
+| local | rpc-SendMessage | `/rpc` | `SendMessage` | 200 | application/a2a+json; charset=utf-8 | 5748 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-rpc-SendMessage.json` |
+| local | rpc-message-send-slash | `/rpc` | `message/send` | 200 | application/a2a+json; charset=utf-8 | 5783 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-rpc-message-send-slash.json` |
+| local | rpc-message-send-colon | `/rpc` | `message:send` | 200 | application/a2a+json; charset=utf-8 | 5783 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/local-rpc-message-send-colon.json` |
+| public | root-http-json | `/` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5748 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-root-http-json.json` |
+| public | message-send | `/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5738 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-message-send.json` |
+| public | v1-message-send | `/v1/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5753 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-v1-message-send.json` |
+| public | nested-message-send | `/message:send/v1/message:send` | `HTTP+JSON` | 200 | application/a2a+json; charset=utf-8 | 5773 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-nested-message-send.json` |
+| public | rpc-SendMessage | `/rpc` | `SendMessage` | 200 | application/a2a+json; charset=utf-8 | 5753 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-rpc-SendMessage.json` |
+| public | rpc-message-send-slash | `/rpc` | `message/send` | 200 | application/a2a+json; charset=utf-8 | 5788 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-rpc-message-send-slash.json` |
+| public | rpc-message-send-colon | `/rpc` | `message:send` | 200 | application/a2a+json; charset=utf-8 | 5788 | true | true | TASK_STATE_COMPLETED | true | true | true | true | `reports/a2a-endpoint-matrix/public-rpc-message-send-colon.json` |

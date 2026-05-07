@@ -335,6 +335,7 @@ const run = async () => {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "A2A-Version": "1.0",
       "x-request-id": requestId,
       "x-correlation-id": `${requestId}-correlation`,
     },

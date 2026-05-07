@@ -178,3 +178,9 @@ This file now tracks the active post-pivot system decisions for phase 0 and beyo
 - Why: Phase 7 restored the shared contract and proof discipline, but the two decisive workspace blockers remain the same: Prompt Opinion A2A chat execution and dual-tool BYO Prompt 2/3 completion. Freezing submission before attacking those blockers directly would lock in avoidable uncertainty.
 - Affected files or lanes: `PLAN.md`, phase planning, Prompt Opinion validation, release sequencing
 - Follow-up: Treat Phase 8 as the last focused fix pass; after spec-correct A2A transport work, dual-tool tool-surface hardening, and browser-captured validation, either promote the lane or record a platform-side blocker and stop pretending it is unproven engineering debt.
+
+- Date: 2026-05-07
+- Decision: Classify the remaining Prompt Opinion A2A browser blocker as platform-side after a valid compact completed A2A task is received and rendered.
+- Why: The final recovery run proved public readiness, A2A v1-compatible card discovery, compact `application/a2a+json` response shape with `$.result.task`, top-level `task` compatibility, final `not_ready`, evidence anchors, and both MCP hits. Prompt Opinion rendered the task text, then displayed a timeout/cancelled banner after the runtime response.
+- Affected files or lanes: external A2A runtime, Prompt Opinion A2A browser proof lane, Phase 8.6 evidence packaging
+- Follow-up: Do not keep changing backend clinical logic for this blocker. Use `docs/phase8-6-platform-blocked-proof.md` and the `20260507T-final-a2a-po-wire-proof-reroute` run evidence unless Prompt Opinion exposes a new concrete protocol or routing failure.

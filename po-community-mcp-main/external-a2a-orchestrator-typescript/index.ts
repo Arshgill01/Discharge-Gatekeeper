@@ -60,6 +60,10 @@ type A2AJsonRpcResult = {
   message?: Record<string, unknown>;
 };
 
+const poResponseMode = process.env.A2A_PO_RESPONSE_MODE || "compact";
+const includeVerboseDiagnostics =
+  process.env.A2A_INCLUDE_VERBOSE_DIAGNOSTICS === "1" || poResponseMode === "verbose";
+
 const CANONICAL_DEMO_PROMPT_MARKERS = [
   "is this patient safe to discharge today",
   "what hidden risk changed that answer",
@@ -1017,9 +1021,41 @@ const buildCompatibleTaskText = (task: A2ATaskRecord): string => {
   ].join(" ");
 };
 
-const buildA2ATaskPayload = (task: A2ATaskRecord): Record<string, unknown> => {
+const buildCompactTaskMetadata = (task: A2ATaskRecord): Record<string, unknown> => {
+  const downstreamCalls = task.diagnostics?.downstream_calls || [];
+  const dgkHit = downstreamCalls.some(
+    (call) => call.component === "discharge_gatekeeper_mcp" && call.status === "ok",
+  );
+  const ciHit = downstreamCalls.some(
+    (call) => call.component === "clinical_intelligence_mcp" && call.status === "ok",
+  );
+
+  return {
+    runtime_summary: `${poResponseMode}_prompt_opinion_response`,
+    request_id: task.request_id,
+    task_id: task.task_id,
+    status: task.status,
+    created_at: task.created_at,
+    completed_at: task.completed_at,
+    final_verdict: task.output?.final_verdict || null,
+    hidden_risk_result: task.output?.hidden_risk_result || null,
+    narrative_source_count:
+      task.output?.hidden_risk?.review_metadata?.narrative_sources_reviewed ??
+      task.input.patient_context?.narrative_evidence_bundle?.length ??
+      0,
+    both_mcps_hit: dgkHit && ciHit,
+    diagnostics_available_via: `/tasks/${task.task_id}`,
+    ...(includeVerboseDiagnostics ? { diagnostics: task.diagnostics } : {}),
+  };
+};
+
+const buildA2ATaskPayload = (
+  task: A2ATaskRecord,
+  options: { verbose?: boolean } = {},
+): Record<string, unknown> => {
   const text = buildCompatibleTaskText(task);
   const timestamp = task.completed_at || task.created_at;
+  const verbose = options.verbose || includeVerboseDiagnostics;
 
   return {
     id: task.task_id,
@@ -1047,21 +1083,17 @@ const buildA2ATaskPayload = (task: A2ATaskRecord): Record<string, unknown> => {
                 {
                   text,
                 },
-                {
-                  text: JSON.stringify(task.output),
-                },
               ],
             },
           ]
         : [],
-    metadata: {
-      requestId: task.request_id,
-      taskId: task.task_id,
-      status: task.status,
-      createdAt: task.created_at,
-      completedAt: task.completed_at,
-      diagnostics: task.diagnostics,
-    },
+    metadata: verbose
+      ? {
+          ...buildCompactTaskMetadata(task),
+          diagnostics: task.diagnostics,
+          output: task.output,
+        }
+      : buildCompactTaskMetadata(task),
   };
 };
 
@@ -1075,10 +1107,12 @@ const buildJsonRpcSuccess = (
   id: A2AJsonRpcRequest["id"],
   result: A2AJsonRpcResult,
 ): Record<string, unknown> => {
+  const task = result.task;
   return {
     jsonrpc: "2.0",
     id,
     result,
+    ...(task ? { task } : {}),
   };
 };
 
@@ -1400,6 +1434,7 @@ const handleHttpJsonMessageSend = async (req: express.Request, res: express.Resp
 
   res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
   res
+    .type("application/a2a+json")
     .status(200)
     .json(buildJsonRpcSuccess(protocolResponseId, buildA2AHttpJsonSendResponse(executed.taskRecord)));
 };
@@ -1485,7 +1520,10 @@ const handleJsonRpc = async (req: express.Request, res: express.Response): Promi
       return;
     }
 
-    res.status(200).json(buildJsonRpcSuccess(rpc.id, { task: buildA2ATaskPayload(task) }));
+    res
+      .type("application/a2a+json")
+      .status(200)
+      .json(buildJsonRpcSuccess(rpc.id, { task: buildA2ATaskPayload(task) }));
     return;
   }
 
@@ -1549,14 +1587,23 @@ const handleJsonRpc = async (req: express.Request, res: express.Response): Promi
   });
 
   res.setHeader("x-a2a-task-id", executed.taskRecord.task_id);
-  res.status(200).json(buildJsonRpcSuccess(rpc.id, buildA2AHttpJsonSendResponse(executed.taskRecord)));
+  res
+    .type("application/a2a+json")
+    .status(200)
+    .json(buildJsonRpcSuccess(rpc.id, buildA2AHttpJsonSendResponse(executed.taskRecord)));
 };
 
 app.post("/rpc", (req, res) => {
   void handleJsonRpc(req, res);
 });
 app.post("/", (req, res) => {
-  void handleJsonRpc(req, res);
+  const body = asRecord(req.body);
+  if (body?.["jsonrpc"] || body?.["method"]) {
+    void handleJsonRpc(req, res);
+    return;
+  }
+
+  void handleHttpJsonMessageSend(req, res);
 });
 
 app.get("/tasks", (req, res) => {
@@ -1596,7 +1643,7 @@ app.get("/v1/tasks", (req, res) => {
     .filter((task) => (statusFilter ? task.status === statusFilter : true));
 
   res.status(200).json({
-    tasks: all.map(buildA2ATaskPayload),
+    tasks: all.map((task) => buildA2ATaskPayload(task)),
     count: all.length,
   });
 });

@@ -38,7 +38,7 @@ DISCHARGE_GATEKEEPER_ALLOWED_HOSTS="${DISCHARGE_GATEKEEPER_ALLOWED_HOSTS:-localh
 CLINICAL_INTELLIGENCE_ALLOWED_HOSTS="${CLINICAL_INTELLIGENCE_ALLOWED_HOSTS:-localhost,127.0.0.1}"
 
 CLINICAL_INTELLIGENCE_LLM_PROVIDER="${CLINICAL_INTELLIGENCE_LLM_PROVIDER:-heuristic}"
-CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS:-12000}"
+CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS:-60000}"
 
 wait_for_health() {
   local endpoint="$1"
@@ -62,7 +62,8 @@ start_server() {
   local working_dir="$2"
   local log_file="$3"
   local pid_file="$4"
-  shift 4
+  local health_endpoint="$5"
+  shift 5
 
   if [[ -f "${pid_file}" ]]; then
     local existing_pid
@@ -71,6 +72,11 @@ start_server() {
       echo "[two-mcp] ${server_key} already running with pid ${existing_pid}"
       return 0
     fi
+  fi
+
+  if curl -sSf "${health_endpoint}" >/dev/null 2>&1; then
+    echo "[two-mcp] ${server_key} already healthy at ${health_endpoint}"
+    return 0
   fi
 
   (
@@ -87,6 +93,7 @@ start_server \
   "${PO_COMMUNITY_ROOT}/typescript" \
   "${RUNTIME_DIR}/discharge-gatekeeper.log" \
   "${RUNTIME_DIR}/discharge-gatekeeper.pid" \
+  "http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/healthz" \
   HOST="${DISCHARGE_GATEKEEPER_HOST}" \
   PORT="${DISCHARGE_GATEKEEPER_PORT}" \
   PO_ENV="local" \
@@ -99,6 +106,7 @@ start_server \
   "${PO_COMMUNITY_ROOT}/clinical-intelligence-typescript" \
   "${RUNTIME_DIR}/clinical-intelligence.log" \
   "${RUNTIME_DIR}/clinical-intelligence.pid" \
+  "http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/healthz" \
   HOST="${CLINICAL_INTELLIGENCE_HOST}" \
   PORT="${CLINICAL_INTELLIGENCE_PORT}" \
   PO_ENV="local" \

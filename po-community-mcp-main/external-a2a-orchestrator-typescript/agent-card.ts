@@ -2,6 +2,7 @@ import { RuntimeConfig } from "./runtime-config";
 
 export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => {
   const contentModes = ["text/plain", "application/json"];
+  const a2aProtocolVersion = "1.0";
   const taskEndpoints = {
     create_task: "/tasks",
     get_task: "/tasks/:taskId",
@@ -28,7 +29,6 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
 
   return {
     schema_version: "a2a_card_v1",
-    protocolVersion: "0.2.6",
     name: config.agentName,
     description: "Care Transitions Command - Synchronous external orchestrator",
     version: config.agentVersion,
@@ -36,17 +36,17 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       {
         url: protocolEndpoints.http_json.message_send,
         protocolBinding: "HTTP+JSON",
-        protocolVersion: "0.2.6",
+        protocolVersion: a2aProtocolVersion,
       },
       {
         url: protocolEndpoints.jsonrpc.primary,
         protocolBinding: "JSONRPC",
-        protocolVersion: "0.2.6",
+        protocolVersion: a2aProtocolVersion,
       },
       {
         url: publicBaseUrl,
         protocolBinding: "JSONRPC",
-        protocolVersion: "0.2.6",
+        protocolVersion: a2aProtocolVersion,
       },
     ],
     skills: [
@@ -72,7 +72,6 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     ],
     defaultInputModes: contentModes,
     defaultOutputModes: contentModes,
-    supportsAuthenticatedExtendedCard: false,
     provider: {
       organization: "Care Transitions Command",
       url: publicBaseUrl,
@@ -101,7 +100,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       mode: "synchronous",
       supports_streaming: false,
       accepted_content_types: ["application/json", "application/*+json", "text/plain"],
-      response_content_types: ["application/json"],
+      response_content_types: ["application/a2a+json", "application/json"],
       accepted_task_shapes: [
         "POST /tasks with {prompt, patient_context?}",
         "POST /tasks with {input: {prompt, patient_context?}}",
@@ -121,6 +120,7 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
     capabilities: {
       streaming: false,
       pushNotifications: false,
+      extendedAgentCard: false,
       task_lifecycle: {
         mode: "synchronous",
         streaming: false,

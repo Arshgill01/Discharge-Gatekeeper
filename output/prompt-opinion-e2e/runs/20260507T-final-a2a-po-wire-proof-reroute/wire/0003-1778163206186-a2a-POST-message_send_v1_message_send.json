@@ -1,0 +1,150 @@
+{
+  "timestamp": "2026-05-07T14:13:26.186Z",
+  "method": "POST",
+  "path": "/message:send/v1/message:send",
+  "route": "a2a",
+  "target": "http://127.0.0.1:5057/message:send/v1/message:send",
+  "status_code": 200,
+  "request_headers": {
+    "host": "underpaid-passion-unloaded.ngrok-free.dev",
+    "transfer-encoding": "chunked",
+    "content-type": "application/json; charset=utf-8",
+    "traceparent": "00-b345fe4ac1bdbdb74b707344847be356-d7de5211ca38d770-00",
+    "x-forwarded-for": "20.80.113.52",
+    "x-forwarded-host": "underpaid-passion-unloaded.ngrok-free.dev",
+    "x-forwarded-proto": "https",
+    "accept-encoding": "gzip"
+  },
+  "request": {
+    "byte_count": 191,
+    "captured_byte_count": 191,
+    "truncated": false,
+    "body": {
+      "message": {
+        "role": "ROLE_USER",
+        "parts": [
+          {
+            "text": "Forward the case to Care Transitions Command: is this patient safe to discharge today?"
+          }
+        ],
+        "messageId": "b45aa759-3bc7-44fa-ae82-bf5689fcda1c"
+      }
+    }
+  },
+  "response_headers": {
+    "x-powered-by": "Express",
+    "access-control-allow-origin": "*",
+    "x-request-id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+    "request-id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+    "x-correlation-id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+    "cache-control": "no-store",
+    "x-a2a-task-id": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+    "content-type": "application/a2a+json; charset=utf-8",
+    "content-length": "5788",
+    "etag": "W/\"169c-Hp6laKUrzQLkJe3L4PZaWYT30dA\"",
+    "date": "Thu, 07 May 2026 14:13:26 GMT",
+    "connection": "keep-alive",
+    "keep-alive": "timeout=5"
+  },
+  "response": {
+    "byte_count": 5788,
+    "captured_byte_count": 5788,
+    "truncated": false,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+      "result": {
+        "task": {
+          "id": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+          "contextId": "enc-phase0-trap-001",
+          "status": {
+            "state": "TASK_STATE_COMPLETED",
+            "timestamp": "2026-05-07T14:13:26.178Z",
+            "message": {
+              "messageId": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5-status-message",
+              "role": "ROLE_AGENT",
+              "parts": [
+                {
+                  "text": "Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55."
+                }
+              ],
+              "metadata": {
+                "requestId": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+                "taskId": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5"
+              }
+            }
+          },
+          "artifacts": [
+            {
+              "artifactId": "care-transitions-command-0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+              "name": "Care Transitions Command fused response",
+              "parts": [
+                {
+                  "text": "Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55."
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "runtime_summary": "compact_prompt_opinion_response",
+            "request_id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+            "task_id": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+            "status": "completed",
+            "created_at": "2026-05-07T14:12:48.579Z",
+            "completed_at": "2026-05-07T14:13:26.178Z",
+            "final_verdict": "not_ready",
+            "hidden_risk_result": "hidden_risk_present",
+            "narrative_source_count": 3,
+            "both_mcps_hit": true,
+            "diagnostics_available_via": "/tasks/0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5"
+          }
+        }
+      },
+      "task": {
+        "id": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+        "contextId": "enc-phase0-trap-001",
+        "status": {
+          "state": "TASK_STATE_COMPLETED",
+          "timestamp": "2026-05-07T14:13:26.178Z",
+          "message": {
+            "messageId": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5-status-message",
+            "role": "ROLE_AGENT",
+            "parts": [
+              {
+                "text": "Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55."
+              }
+            ],
+            "metadata": {
+              "requestId": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+              "taskId": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5"
+            }
+          }
+        },
+        "artifacts": [
+          {
+            "artifactId": "care-transitions-command-0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+            "name": "Care Transitions Command fused response",
+            "parts": [
+              {
+                "text": "Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): \"O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic...\" | Case Management Addendum 2026-04-18 20:55 (summary): \"Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...\". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55."
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "runtime_summary": "compact_prompt_opinion_response",
+          "request_id": "733e6c35-56fc-488f-935b-0eb313af8bd3",
+          "task_id": "0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5",
+          "status": "completed",
+          "created_at": "2026-05-07T14:12:48.579Z",
+          "completed_at": "2026-05-07T14:13:26.178Z",
+          "final_verdict": "not_ready",
+          "hidden_risk_result": "hidden_risk_present",
+          "narrative_source_count": 3,
+          "both_mcps_hit": true,
+          "diagnostics_available_via": "/tasks/0a126ea4-7ed3-44cd-b7df-7ef6d4eaa8f5"
+        }
+      }
+    }
+  }
+}

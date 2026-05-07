@@ -27,6 +27,7 @@ fi
 
 if ! rpc_probe_payload="$(curl -sSf \
   -H 'content-type: application/json' \
+  -H 'A2A-Version: 1.0' \
   -H 'x-request-id: readiness-rpc' \
   -d '{"jsonrpc":"2.0","id":"readiness-rpc-id","method":"SendMessage","params":{"message":{"role":"ROLE_USER","parts":[{"text":"Is this patient safe to discharge today?"}]}}}' \
   "${EXTERNAL_A2A_BASE_URL}/rpc")"; then
@@ -36,6 +37,7 @@ fi
 
 if ! message_send_payload="$(curl -sSf \
   -H 'content-type: application/a2a+json' \
+  -H 'A2A-Version: 1.0' \
   -H 'x-request-id: readiness-http-json' \
   -d '{"id":"readiness-http-json-id","message":{"role":"ROLE_USER","parts":[{"text":"Is this patient safe to discharge today?"}]}}' \
   "${EXTERNAL_A2A_BASE_URL}/message:send")"; then
@@ -70,10 +72,27 @@ if (ready.dependencies?.clinical_intelligence_mcp_url !== expectedCiUrl) {
   throw new Error(`readyz dependency mismatch for Clinical Intelligence MCP: expected ${expectedCiUrl}, got ${ready.dependencies?.clinical_intelligence_mcp_url}`);
 }
 if (!card.capabilities || !card.capabilities.task_lifecycle) throw new Error("agent card missing task_lifecycle capability");
+if ("protocolVersion" in card) throw new Error("agent card must not expose stale top-level protocolVersion in A2A v1 mode");
+if (!Array.isArray(card.supportedInterfaces) || card.supportedInterfaces.length === 0) {
+  throw new Error("agent card must expose supportedInterfaces[]");
+}
+if (!card.supportedInterfaces.every((entry) => entry.protocolVersion === "1.0")) {
+  throw new Error("agent card supportedInterfaces must advertise A2A protocolVersion 1.0");
+}
+if (card.supportedInterfaces[0]?.protocolBinding !== "HTTP+JSON") {
+  throw new Error("agent card must prefer HTTP+JSON for A2A v1");
+}
+if (!card.supportedInterfaces[0]?.url?.endsWith("/message:send")) {
+  throw new Error("agent card HTTP+JSON interface URL must target /message:send for Prompt Opinion routing");
+}
+if (!card.endpoints || typeof card.endpoints.message_send !== "string") {
+  throw new Error("agent card must expose endpoints.message_send for A2A v1 HTTP+JSON");
+}
 if (card.capabilities.task_lifecycle.streaming !== false) throw new Error("task_lifecycle.streaming must be false");
 if (card.capabilities.task_lifecycle.mode !== "synchronous") throw new Error("task_lifecycle.mode must be synchronous");
+if (card.capabilities.extendedAgentCard !== false) throw new Error("agent card capabilities.extendedAgentCard must be false");
 if (!card.task_surface || card.task_surface.supports_streaming !== false) throw new Error("task_surface.supports_streaming must be false");
-if (!card.endpoints || typeof card.endpoints.create_task !== "string") throw new Error("agent card missing endpoints.create_task");
+if (typeof card.endpoints.create_task !== "string") throw new Error("agent card missing endpoints.create_task");
 if (!Array.isArray(card.capabilities.dependencies) || card.capabilities.dependencies.length !== 2) {
   throw new Error("agent card dependency list must include both MCPs");
 }

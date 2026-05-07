@@ -42,12 +42,19 @@ const run = async (): Promise<void> => {
     assert.equal(cardPayload.version, "1.0.0");
     assert.equal("url" in cardPayload, false);
     assert.equal("preferredTransport" in cardPayload, false);
+    assert.equal("protocolVersion" in cardPayload, false);
+    assert.equal("supportsAuthenticatedExtendedCard" in cardPayload, false);
     assert.equal(Array.isArray(cardPayload.supportedInterfaces), true);
     assert.equal(cardPayload.supportedInterfaces.length >= 2, true);
     assert.equal(cardPayload.supportedInterfaces[0].protocolBinding, "HTTP+JSON");
+    assert.equal(cardPayload.supportedInterfaces[0].protocolVersion, "1.0");
     assert.equal(cardPayload.supportedInterfaces[0].url, `http://127.0.0.1:${port}/message:send`);
     assert.equal(cardPayload.supportedInterfaces.some((entry: any) => entry.protocolBinding === "JSONRPC"), true);
     assert.equal(cardPayload.supportedInterfaces.some((entry: any) => entry.url === `http://127.0.0.1:${port}/rpc`), true);
+    assert.equal(
+      cardPayload.supportedInterfaces.every((entry: any) => entry.protocolVersion === "1.0"),
+      true,
+    );
     assert.equal("additionalInterfaces" in cardPayload, false);
     assert.equal(Array.isArray(cardPayload.skills), true);
     assert.equal(cardPayload.skills.length > 0, true);
@@ -63,7 +70,9 @@ const run = async (): Promise<void> => {
     assert.equal(cardPayload.task_surface.supports_streaming, false);
     assert.equal(cardPayload.task_surface.accepted_content_types.includes("text/plain"), true);
     assert.equal(cardPayload.task_surface.accepted_content_types.includes("application/json"), true);
+    assert.equal(cardPayload.task_surface.response_content_types.includes("application/a2a+json"), true);
     assert.equal(cardPayload.task_surface.request_id_headers.includes("x-request-id"), true);
+    assert.equal(cardPayload.capabilities.extendedAgentCard, false);
     assert.equal(cardPayload.capabilities.task_lifecycle.streaming, false);
     assert.equal(cardPayload.capabilities.task_lifecycle.mode, "synchronous");
     assert.equal("stateTransitionHistory" in cardPayload.capabilities, false);

@@ -1,0 +1,37 @@
+Launchpad
+Arshdeep Singh
+Arshgill's org
+General Chat Agent
+Data Scope
+Show Tool calls
+Input: 2,486 - Output: 71
+Arshdeep Singh
+
+Use the selected external A2A agent for this question. Do not answer directly. Forward the case to Care Transitions Command: is this patient safe to discharge today?
+
+Po
+external A2A orchestrator
+
+Forward the case to Care Transitions Command: is this patient safe to discharge today?
+
+external A2A orchestrator
+Po
+
+STATUS_MESSAGE: Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): "O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic..." | Case Management Addendum 2026-04-18 20:55 (summary): "Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55.
+
+ARTIFACT_MESSAGES: Final verdict: not_ready. Structured baseline: ready. Hidden-risk result: hidden_risk_present. Clinical answer: Structured baseline ready; final verdict not_ready after cited hidden-risk escalation. Hidden-risk review status: used. Top blocker categories: equipment_and_transport, clinical_stability, home_support_and_services. Clinical Intelligence MCP caused the last disposition downgrade. Cited evidence: Nursing Note 2026-04-18 20:40 (full note): "O2 sat dropped to 82% on room air after approximately 20 feet and 6 stairs. Patient became visibly dyspneic..." | Case Management Addendum 2026-04-18 20:55 (summary): "Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no altern...". This is assistive discharge decision support and does not replace clinician authority. Evidence anchors: Nursing Note 2026-04-18 20:40; Case Management Addendum 2026-04-18 20:55.
+
+Consult with another agent:
+external A2A orchestrator
+Prompt Opinion, Inc. © 2026
+|
+Terms of Service
+|
+Privacy Policy
+|
+Documentation
+|
+Discord Server
+   Connected
+Error
+The LLM took too long to respond and the operation was cancelled
