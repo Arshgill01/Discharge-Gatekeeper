@@ -494,12 +494,12 @@ const assertPromptOpinionSlimModeStaysRenderSafe = async (): Promise<void> => {
   }
 
   const visible = formatPromptOpinionSlimHiddenRisk(payload);
-  assert.ok(visible.startsWith("HIDDEN CONTRADICTION FOUND"));
-  assert.ok(visible.includes("Structured baseline:\nREADY"));
+  assert.ok(visible.startsWith("HIDDEN CONTRADICTION REVIEW"));
+  assert.ok(visible.includes("Structured baseline: READY"));
   assert.ok(visible.includes("Nursing Note 2026-04-18 20:40"));
-  assert.ok(visible.includes("SpO2 dropped to 82% after 20 feet and 6 stairs."));
+  assert.ok(visible.includes("Why this changes the answer:"));
   assert.ok(visible.includes("Case Management Addendum 2026-04-18 20:55"));
-  assert.ok(visible.includes("Final transition status:\nNOT_READY"));
+  assert.ok(visible.includes("Raw FHIR references:"));
   assert.equal(
     visible.includes("TRANSITION PACKAGE"),
     false,

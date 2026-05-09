@@ -223,8 +223,8 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
   const serialized = JSON.stringify(payload);
 
   assert.ok(
-    serialized.length <= 6000,
-    `Prompt Opinion slim transition payload should stay compact while carrying the Phase 9 packet (<=6000 bytes), saw ${serialized.length}.`,
+    serialized.length <= 6500,
+    `Prompt Opinion slim transition payload should stay compact while carrying the FHIR-aware packet (<=6500 bytes), saw ${serialized.length}.`,
   );
   assert.ok(
     payload.narrative.includes("Final posture is not_ready"),

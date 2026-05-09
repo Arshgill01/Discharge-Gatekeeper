@@ -150,6 +150,10 @@ const main = async (): Promise<void> => {
 
     assert.equal(maria.output.final_verdict, "not_ready");
     assert.equal(
+      maria.output.transition_safety_packet.safety_invariants.no_task_without_fhir_source,
+      "pass",
+    );
+    assert.equal(
       maria.output.transition_safety_packet.fhir_resources_written.some(
         (resource: { reference: string }) => resource.reference === "Task/ctc-maria-discharge-2026-0418-clinical-stability",
       ),
@@ -169,11 +173,19 @@ const main = async (): Promise<void> => {
     );
 
     assert.equal(daniel.output.transition_safety_packet.fhir_resources_written.length > 0, true);
+    assert.equal(
+      daniel.output.transition_safety_packet.safety_invariants.no_task_without_fhir_source,
+      "pass",
+    );
     assert.equal(danielTaskRefs.some((reference) => reference.includes("medication-reconciliation")), true);
     assert.equal(danielTaskRefs.some((reference) => reference.includes("clinical-stability")), true);
     assert.equal(danielTaskRefs.some((reference) => reference.includes("patient-education")), true);
 
     assert.equal(olivia.output.final_verdict, "ready");
+    assert.equal(
+      olivia.output.transition_safety_packet.safety_invariants.no_task_without_fhir_source,
+      "pass",
+    );
     assert.equal((oliviaTasks.entry ?? []).length, 0);
 
     console.log("SMOKE PASS: fhir task writeback");

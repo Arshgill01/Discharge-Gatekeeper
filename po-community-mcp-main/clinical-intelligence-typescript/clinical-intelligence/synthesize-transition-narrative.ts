@@ -247,10 +247,10 @@ const compactTransitionSafetyPacket = (
   structured_baseline: {
     ...packet.structured_baseline,
     summary: truncateText(packet.structured_baseline.summary, 120),
-    evidence: packet.structured_baseline.evidence.slice(0, 2).map((item) => truncateText(item, 80)),
-    blockers: packet.structured_baseline.blockers.slice(0, 2).map((blocker) => ({
+    evidence: packet.structured_baseline.evidence.slice(0, 1).map((item) => truncateText(item, 72)),
+    blockers: packet.structured_baseline.blockers.slice(0, 1).map((blocker) => ({
       ...blocker,
-      description: truncateText(blocker.description, 80),
+      description: truncateText(blocker.description, 72),
     })),
   },
   narrative_review: {
@@ -265,6 +265,35 @@ const compactTransitionSafetyPacket = (
     ...packet.reconciled_transition_status,
     why_changed: truncateText(packet.reconciled_transition_status.why_changed, 140),
   },
+  fhir_resources_read: packet.fhir_resources_read.slice(0, 2).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  structured_evidence: packet.structured_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  narrative_evidence: packet.narrative_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  controlling_evidence: packet.controlling_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  superseded_evidence: packet.superseded_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  resolution_evidence: packet.resolution_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  fhir_resources_written: packet.fhir_resources_written.slice(0, 2).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+    linked_evidence_references: item.linked_evidence_references?.slice(0, 1),
+  })),
   action_router: packet.action_router.slice(0, 3).map((action) => ({
     owner: truncateText(action.owner, 60),
     action: truncateText(action.action, 80),
