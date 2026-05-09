@@ -44,7 +44,21 @@ class AssessReconciledDischargeReadinessTool implements IMcpTool {
           const payload = await assessReconciledDischargeReadiness({
             responseMode: parsed.data.response_mode,
           });
-          return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), {
+          const text =
+            parsed.data.response_mode === "prompt_opinion_slim"
+              ? [
+                  payload.prompt_opinion_visible_answer,
+                  "",
+                  `machine_summary=${JSON.stringify({
+                    final_verdict: payload.final_verdict,
+                    structured_posture: payload.structured_posture,
+                    hidden_risk_result: payload.hidden_risk_result,
+                    evidence_contains: payload.evidence_contains,
+                    blocker_categories: payload.blocker_categories,
+                  })}`,
+                ].join("\n")
+              : JSON.stringify(payload, null, 2);
+          return McpUtilities.createTextResponse(text, {
             isError: payload.status === "error",
           });
         } catch (error) {

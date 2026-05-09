@@ -41,7 +41,7 @@ done < <(compgen -e)
 deduped_override_env_vars=()
 for name in "${OVERRIDE_ENV_VARS[@]}"; do
   already_listed=0
-  for existing in "${deduped_override_env_vars[@]}"; do
+  for existing in "${deduped_override_env_vars[@]+"${deduped_override_env_vars[@]}"}"; do
     if [[ "${existing}" == "${name}" ]]; then
       already_listed=1
       break
@@ -51,7 +51,7 @@ for name in "${OVERRIDE_ENV_VARS[@]}"; do
     deduped_override_env_vars+=("${name}")
   fi
 done
-OVERRIDE_ENV_VARS=("${deduped_override_env_vars[@]}")
+OVERRIDE_ENV_VARS=("${deduped_override_env_vars[@]+"${deduped_override_env_vars[@]}"}")
 
 preserve_env_var() {
   local name="$1"

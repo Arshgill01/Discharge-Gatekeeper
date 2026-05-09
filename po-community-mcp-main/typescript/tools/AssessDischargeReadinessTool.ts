@@ -21,11 +21,15 @@ const shouldUseReconciledPromptOne = (
   scenarioId: string | undefined,
   readinessMode: "reconciled_prompt_one" | "deterministic_structured_baseline" | undefined,
 ): boolean => {
+  if (!scenarioId) {
+    return true;
+  }
+
   if (readinessMode === "deterministic_structured_baseline") {
     return false;
   }
 
-  if (!scenarioId || scenarioId === V1_SCENARIO_3_ID) {
+  if (scenarioId === V1_SCENARIO_3_ID) {
     return true;
   }
 

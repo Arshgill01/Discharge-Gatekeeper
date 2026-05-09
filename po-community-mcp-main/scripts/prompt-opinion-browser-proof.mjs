@@ -168,6 +168,37 @@ const enabledDirectPrompts = new Set(
     .map((item) => normalizeLaneToken(item))
     .filter(Boolean),
 );
+const directMcpAgentName = getenv("PROMPT_OPINION_DIRECT_AGENT_NAME", "Care Transitions Command BYO Fallback");
+const normalizeOptionalTool = (value, fallback) => {
+  const raw = getenv(value, fallback);
+  return /^(__none__|none|null)$/i.test(raw) ? null : raw;
+};
+const parseExpectedTokens = (name, fallback) =>
+  (getenv(name, fallback) || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+const directPrompt1Text = getenv("PROMPT_OPINION_DIRECT_PROMPT1_TEXT", PROMPTS.prompt1);
+const directPrompt2Text = getenv("PROMPT_OPINION_DIRECT_PROMPT2_TEXT", PROMPTS.prompt2);
+const directPrompt3Text = getenv("PROMPT_OPINION_DIRECT_PROMPT3_TEXT", PROMPTS.prompt3);
+const directPrompt1ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOOL", "assess_discharge_readiness");
+const directPrompt2ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT2_EXPECTED_TOOL", "surface_hidden_risks");
+const directPrompt3ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOOL", "synthesize_transition_narrative");
+const directPrompt1ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOKENS",
+  "assess_discharge_readiness,structured baseline,result=hidden_risk_present,not_ready",
+);
+const directPrompt2ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT2_EXPECTED_TOKENS",
+  "surface_hidden_risks,contradiction,Nursing Note,hidden_risk_present",
+);
+const directPrompt3ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOKENS",
+  "synthesize_transition_narrative,transition,Before discharge,handoff",
+);
+const directPrompt1Runtime = normalizeLaneToken(getenv("PROMPT_OPINION_DIRECT_PROMPT1_RUNTIME", "dgk"));
+const networkResponsePreviewChars = Number(getenv("PROMPT_OPINION_NETWORK_RESPONSE_PREVIEW_CHARS", "1200"));
+const promptStreamResponsePreviewChars = Number(getenv("PROMPT_OPINION_PROMPT_STREAM_RESPONSE_PREVIEW_CHARS", "12000"));
 
 const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
 const laneEnabled = (lane) => enabledBrowserLanes.has("all") || enabledBrowserLanes.has(normalizeLaneToken(lane));
@@ -412,24 +443,49 @@ const shapeOf = (value, depth = 0) => {
   return typeof value;
 };
 
-const describeBody = (body) => {
+const extractJsonLineMessages = (text) =>
+  String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("{") && line.endsWith("}"))
+    .flatMap((line) => {
+      try {
+        const parsed = JSON.parse(line);
+        const message = {
+          messageType: parsed.messageType,
+          functionCallName: parsed.functionCallName,
+          errorMessage: parsed.errorMessage ? truncate(String(parsed.errorMessage), 4000) : undefined,
+        };
+        return Object.values(message).some(Boolean) ? [message] : [];
+      } catch {
+        return [];
+      }
+    });
+
+const describeBody = (body, { url = "" } = {}) => {
   if (!body) {
     return null;
   }
 
   const redacted = redactText(body);
+  const isPromptStream = /prompt-stream/i.test(url);
+  const previewChars = isPromptStream ? promptStreamResponsePreviewChars : networkResponsePreviewChars;
+  const jsonLineMessages = isPromptStream ? extractJsonLineMessages(redacted) : [];
+  const diagnosticFields = jsonLineMessages.length > 0 ? { json_line_messages: jsonLineMessages } : {};
   try {
     const parsed = JSON.parse(redacted);
     return {
       kind: "json",
       shape: shapeOf(parsed),
-      preview: truncate(JSON.stringify(parsed), 1200),
+      preview: truncate(JSON.stringify(parsed), previewChars),
+      ...diagnosticFields,
     };
   } catch {
     return {
       kind: "text",
       shape: "text",
-      preview: truncate(redacted, 1200),
+      preview: truncate(redacted, previewChars),
+      ...diagnosticFields,
     };
   }
 };
@@ -1145,6 +1201,15 @@ const getExpectedRuntimeHit = ({ lane, promptKey, runtimeSummary }) => {
     return runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
   }
   if (promptKey === "prompt1") {
+    if (directPrompt1Runtime === "ci" || directPrompt1Runtime === "clinical_intelligence") {
+      return runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+    }
+    if (directPrompt1Runtime === "either") {
+      return (
+        runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 ||
+        runtimeSummary.clinical_intelligence_mcp_request_count > 0
+      );
+    }
     return runtimeSummary.discharge_gatekeeper_mcp_request_count > 0;
   }
   if (promptKey === "prompt2" || promptKey === "prompt3") {
@@ -1482,7 +1547,7 @@ const sendPrompt = async ({
         transientPrompt3ErrorSignals.add(signal);
       }
     }
-    const expectedTokensMatched = expectedTokens.some((token) =>
+    const expectedTokensMatched = expectedTokens.length === 0 || expectedTokens.some((token) =>
       finalState.bodyText.toLowerCase().includes(token.toLowerCase()) || finalState.assistantText.toLowerCase().includes(token.toLowerCase()),
     );
     const bodyTextSnapshot = promptKey === "prompt3" || finalState.errorSignals.length > 0
@@ -1577,7 +1642,12 @@ const sendPrompt = async ({
     .flatMap((event) => {
       const preview = String(event.body?.preview || "");
       const matches = [...preview.matchAll(/"messageType"\s*:\s*"Error"[^{}]*"errorMessage"\s*:\s*"([^"]+)"/g)];
-      return matches.map((match) => `network:${match[1]}`);
+      const structuredMessages = Array.isArray(event.body?.json_line_messages)
+        ? event.body.json_line_messages
+            .filter((message) => message.messageType === "Error" && message.errorMessage)
+            .map((message) => `network:${message.errorMessage}`)
+        : [];
+      return [...matches.map((match) => `network:${match[1]}`), ...structuredMessages];
     });
   const allErrorSignals = [
     ...new Set([
@@ -2341,7 +2411,7 @@ const attachNetworkCapture = (context) => {
       host: getHost(request.url()),
       resource_type: request.resourceType(),
       headers,
-      post_data: describeBody(request.postData()),
+      post_data: describeBody(request.postData(), { url: request.url() }),
     });
   });
 
@@ -2353,7 +2423,7 @@ const attachNetworkCapture = (context) => {
     const contentType = headers["content-type"] || "";
     if (/json|text|event-stream/i.test(contentType) && /promptopinion|a2a|mcp|conversation|prompt-stream/i.test(response.url())) {
       try {
-        body = describeBody(await response.text());
+        body = describeBody(await response.text(), { url: response.url() });
       } catch {
         body = { kind: "unavailable" };
       }
@@ -2470,7 +2540,7 @@ const main = async () => {
       ? await startSession(
           page,
           workspaceId,
-          "Care Transitions Command BYO Fallback",
+          directMcpAgentName,
           "Direct-MCP fallback",
           "fallback-launchpad.png",
         )
@@ -2481,14 +2551,9 @@ const main = async () => {
           page,
           lane: "Direct-MCP fallback",
           attemptId: "FALLBACK-P1-01",
-          prompt: PROMPTS.prompt1,
-          expectedTokens: [
-            "assess_discharge_readiness",
-            "structured baseline",
-            "result=hidden_risk_present",
-            "not_ready",
-          ],
-          expectedTool: "assess_discharge_readiness",
+          prompt: directPrompt1Text,
+          expectedTokens: directPrompt1ExpectedTokens,
+          expectedTool: directPrompt1ExpectedTool,
         });
       }
       if (directPromptEnabled("prompt2")) {
@@ -2496,9 +2561,9 @@ const main = async () => {
           page,
           lane: "Direct-MCP fallback",
           attemptId: "FALLBACK-P2-01",
-          prompt: PROMPTS.prompt2,
-          expectedTokens: ["surface_hidden_risks", "contradiction", "Nursing Note", "hidden_risk_present"],
-          expectedTool: "surface_hidden_risks",
+          prompt: directPrompt2Text,
+          expectedTokens: directPrompt2ExpectedTokens,
+          expectedTool: directPrompt2ExpectedTool,
         });
       }
       if (directPromptEnabled("prompt3")) {
@@ -2506,9 +2571,9 @@ const main = async () => {
           page,
           lane: "Direct-MCP fallback",
           attemptId: "FALLBACK-P3-01",
-          prompt: PROMPTS.prompt3,
-          expectedTokens: ["synthesize_transition_narrative", "transition", "Before discharge", "handoff"],
-          expectedTool: "synthesize_transition_narrative",
+          prompt: directPrompt3Text,
+          expectedTokens: directPrompt3ExpectedTokens,
+          expectedTool: directPrompt3ExpectedTool,
         });
       }
     }
