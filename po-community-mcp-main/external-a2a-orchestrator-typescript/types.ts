@@ -148,6 +148,10 @@ export type DeterministicResponse = {
     source_type: string;
     source_label: string;
     detail: string;
+    fhir_reference?: string;
+    fhir_resource_type?: string;
+    fhir_resource_id?: string;
+    fhir_timestamp?: string;
   }>;
   next_steps: Array<{
     id: string;
@@ -218,6 +222,10 @@ export type HiddenRiskResponse = {
     source_label: string;
     locator: string;
     excerpt: string;
+    timestamp?: string;
+    fhir_reference?: string;
+    fhir_resource_type?: string;
+    fhir_resource_id?: string;
   }>;
   review_metadata: {
     narrative_sources_reviewed: number;
@@ -265,10 +273,21 @@ export type ReconciliationResult = {
       source_label: string;
       locator?: string;
       detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
     }>;
   }>;
   citations: {
-    deterministic: Array<{ id: string; source_label: string; detail: string }>;
+    deterministic: Array<{
+      id: string;
+      source_label: string;
+      detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
+      fhir_timestamp?: string;
+    }>;
     hidden_risk: HiddenRiskResponse["citations"];
   };
   contradiction_summary: string;
@@ -286,6 +305,9 @@ export type ReconciliationResult = {
       source_label: string;
       locator?: string;
       detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
     }>;
     impacted_blocker_categories: string[];
     action_plan: ReconciliationResult["merged_next_steps"];

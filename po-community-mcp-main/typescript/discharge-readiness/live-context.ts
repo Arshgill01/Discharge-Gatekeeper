@@ -669,6 +669,7 @@ const buildStructuredEvidence = (
   detail: string,
   category: BlockerCategory,
   assertion: EvidenceAssertion,
+  resource?: FhirResourceLike,
 ): EvidenceRecord => {
   return {
     id: sourceId,
@@ -677,6 +678,14 @@ const buildStructuredEvidence = (
     detail: summarizeText(detail),
     category,
     assertion,
+    ...(resource
+      ? {
+          fhir_reference: toReferenceLike(resource),
+          fhir_resource_type: getResourceType(resource),
+          fhir_resource_id: getResourceId(resource),
+          fhir_timestamp: readResourceTimestamp(resource),
+        }
+      : {}),
   };
 };
 
@@ -687,6 +696,7 @@ const buildNoteEvidence = (
   detail: string,
   category: BlockerCategory,
   assertion: EvidenceAssertion,
+  resource?: FhirResourceLike,
 ): EvidenceRecord => {
   return {
     id: sourceId,
@@ -695,6 +705,14 @@ const buildNoteEvidence = (
     detail: summarizeText(detail),
     category,
     assertion,
+    ...(resource
+      ? {
+          fhir_reference: toReferenceLike(resource),
+          fhir_resource_type: getResourceType(resource),
+          fhir_resource_id: getResourceId(resource),
+          fhir_timestamp: readResourceTimestamp(resource),
+        }
+      : {}),
   };
 };
 
@@ -774,6 +792,7 @@ const buildClinicalStability = (
         `${check.label} is ${value}${check.label === "temperature" ? " C" : check.label === "oxygen saturation" ? "%" : ""}.`,
         "clinical_stability",
         stable ? "supports_readiness" : "supports_blocker",
+        resource,
       ),
     );
 
@@ -790,6 +809,7 @@ const buildClinicalStability = (
         `Current oxygen requirement is ${currentOxygen} L/min.`,
         "clinical_stability",
         currentOxygen > baselineOxygen ? "supports_blocker" : "supports_readiness",
+        currentOxygenObservation,
       ),
     );
   }
@@ -802,6 +822,7 @@ const buildClinicalStability = (
         `Baseline oxygen requirement is ${baselineOxygen} L/min.`,
         "clinical_stability",
         "supports_readiness",
+        baselineOxygenObservation,
       ),
     );
   }
@@ -853,6 +874,7 @@ const buildPendingDiagnostics = (
           detail,
           "pending_diagnostics",
           "supports_blocker",
+          resource,
         ),
       );
       return summarizeText(detail);
@@ -913,6 +935,7 @@ const buildMedicationReconciliation = (
         detail,
         "medication_reconciliation",
         unresolved ? "supports_blocker" : "supports_readiness",
+        resource,
       ),
     );
 
@@ -945,6 +968,7 @@ const buildFollowUpAndReferrals = (
           detail,
           "follow_up_and_referrals",
           "supports_blocker",
+          resource,
         ),
       );
       return detail;
@@ -1049,6 +1073,7 @@ const buildNoteDocumentInputs = (
             signal.detail,
             signal.category,
             signal.assertion,
+            resource,
           ),
         );
         return {

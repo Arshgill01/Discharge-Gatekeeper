@@ -12,6 +12,7 @@ type HiddenRiskToolInput = {
   deterministic_snapshot?: unknown;
   narrative_evidence_bundle?: unknown;
   optional_context_metadata?: HiddenRiskInput["optional_context_metadata"];
+  fhir_context?: HiddenRiskInput["fhir_context"];
 };
 
 export const resolveHiddenRiskToolInput = (
@@ -27,6 +28,7 @@ export const resolveHiddenRiskToolInput = (
           ...PHASE0_TRAP_PATIENT_INPUT.optional_context_metadata,
           explicit_task_goal: explicitTaskGoal,
         },
+        fhir_context: undefined,
       };
     }
 
@@ -39,5 +41,6 @@ export const resolveHiddenRiskToolInput = (
     deterministic_snapshot: input.deterministic_snapshot,
     narrative_evidence_bundle: input.narrative_evidence_bundle ?? [],
     optional_context_metadata: input.optional_context_metadata,
+    fhir_context: input.fhir_context,
   });
 };

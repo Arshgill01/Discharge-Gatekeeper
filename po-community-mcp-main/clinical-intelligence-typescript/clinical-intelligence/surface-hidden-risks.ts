@@ -583,6 +583,10 @@ const normalizeRawModelOutput = (
       source_label: evidence.source_label,
       locator: "deterministic summary",
       excerpt: evidence.detail || evidence.source_label,
+      timestamp: evidence.fhir_timestamp,
+      fhir_reference: evidence.fhir_reference,
+      fhir_resource_type: evidence.fhir_resource_type,
+      fhir_resource_id: evidence.fhir_resource_id,
     })),
     ...input.narrative_evidence_bundle.map((source) => ({
       citation_id: source.source_id,
@@ -590,8 +594,15 @@ const normalizeRawModelOutput = (
       source_label: source.source_label,
       locator: source.locator || "n/a",
       excerpt: source.excerpt,
+      timestamp: source.timestamp,
+      fhir_reference: source.fhir_reference,
+      fhir_resource_type: source.fhir_resource_type,
+      fhir_resource_id: source.fhir_resource_id,
     })),
   ];
+  const inputSourcesByLabel = new Map(
+    input.narrative_evidence_bundle.map((source) => [source.source_label.toLowerCase(), source]),
+  );
   const normalizedCitations = [
     ...rawCitations.map((citation, index) => {
       const rawSourceLabel = asString(citation["source_label"]) || `Source ${index + 1}`;
@@ -599,16 +610,34 @@ const normalizeRawModelOutput = (
       const genericSourceIndex = genericSourceMatch?.[1]
         ? Number.parseInt(genericSourceMatch[1], 10) - 1
         : null;
-      const inputSource = genericSourceIndex !== null
+      const indexedInputSource = genericSourceIndex !== null
         ? input.narrative_evidence_bundle[genericSourceIndex]
         : undefined;
+      const matchedInputSource =
+        indexedInputSource ??
+        inputSourcesByLabel.get(rawSourceLabel.toLowerCase());
+      const locator = asString(citation["locator"]) || matchedInputSource?.locator || "n/a";
+      const fhirReference =
+        asString(citation["fhir_reference"]) ||
+        matchedInputSource?.fhir_reference ||
+        (/^[A-Z][A-Za-z]+\/[A-Za-z0-9.\-]+$/.test(locator) ? locator : undefined);
 
       return {
         citation_id: asString(citation["citation_id"]) || `cit_${index + 1}`,
-        source_type: asString(citation["source_type"]) || inputSource?.source_type || "narrative_source",
-        source_label: inputSource?.source_label || rawSourceLabel,
-        locator: asString(citation["locator"]) || inputSource?.locator || "n/a",
-        excerpt: asString(citation["excerpt"]) || inputSource?.excerpt || "No excerpt provided.",
+        source_type: asString(citation["source_type"]) || matchedInputSource?.source_type || "narrative_source",
+        source_label: matchedInputSource?.source_label || rawSourceLabel,
+        locator,
+        excerpt: asString(citation["excerpt"]) || matchedInputSource?.excerpt || "No excerpt provided.",
+        timestamp: asString(citation["timestamp"]) || matchedInputSource?.timestamp,
+        fhir_reference: fhirReference,
+        fhir_resource_type:
+          asString(citation["fhir_resource_type"]) ||
+          matchedInputSource?.fhir_resource_type ||
+          (fhirReference ? fhirReference.split("/")[0] : undefined),
+        fhir_resource_id:
+          asString(citation["fhir_resource_id"]) ||
+          matchedInputSource?.fhir_resource_id ||
+          (fhirReference ? fhirReference.split("/")[1] : undefined),
       };
     }),
     ...fallbackInputCitations,

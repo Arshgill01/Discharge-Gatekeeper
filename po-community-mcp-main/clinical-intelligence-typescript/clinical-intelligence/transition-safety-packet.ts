@@ -17,6 +17,40 @@ export type SafetyInvariants = {
   duplicate_signal_suppression: SafetyInvariantStatus;
 };
 
+export type FhirEvidenceLedgerItem = {
+  reference: string;
+  resource_type: string;
+  resource_id: string;
+  timestamp?: string;
+  role:
+    | "structured_baseline"
+    | "narrative_evidence"
+    | "controlling_evidence"
+    | "superseded_evidence"
+    | "resolution_evidence";
+  summary: string;
+  supports: CanonicalBlockerCategory[];
+  source: "FHIR";
+};
+
+export type FhirReadRecord = {
+  reference: string;
+  resource_type: string;
+  resource_id: string;
+  timestamp?: string;
+  summary: string;
+};
+
+export type FhirWriteRecord = {
+  reference: string;
+  resource_type: string;
+  resource_id: string;
+  timestamp?: string;
+  summary: string;
+};
+
+type FhirContextReadRecord = NonNullable<HiddenRiskInput["fhir_context"]>["fhir_resources_read"][number];
+
 export type TransitionSafetyPacket = {
   packet_type: "transition_safety_packet";
   contract_version: "phase9_transition_safety_packet_v1";
@@ -46,8 +80,17 @@ export type TransitionSafetyPacket = {
     citations: Array<{
       source_label: string;
       excerpt: string;
+      fhir_reference?: string;
     }>;
   };
+  fhir_server: string | null;
+  fhir_resources_read: FhirReadRecord[];
+  structured_evidence: FhirEvidenceLedgerItem[];
+  narrative_evidence: FhirEvidenceLedgerItem[];
+  controlling_evidence: FhirEvidenceLedgerItem[];
+  superseded_evidence: FhirEvidenceLedgerItem[];
+  resolution_evidence: FhirEvidenceLedgerItem[];
+  fhir_resources_written: FhirWriteRecord[];
   reconciled_transition_status: {
     final_verdict: CanonicalVerdict;
     why_changed: string;
@@ -163,6 +206,81 @@ const buildWhyChanged = (
   return `Structured baseline ${structuredBaselineVerdict} was preserved; narrative review did not add a discharge-changing hidden risk, so final status is ${finalVerdict}.`;
 };
 
+const buildNarrativeSupportMap = (
+  hiddenRisk: HiddenRiskOutput,
+): Map<string, CanonicalBlockerCategory[]> => {
+  const supportMap = new Map<string, CanonicalBlockerCategory[]>();
+
+  for (const finding of activeHiddenRiskFindings(hiddenRisk)) {
+    for (const citationId of finding.citation_ids) {
+      const current = supportMap.get(citationId) ?? [];
+      if (isCanonicalBlockerCategory(finding.category) && !current.includes(finding.category)) {
+        current.push(finding.category);
+      }
+      supportMap.set(citationId, current);
+    }
+  }
+
+  return supportMap;
+};
+
+const toLedgerItemFromDeterministicEvidence = (
+  evidence: HiddenRiskInput["deterministic_snapshot"]["deterministic_evidence"][number],
+  role: FhirEvidenceLedgerItem["role"],
+): FhirEvidenceLedgerItem | null => {
+  if (!evidence.fhir_reference || !evidence.fhir_resource_type || !evidence.fhir_resource_id) {
+    return null;
+  }
+
+  return {
+    reference: evidence.fhir_reference,
+    resource_type: evidence.fhir_resource_type,
+    resource_id: evidence.fhir_resource_id,
+    timestamp: evidence.fhir_timestamp,
+    role,
+    summary: evidence.detail || evidence.source_label,
+    supports: [],
+    source: "FHIR",
+  };
+};
+
+const toLedgerItemFromReadRecord = (
+  record: FhirContextReadRecord,
+  role: FhirEvidenceLedgerItem["role"],
+): FhirEvidenceLedgerItem => {
+  return {
+    reference: record.reference,
+    resource_type: record.resource_type,
+    resource_id: record.resource_id,
+    timestamp: record.timestamp,
+    role,
+    summary: record.summary,
+    supports: [],
+    source: "FHIR",
+  };
+};
+
+const toLedgerItemFromCitation = (
+  citation: HiddenRiskOutput["citations"][number],
+  role: FhirEvidenceLedgerItem["role"],
+  supports: CanonicalBlockerCategory[],
+): FhirEvidenceLedgerItem | null => {
+  if (!citation.fhir_reference || !citation.fhir_resource_type || !citation.fhir_resource_id) {
+    return null;
+  }
+
+  return {
+    reference: citation.fhir_reference,
+    resource_type: citation.fhir_resource_type,
+    resource_id: citation.fhir_resource_id,
+    timestamp: citation.timestamp,
+    role,
+    summary: citation.excerpt,
+    supports,
+    source: "FHIR",
+  };
+};
+
 export const buildTransitionSafetyPacket = ({
   input,
   hiddenRisk,
@@ -183,6 +301,42 @@ export const buildTransitionSafetyPacket = ({
     finalVerdict,
     hiddenRisk,
   });
+  const narrativeSupportMap = buildNarrativeSupportMap(hiddenRisk);
+  const structuredEvidence = deterministic.deterministic_evidence
+    .map((evidence) => toLedgerItemFromDeterministicEvidence(evidence, "structured_baseline"))
+    .filter((item): item is FhirEvidenceLedgerItem => Boolean(item));
+  const fallbackStructuredEvidence =
+    structuredEvidence.length === 0
+      ? (input.fhir_context?.fhir_resources_read ?? [])
+          .filter((record) =>
+            !["DocumentReference", "PractitionerRole"].includes(record.resource_type),
+          )
+          .map((record) => toLedgerItemFromReadRecord(record, "structured_baseline"))
+      : [];
+  const narrativeEvidence = hiddenRisk.citations
+    .map((citation) =>
+      toLedgerItemFromCitation(
+        citation,
+        "narrative_evidence",
+        narrativeSupportMap.get(citation.citation_id) ?? [],
+      ),
+    )
+    .filter((item): item is FhirEvidenceLedgerItem => Boolean(item));
+  const controllingEvidence = hiddenRisk.citations
+    .filter((citation) => narrativeSupportMap.has(citation.citation_id))
+    .map((citation) =>
+      toLedgerItemFromCitation(
+        citation,
+        "controlling_evidence",
+        narrativeSupportMap.get(citation.citation_id) ?? [],
+      ),
+    )
+    .filter((item): item is FhirEvidenceLedgerItem => Boolean(item));
+  const supersededEvidence =
+    hiddenRisk.hidden_risk_summary.result === "hidden_risk_present" && finalVerdict !== deterministic.baseline_verdict
+      ? structuredEvidence.map((item) => ({ ...item, role: "superseded_evidence" as const }))
+      : [];
+  const fhirResourcesRead = input.fhir_context?.fhir_resources_read ?? [];
 
   return {
     packet_type: "transition_safety_packet",
@@ -190,8 +344,8 @@ export const buildTransitionSafetyPacket = ({
     patient: {
       patient_id: deterministic.patient_id ?? null,
       encounter_id: deterministic.encounter_id ?? null,
-      ...(deterministic.patient_id === "phase0-trap-maria-alvarez"
-        ? { display_name: "Maria Alvarez", planned_disposition: "home" }
+      ...(input.fhir_context?.optional_context_metadata?.discharge_destination
+        ? { planned_disposition: input.fhir_context.optional_context_metadata.discharge_destination }
         : {}),
     },
     structured_baseline: {
@@ -211,8 +365,17 @@ export const buildTransitionSafetyPacket = ({
       citations: hiddenRisk.citations.map((citation) => ({
         source_label: citation.source_label,
         excerpt: citation.excerpt,
+        fhir_reference: citation.fhir_reference,
       })),
     },
+    fhir_server: input.fhir_context?.fhir_server ?? null,
+    fhir_resources_read: fhirResourcesRead,
+    structured_evidence: structuredEvidence.length > 0 ? structuredEvidence : fallbackStructuredEvidence,
+    narrative_evidence: narrativeEvidence,
+    controlling_evidence: controllingEvidence,
+    superseded_evidence: supersededEvidence,
+    resolution_evidence: [],
+    fhir_resources_written: [],
     reconciled_transition_status: {
       final_verdict: finalVerdict,
       why_changed: buildWhyChanged(deterministic.baseline_verdict, hiddenRisk, finalVerdict),
@@ -237,4 +400,3 @@ export const buildTransitionSafetyPacket = ({
 export const allSafetyInvariantsPass = (invariants: SafetyInvariants): boolean => {
   return Object.values(invariants).every((status) => status === "pass");
 };
-

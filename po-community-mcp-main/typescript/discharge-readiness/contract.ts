@@ -68,6 +68,10 @@ export type EvidenceRecord = {
   detail: string;
   category?: BlockerCategory;
   assertion?: EvidenceAssertion;
+  fhir_reference?: string;
+  fhir_resource_type?: string;
+  fhir_resource_id?: string;
+  fhir_timestamp?: string;
 };
 
 export const EVIDENCE_SIGNAL_STATES = [

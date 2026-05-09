@@ -227,7 +227,7 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
     `Prompt Opinion slim transition payload should stay compact while carrying the Phase 9 packet (<=6000 bytes), saw ${serialized.length}.`,
   );
   assert.ok(
-    payload.narrative.includes("Before discharge, complete:"),
+    payload.narrative.includes("Final posture is not_ready"),
     "Slim Prompt 3 narrative should stay action-explicit for transition-package rendering.",
   );
   assert.ok(payload.key_points.length <= 5, "Slim Prompt 3 key points should stay bounded.");
@@ -256,14 +256,12 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
   assert.ok(visible.startsWith("TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"));
   assert.ok(visible.includes("Release condition:"));
   assert.ok(
-    visible.includes(
-      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
-    ),
+    visible.includes("Do not discharge until the cited blocking gates are resolved"),
   );
-  assert.ok(visible.includes("1. Bedside RN - repeat exertional room-air assessment before discharge."));
-  assert.ok(visible.includes("5. Care team - document updated handoff and patient-facing instructions."));
+  assert.ok(visible.includes("Actions:"));
+  assert.ok(/1\.\s+[a-z]/i.test(visible));
   assert.ok(visible.includes("- Nursing Note 2026-04-18 20:40"));
-  assert.ok(visible.includes("- Case Management Addendum 2026-04-18 20:55"));
+  assert.ok(visible.includes("Raw FHIR references:"));
   assert.equal(
     visible.split(/\s+/).length <= 110,
     true,

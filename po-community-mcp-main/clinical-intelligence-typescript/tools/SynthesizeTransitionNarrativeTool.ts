@@ -7,6 +7,7 @@ import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesi
 import { TransitionNarrativeOutput } from "../clinical-intelligence/synthesize-transition-narrative";
 import {
   deterministicSnapshotSchema,
+  fhirContextSchema,
   narrativeSourceSchema,
 } from "../clinical-intelligence/contract";
 import {
@@ -37,6 +38,9 @@ const inputSchema = {
       explicit_task_goal: z.string().optional(),
     })
     .optional(),
+  fhir_context: fhirContextSchema
+    .optional()
+    .describe("Optional FHIR-native context envelope carrying resource references and narrative provenance."),
   response_mode: z
     .enum(["prompt_opinion_slim", "full"])
     .optional()
@@ -48,45 +52,41 @@ const toolInputSchema = z.object(inputSchema);
 export const formatPromptOpinionSlimTransitionPackage = (
   payload: TransitionNarrativeOutput,
 ): string => {
-  const anchors = payload.citations
-    .filter((citation) =>
-      citation.source_label.includes("Nursing Note 2026-04-18 20:40") ||
-      citation.source_label.includes("Case Management Addendum 2026-04-18 20:55"))
-    .slice(0, 2)
-    .map((citation) => citation.source_label);
-  const canonicalAnchors = [
-    "Nursing Note 2026-04-18 20:40",
-    "Case Management Addendum 2026-04-18 20:55",
-  ];
-
-  if (payload.proposed_disposition === "not_ready") {
-    return [
-      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
-      "",
-      "Release condition:",
-      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
-      "",
-      "Actions:",
-      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
-      "2. Covering clinician - reassess discharge readiness after exertional result.",
-      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
-      "4. Family/support - confirm overnight support for first night home.",
-      "5. Care team - document updated handoff and patient-facing instructions.",
-      "",
-      "Evidence:",
-      ...canonicalAnchors.map((anchor) => `- ${anchor}`),
-      "",
-      "Clinician review required; this does not approve discharge autonomously.",
-    ].join("\n");
-  }
+  const compactAction = (value: string): string => {
+    const condensed = value
+      .replace(/^Owner (?:now|before discharge):\s*/i, "")
+      .replace(/\s+Evidence:.*$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return condensed.length > 92 ? `${condensed.slice(0, 89).trimEnd()}...` : condensed;
+  };
+  const evidenceLines = payload.citations
+    .slice(0, 4)
+    .map((citation) => {
+      const prefix = citation.fhir_reference ? `${citation.fhir_reference} | ` : "";
+      return `- ${prefix}${citation.source_label}`;
+    });
+  const rawReferences = [...new Set(payload.citations.map((citation) => citation.fhir_reference).filter(Boolean))];
+  const actionLines = payload.recommended_actions
+    .slice(0, 5)
+    .map((action, index) => `${index + 1}. ${compactAction(action.action)}`);
 
   return [
-    "TRANSITION PACKAGE",
+    payload.proposed_disposition === "not_ready"
+      ? "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"
+      : "TRANSITION PACKAGE",
     "",
-    `Final status: ${payload.proposed_disposition.toUpperCase()}.`,
-    "Release condition: complete clinician review and documented transition safeguards before final disposition.",
+    "Release condition:",
+    payload.proposed_disposition === "not_ready"
+      ? "Do not discharge until the cited blocking gates are resolved and clinician review confirms a safe transition."
+      : "Complete the cited actions and clinician review before final disposition.",
+    "",
+    "Actions:",
+    ...(actionLines.length > 0 ? actionLines : ["1. No additional actions generated."]),
+    "",
     "Evidence:",
-    ...(anchors.length > 0 ? anchors.map((anchor) => `- ${anchor}`) : ["- none"]),
+    ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
+    `Raw FHIR references: ${rawReferences.length > 0 ? rawReferences.join(" | ") : "none"}.`,
     "",
     "Clinician review required; this does not approve discharge autonomously.",
   ].join("\n");

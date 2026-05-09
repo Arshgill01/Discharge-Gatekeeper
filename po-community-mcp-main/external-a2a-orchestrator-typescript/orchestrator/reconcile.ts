@@ -143,6 +143,9 @@ const buildMergedNextSteps = (
         source: "deterministic" as const,
         source_label: evidence.source_label,
         detail: evidence.detail,
+        fhir_reference: evidence.fhir_reference,
+        fhir_resource_type: evidence.fhir_resource_type,
+        fhir_resource_id: evidence.fhir_resource_id,
       })),
   }));
 
@@ -181,6 +184,9 @@ const buildMergedNextSteps = (
           source_label: citation.source_label,
           locator: citation.locator,
           detail: citation.excerpt,
+          fhir_reference: citation.fhir_reference,
+          fhir_resource_type: citation.fhir_resource_type,
+          fhir_resource_id: citation.fhir_resource_id,
         })),
     }));
 
@@ -234,12 +240,22 @@ const toHiddenRiskInput = (
       evidence_id: evidence.id,
       source_label: evidence.source_label,
       detail: evidence.detail,
+      fhir_reference: evidence.fhir_reference,
+      fhir_resource_type: evidence.fhir_resource_type,
+      fhir_resource_id: evidence.fhir_resource_id,
+      fhir_timestamp: evidence.fhir_timestamp,
     })),
     deterministic_next_steps: deterministic.next_steps.map((step) => step.action),
     deterministic_summary: deterministic.summary,
   },
-  narrative_evidence_bundle: taskInput.patient_context?.narrative_evidence_bundle || [],
-  optional_context_metadata: taskInput.patient_context?.optional_context_metadata,
+  narrative_evidence_bundle:
+    taskInput.patient_context?.narrative_evidence_bundle ||
+    deterministic.fhir_context?.narrative_evidence_bundle ||
+    [],
+  optional_context_metadata:
+    taskInput.patient_context?.optional_context_metadata ??
+    deterministic.fhir_context?.optional_context_metadata,
+  fhir_context: deterministic.fhir_context,
 });
 
 const buildUnavailableHiddenRisk = (
@@ -353,6 +369,10 @@ export const reconcileOutputs = (
         id: evidence.id,
         source_label: evidence.source_label,
         detail: evidence.detail,
+        fhir_reference: evidence.fhir_reference,
+        fhir_resource_type: evidence.fhir_resource_type,
+        fhir_resource_id: evidence.fhir_resource_id,
+        fhir_timestamp: evidence.fhir_timestamp,
       })),
       hidden_risk: hiddenRisk?.citations || [],
     },

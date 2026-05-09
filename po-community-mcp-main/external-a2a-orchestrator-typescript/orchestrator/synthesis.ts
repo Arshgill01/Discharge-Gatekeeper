@@ -27,9 +27,10 @@ const toEvidenceAnchor = (
 ): string => {
   const detail = anchor.detail.replace(/\s+/g, " ").trim();
   const shortDetail = detail.length > 110 ? `${detail.slice(0, 107)}...` : detail;
+  const prefix = anchor.fhir_reference ? `${anchor.fhir_reference} | ` : "";
   return anchor.locator
-    ? `${anchor.source_label} (${anchor.locator}): "${shortDetail}"`
-    : `${anchor.source_label}: "${shortDetail}"`;
+    ? `${prefix}${anchor.source_label} (${anchor.locator}): "${shortDetail}"`
+    : `${prefix}${anchor.source_label}: "${shortDetail}"`;
 };
 
 const selectDistinctEvidenceAnchors = (
@@ -56,12 +57,18 @@ const buildEvidenceAnchors = (
     source_label: citation.source_label,
     locator: citation.locator,
     detail: citation.excerpt,
+    fhir_reference: citation.fhir_reference,
+    fhir_resource_type: citation.fhir_resource_type,
+    fhir_resource_id: citation.fhir_resource_id,
   }));
   const deterministicAnchors = reconciled.citations.deterministic.map((citation) => ({
     id: citation.id,
     source: "deterministic" as const,
     source_label: citation.source_label,
     detail: citation.detail,
+    fhir_reference: citation.fhir_reference,
+    fhir_resource_type: citation.fhir_resource_type,
+    fhir_resource_id: citation.fhir_resource_id,
   }));
 
   if (promptMode === "prompt_3") {
@@ -74,6 +81,26 @@ const buildEvidenceAnchors = (
   }
 
   return selectDistinctEvidenceAnchors(deterministicAnchors).slice(0, 2);
+};
+
+const buildRawFhirReferenceLine = (
+  anchors: ReconciliationResult["prompt_payload"]["evidence_anchors"],
+): string => {
+  const references = [...new Set(anchors.map((anchor) => anchor.fhir_reference).filter(Boolean))];
+  return references.length > 0
+    ? `Raw FHIR references: ${references.join(" | ")}.`
+    : "Raw FHIR references: none.";
+};
+
+const compactVisibleAction = (value: string, maxLength: number = 110): string => {
+  const condensed = value
+    .replace(/^Immediate discharge hold action:\s*/i, "")
+    .replace(/^Before final discharge order:\s*/i, "")
+    .replace(/\s+Completion signal:.*$/i, "")
+    .replace(/\s+Evidence:.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return condensed.length > maxLength ? `${condensed.slice(0, maxLength - 3).trimEnd()}...` : condensed;
 };
 
 const buildImpactedCategories = (reconciled: ReconciliationResult): string[] => {
@@ -166,59 +193,38 @@ const renderPrompt1Narrative = (
   const evidenceLine = promptPayload.evidence_anchors.length > 0
     ? `Cited evidence: ${promptPayload.evidence_anchors.map(toEvidenceAnchor).join(" | ")}.`
     : "No additional hidden-risk citation anchors were provided.";
+  const rawReferenceLine = buildRawFhirReferenceLine(promptPayload.evidence_anchors);
   const downgradeLine = reconciled.last_disposition_downgrade_by === "clinical_intelligence_mcp"
     ? "Clinical Intelligence MCP caused the last disposition downgrade."
     : reconciled.last_disposition_downgrade_by === "discharge_gatekeeper_mcp"
     ? "Discharge Gatekeeper MCP remains the last downgrade source."
     : "No downgrade beyond the deterministic baseline was required.";
-  return `${promptPayload.headline} Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} This is assistive discharge decision support and does not replace clinician authority.`;
+  return `${promptPayload.headline} Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} ${rawReferenceLine} This is assistive discharge decision support and does not replace clinician authority.`;
 };
 
 const renderPrompt2Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
-  if (
-    reconciled.deterministic.verdict === "ready" &&
-    reconciled.hidden_risk_result === "hidden_risk_present" &&
-    reconciled.final_verdict === "not_ready"
-  ) {
-    return [
-      "HIDDEN CONTRADICTION FOUND",
-      "",
-      "Structured baseline:",
-      "READY - stable at rest, meds ready, follow-up scheduled.",
-      "",
-      "Contradicting narrative evidence:",
-      "Nursing Note 2026-04-18 20:40:",
-      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
-      "",
-      "Case Management Addendum 2026-04-18 20:55:",
-      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
-      "",
-      "Why this changes the answer:",
-      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
-      "",
-      "Final transition status:",
-      "NOT_READY",
-      "",
-      "This is assistive discharge decision support and does not replace clinician authority.",
-    ].join("\n");
-  }
-
-  const evidenceLine = promptPayload.evidence_anchors.length > 0
-    ? `Evidence: ${promptPayload.evidence_anchors.map(toEvidenceAnchor).join(" | ")}.`
-    : "Evidence: no contradiction citation anchors were available.";
+  const evidenceLines = promptPayload.evidence_anchors.length > 0
+    ? promptPayload.evidence_anchors.map((anchor) => `- ${toEvidenceAnchor(anchor)}`)
+    : ["- none"];
   return [
-    "HIDDEN-RISK REVIEW",
+    "HIDDEN CONTRADICTION REVIEW",
     "",
-    `Structured baseline: ${reconciled.deterministic.verdict}.`,
-    `Narrative result: ${reconciled.hidden_risk_result}.`,
-    evidenceLine,
+    `Structured baseline: ${reconciled.deterministic.verdict.toUpperCase()}`,
+    `Narrative result: ${reconciled.hidden_risk_result.toUpperCase()}`,
+    "",
+    "Why this changes the answer:",
+    reconciled.contradiction_summary,
+    "",
+    "Controlling evidence:",
+    ...evidenceLines,
+    buildRawFhirReferenceLine(promptPayload.evidence_anchors),
     ...(reconciled.manual_review_required
       ? ["Manual clinician review is required before discharge proceeds."]
       : []),
-    `Final transition status: ${reconciled.final_verdict}.`,
+    `Final transition status: ${reconciled.final_verdict.toUpperCase()}`,
     "This is assistive discharge decision support and does not replace clinician authority.",
   ].join("\n");
 };
@@ -227,45 +233,47 @@ const renderPrompt3Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
-  if (reconciled.final_verdict === "not_ready") {
-    return [
-      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
-      "",
-      "Release condition:",
-      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
-      "",
-      "Actions:",
-      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
-      "2. Covering clinician - reassess discharge readiness after exertional result.",
-      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
-      "4. Family/support - confirm overnight support for first night home.",
-      "5. Care team - document updated handoff and patient-facing instructions.",
-      "",
-      "Evidence:",
-      "- Nursing Note 2026-04-18 20:40",
-      "- Case Management Addendum 2026-04-18 20:55",
-      "",
-      "This is assistive discharge decision support and does not replace clinician authority.",
-    ].join("\n");
-  }
-
   const prioritizedSteps = promptPayload.action_plan
     .map((step, index) => {
       const leadingAnchor = step.citation_anchors[0];
-      const anchorText = leadingAnchor ? ` Evidence: ${toEvidenceAnchor(leadingAnchor)}.` : "";
-      return `${index + 1}. ${step.owner} | ${step.timing} | ${step.action}${anchorText}`;
+      const anchorText = leadingAnchor
+        ? ` [${leadingAnchor.fhir_reference ?? leadingAnchor.source_label}]`
+        : "";
+      return `${index + 1}. ${step.owner} - ${compactVisibleAction(step.action)}${anchorText}`;
     })
-    .join(" ");
-  const actionLine = prioritizedSteps.length > 0
-    ? `Before discharge, complete: ${prioritizedSteps}`
-    : "Before discharge, complete the deterministic transition safeguards and confirm no unresolved blockers remain.";
+    .join("\n");
   const clinicianLine = promptPayload.clinician_handoff_brief
     ? `Clinician handoff: ${promptPayload.clinician_handoff_brief}`
     : "";
   const patientLine = promptPayload.patient_discharge_guidance
     ? `Patient guidance: ${promptPayload.patient_discharge_guidance}`
     : "";
-  return `${promptPayload.headline} ${actionLine} ${clinicianLine} ${patientLine} Final posture remains ${reconciled.final_verdict}. This is assistive discharge decision support and does not replace clinician authority.`;
+  const evidenceLines = promptPayload.evidence_anchors.length > 0
+    ? promptPayload.evidence_anchors.map((anchor) => `- ${toEvidenceAnchor(anchor)}`)
+    : ["- none"];
+  return [
+    reconciled.final_verdict === "not_ready"
+      ? "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"
+      : "TRANSITION PACKAGE",
+    "",
+    "Release condition:",
+    reconciled.final_verdict === "not_ready"
+      ? "Do not discharge until the cited blocking gates are resolved and clinician review confirms a safe transition."
+      : "Complete the cited actions and clinician review before final discharge release.",
+    "",
+    "Actions:",
+    prioritizedSteps.length > 0
+      ? prioritizedSteps
+      : "1. No additional owner-assigned actions were generated.",
+    "",
+    "Evidence:",
+    ...evidenceLines,
+    buildRawFhirReferenceLine(promptPayload.evidence_anchors),
+    ...(clinicianLine ? ["", clinicianLine] : []),
+    ...(patientLine ? [patientLine] : []),
+    `Final posture: ${reconciled.final_verdict.toUpperCase()}`,
+    "This is assistive discharge decision support and does not replace clinician authority.",
+  ].join("\n");
 };
 
 export const buildSynthesisPrompt = (

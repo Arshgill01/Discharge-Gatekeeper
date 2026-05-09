@@ -32,6 +32,13 @@ export const deterministicBlockerSchema = z.object({
   severity: z.enum(["low", "medium", "high"]).optional(),
 });
 
+const optionalContextMetadataSchema = z.object({
+  care_setting: z.string().optional(),
+  discharge_destination: z.string().optional(),
+  reviewer_timestamp: z.string().optional(),
+  explicit_task_goal: z.string().optional(),
+});
+
 export const deterministicSnapshotSchema = z.object({
   patient_id: z.string().nullable().optional(),
   encounter_id: z.string().nullable().optional(),
@@ -43,6 +50,10 @@ export const deterministicSnapshotSchema = z.object({
         evidence_id: z.string().optional(),
         source_label: z.string().min(1),
         detail: z.string().optional(),
+        fhir_reference: z.string().optional(),
+        fhir_resource_type: z.string().optional(),
+        fhir_resource_id: z.string().optional(),
+        fhir_timestamp: z.string().optional(),
       }),
     )
     .default([]),
@@ -57,19 +68,35 @@ export const narrativeSourceSchema = z.object({
   locator: z.string().optional(),
   timestamp: z.string().optional(),
   excerpt: z.string().min(1),
+  fhir_reference: z.string().optional(),
+  fhir_resource_type: z.string().optional(),
+  fhir_resource_id: z.string().optional(),
+});
+
+const fhirResourceReadSchema = z.object({
+  reference: z.string().min(1),
+  resource_type: z.string().min(1),
+  resource_id: z.string().min(1),
+  timestamp: z.string().optional(),
+  summary: z.string().min(1),
+});
+
+export const fhirContextSchema = z.object({
+  fhir_server: z.string().nullable().optional(),
+  patient_reference: z.string().nullable().optional(),
+  encounter_reference: z.string().nullable().optional(),
+  read_mode: z.literal("fhir_native"),
+  fhir_resources_read: z.array(fhirResourceReadSchema).default([]),
+  narrative_evidence_bundle: z.array(narrativeSourceSchema).default([]),
+  optional_context_metadata: optionalContextMetadataSchema.optional(),
+  practitioner_roles: z.record(z.string(), z.string()).optional(),
 });
 
 export const hiddenRiskInputSchema = z.object({
   deterministic_snapshot: deterministicSnapshotSchema,
   narrative_evidence_bundle: z.array(narrativeSourceSchema).default([]),
-  optional_context_metadata: z
-    .object({
-      care_setting: z.string().optional(),
-      discharge_destination: z.string().optional(),
-      reviewer_timestamp: z.string().optional(),
-      explicit_task_goal: z.string().optional(),
-    })
-    .optional(),
+  optional_context_metadata: optionalContextMetadataSchema.optional(),
+  fhir_context: fhirContextSchema.optional(),
 });
 
 export const hiddenRiskOutputSchema = z.object({
@@ -106,6 +133,10 @@ export const hiddenRiskOutputSchema = z.object({
       source_label: z.string().min(1),
       locator: z.string().min(1),
       excerpt: z.string().min(1),
+      timestamp: z.string().optional(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
     }),
   ),
   review_metadata: z.object({

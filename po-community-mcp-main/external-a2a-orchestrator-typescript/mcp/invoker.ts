@@ -30,6 +30,10 @@ const deterministicResponseSchema = z.object({
       source_type: z.string(),
       source_label: z.string(),
       detail: z.string(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
+      fhir_timestamp: z.string().optional(),
     }),
   ),
   next_steps: z.array(
@@ -125,6 +129,10 @@ const hiddenRiskResponseSchema = z.object({
       source_label: z.string(),
       locator: z.string(),
       excerpt: z.string(),
+      timestamp: z.string().optional(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
     }),
   ),
   review_metadata: z.object({
@@ -402,6 +410,7 @@ export class McpToolInvoker {
             optional_context_metadata:
               input.patient_context?.optional_context_metadata ??
               deterministic.fhir_context?.optional_context_metadata,
+            fhir_context: deterministic.fhir_context,
             response_mode: "full",
           },
         });

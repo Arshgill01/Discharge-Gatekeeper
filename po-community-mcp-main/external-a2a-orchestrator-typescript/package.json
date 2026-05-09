@@ -10,6 +10,7 @@
     "smoke:runtime": "npx tsx smoke/runtime-boot-and-agent-card-smoke.ts",
     "smoke:hidden-risk-cache": "npx tsx smoke/hidden-risk-cache-smoke.ts",
     "smoke:decision-matrix": "npx tsx smoke/decision-matrix-smoke.ts",
+    "smoke:fhir-visible-output": "npx tsx smoke/fhir-visible-output-smoke.ts",
     "smoke:orchestrator": "npx tsx smoke/orchestrator-smoke.ts",
     "smoke:prompt-opinion-compatibility": "npx tsx smoke/prompt-opinion-compatibility-smoke.ts",
     "smoke:prompt-opinion-rehearsal": "npx tsx smoke/prompt-opinion-rehearsal-smoke.ts",

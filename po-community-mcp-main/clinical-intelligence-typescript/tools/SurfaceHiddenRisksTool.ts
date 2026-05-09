@@ -6,6 +6,7 @@ import { McpUtilities } from "../mcp-utilities";
 import {
   HiddenRiskOutput,
   deterministicSnapshotSchema,
+  fhirContextSchema,
   narrativeSourceSchema,
 } from "../clinical-intelligence/contract";
 import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
@@ -37,6 +38,9 @@ const inputSchema = {
       explicit_task_goal: z.string().optional(),
     })
     .optional(),
+  fhir_context: fhirContextSchema
+    .optional()
+    .describe("Optional FHIR-native context envelope carrying resource references and narrative provenance."),
   response_mode: z
     .enum(["prompt_opinion_slim", "full"])
     .optional()
@@ -50,48 +54,32 @@ export const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): st
     ...new Set(
       payload.hidden_risk_findings
         .filter((finding) => finding.recommended_orchestrator_action !== "ignore_duplicate")
-        .map((finding) => finding.category),
+      .map((finding) => finding.category),
     ),
   ];
-
-  if (
-    payload.baseline_verdict === "ready" &&
-    payload.hidden_risk_summary.result === "hidden_risk_present" &&
-    payload.hidden_risk_summary.overall_disposition_impact === "not_ready"
-  ) {
-    return [
-      "HIDDEN CONTRADICTION FOUND",
-      "",
-      "Structured baseline:",
-      "READY - stable at rest, meds ready, follow-up scheduled.",
-      "",
-      "Contradicting narrative evidence:",
-      "Nursing Note 2026-04-18 20:40:",
-      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
-      "",
-      "Case Management Addendum 2026-04-18 20:55:",
-      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
-      "",
-      "Why this changes the answer:",
-      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
-      "",
-      "Final transition status:",
-      "NOT_READY",
-    ].join("\n");
-  }
-
-  const anchors = payload.citations.slice(0, 4).map((citation) => citation.source_label);
+  const evidenceLines = payload.citations
+    .slice(0, 4)
+    .map((citation) => {
+      const prefix = citation.fhir_reference ? `${citation.fhir_reference} | ` : "";
+      return `- ${prefix}${citation.source_label}: ${citation.excerpt}`;
+    });
+  const rawReferences = [...new Set(payload.citations.map((citation) => citation.fhir_reference).filter(Boolean))];
 
   return [
-    "HIDDEN-RISK REVIEW",
+    "HIDDEN CONTRADICTION REVIEW",
     "",
-    `Structured baseline: ${payload.baseline_verdict.toUpperCase()}.`,
-    `Narrative result: ${payload.hidden_risk_summary.result}.`,
-    `Summary: ${payload.hidden_risk_summary.summary}`,
-    `Evidence anchors: ${anchors.length > 0 ? anchors.join("; ") : "none"}.`,
-    `Blocker categories: ${categories.join(", ")}.`,
+    `Structured baseline: ${payload.baseline_verdict.toUpperCase()}`,
+    `Narrative result: ${payload.hidden_risk_summary.result.toUpperCase()}`,
+    "",
+    "Why this changes the answer:",
+    payload.hidden_risk_summary.summary,
+    "",
+    "Controlling evidence:",
+    ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
+    `Raw FHIR references: ${rawReferences.length > 0 ? rawReferences.join(" | ") : "none"}.`,
+    `Impacted categories: ${categories.join(", ") || "none"}.`,
     "Final disposition remains with the clinical team.",
-  ].join(" ");
+  ].join("\n");
 };
 
 class SurfaceHiddenRisksTool implements IMcpTool {

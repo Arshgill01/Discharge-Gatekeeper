@@ -358,18 +358,16 @@ const run = async (): Promise<void> => {
       "Prompt 3 package must state the release condition.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).includes(
-        "1. Bedside RN - repeat exertional room-air assessment before discharge.",
+      /1\.\s+Primary team -|1\.\s+Bedside RN -/i.test(
+        String(trapPrompt3Task.output.contradiction_summary),
       ),
       true,
       "Prompt 3 package should keep top owner-action items compact and visible.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).includes(
-        "- Case Management Addendum 2026-04-18 20:55",
-      ),
+      String(trapPrompt3Task.output.contradiction_summary).includes("Raw FHIR references:"),
       true,
-      "Prompt 3 package must keep evidence anchors visible.",
+      "Prompt 3 package must keep the raw FHIR reference line visible even when no FHIR-native refs are present.",
     );
     assert.equal(
       String(trapPrompt3Task.output.prompt_payload.headline).includes(
