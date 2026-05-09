@@ -4,10 +4,18 @@ import { FhirUtilities } from "./fhir-utilities";
 import { Request } from "express";
 import { FhirContext } from "./fhir-context";
 import { fhirR4 } from "@smile-cdr/fhirts";
+import {
+  isLocalFhirBaseUrl,
+  readLocalFhirResource,
+  searchLocalFhirResources,
+} from "./fhir-store";
 
 class FhirClient {
   async read<T extends DomainResource>(req: Request, path: string) {
     const fhirContext = this._getFhirContextOrThrow(req);
+    if (isLocalFhirBaseUrl(fhirContext.url)) {
+      return readLocalFhirResource(path) as T | null;
+    }
 
     return await this._callAxios<T>(
       {
@@ -20,6 +28,9 @@ class FhirClient {
 
   async search(req: Request, resourceType: string, searchParameters: string[]) {
     const fhirContext = this._getFhirContextOrThrow(req);
+    if (isLocalFhirBaseUrl(fhirContext.url)) {
+      return searchLocalFhirResources(resourceType, searchParameters) as fhirR4.Bundle;
+    }
 
     return await this._callAxios<fhirR4.Bundle>(
       {

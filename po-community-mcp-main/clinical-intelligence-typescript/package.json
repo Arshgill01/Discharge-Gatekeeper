@@ -10,6 +10,7 @@
     "smoke:runtime": "npx tsx smoke/runtime-boot-and-registration-smoke.ts",
     "smoke:reconciled-readiness": "npx tsx smoke/reconciled-readiness-smoke.ts",
     "smoke:hidden-risk": "npx tsx smoke/hidden-risk-detection-smoke.ts",
+    "smoke:fhir-narrative-ingest": "npx tsx smoke/fhir-narrative-ingest-smoke.ts",
     "smoke:safety-invariants": "npx tsx smoke/safety-invariants-smoke.ts",
     "smoke:scenario-matrix": "npx tsx smoke/scenario-evidence-matrix-smoke.ts",
     "smoke:narrative": "npx tsx smoke/transition-narrative-smoke.ts",

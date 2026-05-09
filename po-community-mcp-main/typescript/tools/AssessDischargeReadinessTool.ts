@@ -20,7 +20,12 @@ const DEFAULT_RESPONSE_MODE = "prompt_opinion_slim";
 const shouldUseReconciledPromptOne = (
   scenarioId: string | undefined,
   readinessMode: "reconciled_prompt_one" | "deterministic_structured_baseline" | undefined,
+  contextMode: "standard" | "fhir_native" | undefined,
 ): boolean => {
+  if (contextMode === "fhir_native") {
+    return false;
+  }
+
   if (!scenarioId) {
     return true;
   }
@@ -59,13 +64,19 @@ class AssessDischargeReadinessTool implements IMcpTool {
             .describe(
               "Canonical Prompt 1 reconciles by default. Use deterministic_structured_baseline only when explicitly asking for DGK-only structured output.",
             ),
+          context_mode: z
+            .enum(["standard", "fhir_native"])
+            .default("standard")
+            .describe(
+              "Use fhir_native when the caller is providing FHIR context and wants the structured baseline normalized from FHIR resources.",
+            ),
           response_mode: z
             .enum(["prompt_opinion_slim", "full"])
             .default(DEFAULT_RESPONSE_MODE)
             .describe("Use prompt_opinion_slim for compact Prompt Opinion transcript output."),
         },
       },
-      async ({ scenario_id, readiness_mode, response_mode }) => {
+      async ({ scenario_id, readiness_mode, context_mode, response_mode }) => {
         if (scenario_id && !isSupportedScenarioId(scenario_id)) {
           return McpUtilities.createTextResponse(
             `Unsupported scenario_id '${scenario_id}'. Supported values: '${V1_SUPPORTED_SCENARIO_IDS.join("', '")}'.`,
@@ -73,15 +84,27 @@ class AssessDischargeReadinessTool implements IMcpTool {
           );
         }
 
-        if (shouldUseReconciledPromptOne(scenario_id, readiness_mode)) {
+        if (shouldUseReconciledPromptOne(scenario_id, readiness_mode, context_mode)) {
           return buildReconciledPromptOneToolResult(response_mode ?? DEFAULT_RESPONSE_MODE);
         }
 
-        const { input } = await resolveWorkflowInputForRequest(req, {
+        const resolution = await resolveWorkflowInputForRequest(req, {
           scenarioId: scenario_id,
+          contextMode: context_mode,
         });
-        const response = assessDischargeReadinessV1(input);
-        return McpUtilities.createTextResponse(JSON.stringify(response, null, 2));
+        const response = assessDischargeReadinessV1(resolution.input);
+        return McpUtilities.createTextResponse(
+          JSON.stringify(
+            resolution.fhir_context
+              ? {
+                  ...response,
+                  fhir_context: resolution.fhir_context,
+                }
+              : response,
+            null,
+            2,
+          ),
+        );
       },
     );
   }

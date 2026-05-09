@@ -32,4 +32,7 @@ export const FhirUtilities = {
 
     return req.headers[McpConstants.PatientIdHeaderName]?.toString() || null;
   },
+  getEncounterIdIfContextExists: (req: Request) => {
+    return req.headers[McpConstants.EncounterIdHeaderName]?.toString() || null;
+  },
 };

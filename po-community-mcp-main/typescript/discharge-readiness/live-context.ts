@@ -21,13 +21,53 @@ type FhirBundleLike = {
 
 type RetrievedDischargeContext = {
   patient_id: string;
+  encounter_id: string | null;
+  fhir_server: string | null;
   patient: FhirResourceLike | null;
+  encounter: FhirResourceLike | null;
+  conditions: FhirResourceLike[];
   observations: FhirResourceLike[];
   medication_requests: FhirResourceLike[];
   medication_statements: FhirResourceLike[];
   service_requests: FhirResourceLike[];
+  care_plans: FhirResourceLike[];
   document_references: FhirResourceLike[];
+  practitioner_roles: FhirResourceLike[];
   issues: string[];
+};
+
+export type FhirNarrativeEvidenceSource = {
+  source_id: string;
+  source_type: string;
+  source_label: string;
+  locator: string;
+  timestamp?: string;
+  excerpt: string;
+  fhir_reference: string;
+  fhir_resource_type: string;
+  fhir_resource_id: string;
+};
+
+export type FhirContextEnvelope = {
+  fhir_server: string | null;
+  patient_reference: string | null;
+  encounter_reference: string | null;
+  read_mode: "fhir_native";
+  fhir_resources_read: Array<{
+    reference: string;
+    resource_type: string;
+    resource_id: string;
+    timestamp?: string;
+    summary: string;
+  }>;
+  narrative_evidence_bundle: FhirNarrativeEvidenceSource[];
+  optional_context_metadata: {
+    care_setting?: string;
+    discharge_destination?: string;
+    reviewer_timestamp?: string;
+    explicit_task_goal?: string;
+  };
+  practitioner_roles: Record<string, string>;
 };
 
 export type WorkflowInputResolution = {
@@ -37,11 +77,13 @@ export type WorkflowInputResolution = {
   issues: string[];
   fallback_used: boolean;
   patient_id: string | null;
+  fhir_context?: FhirContextEnvelope;
 };
 
 type ResolveWorkflowInputOptions = {
   scenarioId?: string;
   allowSyntheticFallback?: boolean;
+  contextMode?: "standard" | "fhir_native";
   fetchContext?: (
     req: Request,
     patientId: string,
@@ -210,6 +252,8 @@ const EQUIPMENT_SERVICE_REQUEST_PATTERNS = [
   /transport/i,
   /ride/i,
 ];
+const EXERTIONAL_OBSERVATION_PATTERNS = [/exert/i, /stairs/i, /hallway/i, /walk/i, /ambulat/i];
+const STRUCTURED_PENDING_PATTERNS = [/pending/i, /unconfirmed/i, /unable/i, /delayed/i, /missing/i];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
@@ -408,30 +452,69 @@ const safeSearchResources = async (
   }
 };
 
+const buildEncounterScopedSearchParameters = (
+  patientId: string,
+  encounterId: string | null,
+  count: number = 50,
+): string[] => {
+  if (encounterId) {
+    return [`encounter=${encounterId}`, `_count=${count}`];
+  }
+
+  return [`patient=${patientId}`, `_count=${count}`];
+};
+
 const buildDefaultFetchContext = async (
   req: Request,
   patientId: string,
 ): Promise<RetrievedDischargeContext> => {
   const issues: string[] = [];
+  const encounterId = FhirUtilities.getEncounterIdIfContextExists(req);
+  const fhirContext = FhirUtilities.getFhirContext(req);
 
-  const [patient, observations, medicationRequests, medicationStatements, serviceRequests, documentReferences] =
+  const [
+    patient,
+    encounter,
+    conditions,
+    observations,
+    medicationRequests,
+    medicationStatements,
+    serviceRequests,
+    carePlans,
+    documentReferences,
+    practitionerRoles,
+  ] =
     await Promise.all([
       safeReadResource(req, `Patient/${patientId}`, issues),
-      safeSearchResources(req, "Observation", [`patient=${patientId}`, "_count=50"], issues),
-      safeSearchResources(req, "MedicationRequest", [`patient=${patientId}`, "_count=50"], issues),
-      safeSearchResources(req, "MedicationStatement", [`patient=${patientId}`, "_count=50"], issues),
-      safeSearchResources(req, "ServiceRequest", [`patient=${patientId}`, "_count=50"], issues),
-      safeSearchResources(req, "DocumentReference", [`patient=${patientId}`, "_count=50"], issues),
+      encounterId
+        ? safeReadResource(req, `Encounter/${encounterId}`, issues)
+        : safeSearchResources(req, "Encounter", [`patient=${patientId}`, "_count=1"], issues).then(
+            (resources) => resources[0] ?? null,
+          ),
+      safeSearchResources(req, "Condition", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "Observation", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "MedicationRequest", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "MedicationStatement", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "ServiceRequest", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "CarePlan", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "DocumentReference", buildEncounterScopedSearchParameters(patientId, encounterId), issues),
+      safeSearchResources(req, "PractitionerRole", ["_count=50"], issues),
     ]);
 
   return {
     patient_id: patientId,
+    encounter_id: encounterId,
+    fhir_server: fhirContext?.url ?? null,
     patient,
+    encounter,
+    conditions,
     observations,
     medication_requests: medicationRequests,
     medication_statements: medicationStatements,
     service_requests: serviceRequests,
+    care_plans: carePlans,
     document_references: documentReferences,
+    practitioner_roles: practitionerRoles,
     issues,
   };
 };
@@ -448,6 +531,136 @@ const readObservationNumericValue = (resource: FhirResourceLike): number | null 
 const resourceTextIncludes = (resource: FhirResourceLike, patterns: RegExp[]): boolean => {
   const haystack = collectResourceText(resource).join(" ");
   return patterns.some((pattern) => pattern.test(haystack));
+};
+
+const readResourceTimestamp = (resource: FhirResourceLike): string | undefined => {
+  const directTimestamp =
+    readString(resource["date"]) ??
+    readString(resource["effectiveDateTime"]) ??
+    (isRecord(resource["period"]) ? readString(resource["period"]["start"]) : null);
+  return directTimestamp ?? undefined;
+};
+
+const buildFhirReadSummary = (resource: FhirResourceLike): string => {
+  const text = collectResourceText(resource).join(" ");
+  return summarizeText(text || toReferenceLike(resource));
+};
+
+const toReferenceLike = (resource: FhirResourceLike): string => {
+  return `${getResourceType(resource)}/${getResourceId(resource)}`;
+};
+
+const buildFhirResourceReadItem = (
+  resource: FhirResourceLike,
+): FhirContextEnvelope["fhir_resources_read"][number] => {
+  return {
+    reference: toReferenceLike(resource),
+    resource_type: getResourceType(resource),
+    resource_id: getResourceId(resource),
+    timestamp: readResourceTimestamp(resource),
+    summary: buildFhirReadSummary(resource),
+  };
+};
+
+const buildFhirNarrativeEvidenceBundle = (
+  documentReferences: FhirResourceLike[],
+): FhirNarrativeEvidenceSource[] => {
+  return documentReferences
+    .map((resource) => {
+      const excerpt = buildDocumentText(resource);
+      if (!excerpt) {
+        return null;
+      }
+
+      const timestamp = readResourceTimestamp(resource);
+      const source: FhirNarrativeEvidenceSource = {
+        source_id: getResourceId(resource),
+        source_type: collectCodingText(resource["type"])[0] ?? "document_reference",
+        source_label: buildDocumentLabel(resource),
+        locator: toReferenceLike(resource),
+        excerpt,
+        fhir_reference: toReferenceLike(resource),
+        fhir_resource_type: getResourceType(resource),
+        fhir_resource_id: getResourceId(resource),
+      };
+      if (timestamp) {
+        source.timestamp = timestamp;
+      }
+      return source;
+    })
+    .filter((candidate): candidate is FhirNarrativeEvidenceSource => candidate !== null);
+};
+
+const buildPractitionerRoleMap = (roles: FhirResourceLike[]): Record<string, string> => {
+  const mapping: Record<string, string> = {};
+
+  for (const role of roles) {
+    const text = collectResourceText(role).join(" ").toLowerCase();
+    const reference = toReferenceLike(role);
+    if (text.includes("bedside rn")) {
+      mapping["bedside_rn"] = reference;
+    } else if (text.includes("case manager")) {
+      mapping["case_manager"] = reference;
+    } else if (text.includes("covering clinician")) {
+      mapping["covering_clinician"] = reference;
+    } else if (text.includes("pharmacist")) {
+      mapping["pharmacist"] = reference;
+    } else if (text.includes("physical therapist")) {
+      mapping["physical_therapist"] = reference;
+    }
+  }
+
+  return mapping;
+};
+
+const buildFhirContextEnvelope = (
+  snapshot: RetrievedDischargeContext,
+): FhirContextEnvelope => {
+  const resourcesRead = [
+    snapshot.patient,
+    snapshot.encounter,
+    ...snapshot.conditions,
+    ...snapshot.observations,
+    ...snapshot.medication_requests,
+    ...snapshot.medication_statements,
+    ...snapshot.service_requests,
+    ...snapshot.care_plans,
+    ...snapshot.document_references,
+    ...snapshot.practitioner_roles,
+  ].filter((resource): resource is FhirResourceLike => Boolean(resource));
+
+  const combinedCarePlanText = snapshot.care_plans
+    .flatMap((resource) => collectResourceText(resource))
+    .join(" ")
+    .toLowerCase();
+
+  return {
+    fhir_server: snapshot.fhir_server,
+    patient_reference: snapshot.patient ? toReferenceLike(snapshot.patient) : `Patient/${snapshot.patient_id}`,
+    encounter_reference: snapshot.encounter ? toReferenceLike(snapshot.encounter) : snapshot.encounter_id ? `Encounter/${snapshot.encounter_id}` : null,
+    read_mode: "fhir_native",
+    fhir_resources_read: resourcesRead.map((resource) => buildFhirResourceReadItem(resource)),
+    narrative_evidence_bundle: buildFhirNarrativeEvidenceBundle(snapshot.document_references),
+    optional_context_metadata: {
+      care_setting: "inpatient",
+      discharge_destination: combinedCarePlanText.includes("home") ? "home" : undefined,
+      reviewer_timestamp: new Date().toISOString(),
+      explicit_task_goal:
+        "Review FHIR-native discharge context, detect structured-vs-narrative contradictions, and convert blocking evidence into care-coordination work.",
+    },
+    practitioner_roles: buildPractitionerRoleMap(snapshot.practitioner_roles),
+  };
+};
+
+const findPreferredObservation = (
+  observations: FhirResourceLike[],
+  includePatterns: RegExp[],
+): FhirResourceLike | undefined => {
+  return observations.find(
+    (resource) =>
+      resourceTextIncludes(resource, includePatterns) &&
+      !resourceTextIncludes(resource, EXERTIONAL_OBSERVATION_PATTERNS),
+  ) ?? observations.find((resource) => resourceTextIncludes(resource, includePatterns));
 };
 
 const buildStructuredEvidence = (
@@ -516,27 +729,27 @@ const buildClinicalStability = (
   const vitalChecks = [
     {
       label: "heart rate",
-      resource: observations.find((resource) => resourceTextIncludes(resource, [/heart rate/i, /pulse/i])),
+      resource: findPreferredObservation(observations, [/heart rate/i, /pulse/i]),
       isStable: (value: number) => value >= 50 && value <= 110,
     },
     {
       label: "respiratory rate",
-      resource: observations.find((resource) => resourceTextIncludes(resource, [/respiratory rate/i])),
+      resource: findPreferredObservation(observations, [/respiratory rate/i]),
       isStable: (value: number) => value <= 24,
     },
     {
       label: "temperature",
-      resource: observations.find((resource) => resourceTextIncludes(resource, [/temperature/i])),
+      resource: findPreferredObservation(observations, [/temperature/i]),
       isStable: (value: number) => value <= 38.3,
     },
     {
       label: "systolic blood pressure",
-      resource: observations.find((resource) => resourceTextIncludes(resource, [/systolic blood pressure/i])),
+      resource: findPreferredObservation(observations, [/systolic blood pressure/i]),
       isStable: (value: number) => value >= 90,
     },
     {
       label: "oxygen saturation",
-      resource: observations.find((resource) => resourceTextIncludes(resource, [/oxygen saturation/i, /spo2/i])),
+      resource: findPreferredObservation(observations, [/oxygen saturation/i, /spo2/i]),
       isStable: (value: number) => value >= 90,
     },
   ];
@@ -1087,6 +1300,122 @@ const buildLiveContextReadinessInput = (
   };
 };
 
+const collectStructuredBlockerDetails = (
+  resources: FhirResourceLike[],
+  blockerPatterns: RegExp[],
+): string[] => {
+  return resources
+    .filter((resource) => resourceTextIncludes(resource, blockerPatterns))
+    .map((resource) => summarizeText(collectResourceText(resource).join(" ")));
+};
+
+const buildFhirNativePatientEducation = (
+  carePlans: FhirResourceLike[],
+): ReadinessInput["patient_education"] => {
+  const documentedGaps = collectStructuredBlockerDetails(carePlans, [
+    /teach-?back.*incomplete/i,
+    /education.*pending/i,
+    /does not understand/i,
+    /warning signs?.*unclear/i,
+  ]);
+
+  return {
+    teach_back_complete: documentedGaps.length === 0,
+    documented_gaps: documentedGaps,
+  };
+};
+
+const buildFhirNativeHomeSupport = (
+  serviceRequests: FhirResourceLike[],
+  carePlans: FhirResourceLike[],
+): ReadinessInput["home_support_and_services"] => {
+  const documentedGaps = collectStructuredBlockerDetails([...serviceRequests, ...carePlans], [
+    /caregiver.*unconfirmed/i,
+    /home (?:health|services?).*pending/i,
+    /support at home.*unclear/i,
+    /services?.*not arranged/i,
+  ]);
+
+  return {
+    caregiver_confirmed: documentedGaps.length === 0,
+    services_confirmed: documentedGaps.length === 0,
+    documented_gaps: documentedGaps,
+  };
+};
+
+const buildFhirNativeEquipment = (
+  serviceRequests: FhirResourceLike[],
+): ReadinessInput["equipment_and_transport"] => {
+  const documentedGaps = listServiceRequestDetails(serviceRequests, EQUIPMENT_SERVICE_REQUEST_PATTERNS)
+    .filter((detail) => STRUCTURED_PENDING_PATTERNS.some((pattern) => pattern.test(detail)));
+
+  return {
+    transport_confirmed: !documentedGaps.some((detail) => /transport|ride|pickup/i.test(detail)),
+    equipment_ready: !documentedGaps.some((detail) => /oxygen|walker|wheelchair|equipment|dme|vendor/i.test(detail)),
+    documented_gaps: documentedGaps,
+  };
+};
+
+const buildFhirNativeAdministrative = (
+  carePlans: FhirResourceLike[],
+): ReadinessInput["administrative_and_documentation"] => {
+  const documentedGaps = collectStructuredBlockerDetails(carePlans, [
+    /sign-?off.*pending/i,
+    /documentation.*pending/i,
+    /after-visit.*pending/i,
+    /paperwork.*incomplete/i,
+  ]);
+
+  return {
+    discharge_documents_complete: documentedGaps.length === 0,
+    documented_gaps: documentedGaps,
+  };
+};
+
+const buildFhirNativeReadinessInput = (
+  snapshot: RetrievedDischargeContext,
+): ReadinessInput => {
+  const evidenceCatalog: EvidenceRecord[] = [];
+  const clinicalStability = buildClinicalStability(snapshot.observations, evidenceCatalog);
+  const pendingDiagnostics = buildPendingDiagnostics(snapshot.service_requests, evidenceCatalog);
+  const medicationReconciliation = buildMedicationReconciliation(
+    snapshot.medication_requests,
+    snapshot.medication_statements,
+    evidenceCatalog,
+  );
+  const followUpAndReferrals = buildFollowUpAndReferrals(snapshot.service_requests, evidenceCatalog);
+  const patientEducation = buildFhirNativePatientEducation(snapshot.care_plans);
+  const homeSupportAndServices = buildFhirNativeHomeSupport(snapshot.service_requests, snapshot.care_plans);
+  const equipmentAndTransport = buildFhirNativeEquipment(snapshot.service_requests);
+  const administrativeAndDocumentation = buildFhirNativeAdministrative(snapshot.care_plans);
+
+  if (snapshot.issues.length > 0) {
+    evidenceCatalog.push(
+      buildStructuredEvidence(
+        "structured-fhir-native-context-issues",
+        "Structured/fhir_native_context",
+        snapshot.issues.join(" "),
+        "administrative_and_documentation",
+        "uncertain",
+      ),
+    );
+  }
+
+  return {
+    scenario_id: `${LIVE_CONTEXT_SCENARIO_PREFIX}_${snapshot.patient_id}_fhir_native`,
+    clinical_stability: clinicalStability,
+    pending_diagnostics: pendingDiagnostics,
+    medication_reconciliation: medicationReconciliation,
+    follow_up_and_referrals: followUpAndReferrals,
+    patient_education: patientEducation,
+    home_support_and_services: homeSupportAndServices,
+    equipment_and_transport: equipmentAndTransport,
+    administrative_and_documentation: administrativeAndDocumentation,
+    evidence_catalog: evidenceCatalog,
+    note_documents: [],
+  };
+};
+
 const buildFallbackResolution = (
   scenarioId: string | undefined,
   issues: string[],
@@ -1117,6 +1446,7 @@ export const resolveWorkflowInputForRequest = async (
   }
 
   const allowSyntheticFallback = options.allowSyntheticFallback ?? DEFAULT_ALLOW_SYNTHETIC_FALLBACK;
+  const contextMode = options.contextMode ?? "standard";
   const fhirContext = FhirUtilities.getFhirContext(req);
   const patientId = FhirUtilities.getPatientIdIfContextExists(req);
 
@@ -1141,7 +1471,9 @@ export const resolveWorkflowInputForRequest = async (
   try {
     const snapshot = await fetchContext(req, patientId);
     const patientLabel = getPatientLabel(snapshot.patient, patientId);
-    const input = buildLiveContextReadinessInput(snapshot);
+    const input = contextMode === "fhir_native"
+      ? buildFhirNativeReadinessInput(snapshot)
+      : buildLiveContextReadinessInput(snapshot);
     input.evidence_catalog.unshift(
       buildStructuredEvidence(
         `patient-${patientId}`,
@@ -1159,6 +1491,7 @@ export const resolveWorkflowInputForRequest = async (
       issues: snapshot.issues,
       fallback_used: false,
       patient_id: patientId,
+      fhir_context: contextMode === "fhir_native" ? buildFhirContextEnvelope(snapshot) : undefined,
     };
   } catch (error) {
     const issues = [`Live FHIR context retrieval failed: ${stringifyError(error)}`];

@@ -34,6 +34,9 @@ export type NarrativeSource = {
   locator?: string;
   timestamp?: string;
   excerpt: string;
+  fhir_reference?: string;
+  fhir_resource_type?: string;
+  fhir_resource_id?: string;
 };
 
 export type A2ATaskInput = {
@@ -42,6 +45,10 @@ export type A2ATaskInput = {
     scenario_id?: string;
     patient_id?: string | null;
     encounter_id?: string | null;
+    fhir_context?: {
+      fhir_server: string;
+      access_token?: string;
+    };
     narrative_evidence_bundle?: NarrativeSource[];
     optional_context_metadata?: {
       care_setting?: string;
@@ -153,6 +160,27 @@ export type DeterministicResponse = {
     trace_summary: string;
   }>;
   summary: string;
+  fhir_context?: {
+    fhir_server: string | null;
+    patient_reference: string | null;
+    encounter_reference: string | null;
+    read_mode: "fhir_native";
+    fhir_resources_read: Array<{
+      reference: string;
+      resource_type: string;
+      resource_id: string;
+      timestamp?: string;
+      summary: string;
+    }>;
+    narrative_evidence_bundle: NarrativeSource[];
+    optional_context_metadata?: {
+      care_setting?: string;
+      discharge_destination?: string;
+      reviewer_timestamp?: string;
+      explicit_task_goal?: string;
+    };
+    practitioner_roles?: Record<string, string>;
+  };
 };
 
 export type HiddenRiskResponse = {
