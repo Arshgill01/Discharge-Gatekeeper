@@ -171,6 +171,13 @@ const run = async (): Promise<void> => {
     assert.equal(trapPrompt1Task.output.hidden_risk_result, "hidden_risk_present");
     assert.equal(trapPrompt1Task.output.decision_matrix_row, 3);
     assert.equal(trapPrompt1Task.output.citations.hidden_risk.length > 0, true);
+    assert.equal(
+      Object.values(trapPrompt1Task.output.transition_safety_packet.safety_invariants).every(
+        (status) => status === "pass",
+      ),
+      true,
+      "A2A output should expose passing safety invariants for the canonical trap patient.",
+    );
     assert.equal(trapPrompt1Task.output.prompt_payload.prompt_mode, "prompt_1");
     assert.equal(trapPrompt1Task.output.prompt_payload.baseline_structured_verdict, "ready");
     assert.equal(trapPrompt1Task.output.prompt_payload.final_verdict, "not_ready");
