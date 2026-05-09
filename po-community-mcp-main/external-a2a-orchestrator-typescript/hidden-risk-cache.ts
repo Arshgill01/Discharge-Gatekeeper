@@ -56,6 +56,24 @@ const CANONICAL_TRAP_ANCHORS = {
   caseManagement: "Case Management Addendum 2026-04-18 20:55",
 };
 
+const stableJsonValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stableJsonValue(entry));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, stableJsonValue(entryValue)]),
+    );
+  }
+
+  return value;
+};
+
+const stableJsonStringify = (value: unknown): string => JSON.stringify(stableJsonValue(value));
+
 /**
  * Build a stable cache key from the inputs that determine the hidden-risk result.
  */
@@ -100,7 +118,7 @@ export const buildCacheKey = (
     explicitTaskGoal: taskInput.patient_context?.optional_context_metadata?.explicit_task_goal ?? null,
   };
 
-  const canonical = JSON.stringify(keyMaterial, Object.keys(keyMaterial).sort());
+  const canonical = stableJsonStringify(keyMaterial);
   return createHash("sha256").update(canonical).digest("hex");
 };
 
