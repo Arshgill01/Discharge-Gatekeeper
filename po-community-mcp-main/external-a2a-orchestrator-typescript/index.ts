@@ -29,6 +29,7 @@ import {
   buildCacheKey,
   parseHiddenRiskCacheConfig,
 } from "./hidden-risk-cache";
+import { McpConstants } from "../typescript/mcp-constants";
 
 const config = getRuntimeConfig(process.env as Record<string, string | undefined>);
 const hiddenRiskCacheConfig = parseHiddenRiskCacheConfig(process.env as Record<string, string | undefined>);
@@ -268,7 +269,70 @@ const extractPatientContext = (payload: Record<string, unknown>): A2ATaskInput["
   return patientContext as A2ATaskInput["patient_context"];
 };
 
-const parseTaskInput = (raw: unknown): ParsedTaskInput => {
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const extractFhirPatientContextFromHeaders = (
+  headers: Record<string, string | string[] | undefined>,
+): A2ATaskInput["patient_context"] => {
+  const fhirServer = toOptionalString(headers[McpConstants.FhirServerUrlHeaderName]);
+  if (!fhirServer) {
+    return undefined;
+  }
+
+  const token = toOptionalString(headers[McpConstants.FhirAccessTokenHeaderName]);
+  const patientHeader = toOptionalString(headers[McpConstants.PatientIdHeaderName]);
+  const encounterHeader = toOptionalString(headers[McpConstants.EncounterIdHeaderName]);
+  const decodedClaims = token ? decodeJwtPayload(token) : null;
+  const patientFromToken = toOptionalString(decodedClaims?.["patient"]);
+  const encounterFromToken = toOptionalString(decodedClaims?.["encounter"]);
+  const patientId = patientHeader ?? patientFromToken;
+  const encounterId = encounterHeader ?? encounterFromToken;
+
+  return {
+    ...(patientId ? { patient_id: patientId } : {}),
+    ...(encounterId ? { encounter_id: encounterId } : {}),
+    fhir_context: {
+      fhir_server: fhirServer,
+      ...(token ? { access_token: token } : {}),
+    },
+  };
+};
+
+const mergePatientContext = (
+  parsedContext: A2ATaskInput["patient_context"],
+  headerContext: A2ATaskInput["patient_context"],
+): A2ATaskInput["patient_context"] => {
+  if (!parsedContext) {
+    return headerContext;
+  }
+  if (!headerContext) {
+    return parsedContext;
+  }
+
+  return {
+    ...headerContext,
+    ...parsedContext,
+    fhir_context: parsedContext.fhir_context ?? headerContext.fhir_context,
+  };
+};
+
+const parseTaskInput = (
+  raw: unknown,
+  requestHeaders: Record<string, string | string[] | undefined> = {},
+): ParsedTaskInput => {
   if (typeof raw === "string") {
     const prompt = raw.trim();
     if (!prompt) {
@@ -321,12 +385,15 @@ const parseTaskInput = (raw: unknown): ParsedTaskInput => {
     );
   }
 
+  const headerPatientContext = extractFhirPatientContextFromHeaders(requestHeaders);
   return {
     inputSurface,
     input: {
       prompt,
-      patient_context:
+      patient_context: mergePatientContext(
         extractPatientContext(payload) || extractPatientContext(root),
+        headerPatientContext,
+      ),
     },
   };
 };
@@ -378,7 +445,10 @@ const extractA2APatientContext = (...values: Array<unknown>): A2ATaskInput["pati
   return undefined;
 };
 
-const parseA2AHttpJsonMessageSend = (raw: unknown): ParsedTaskInput => {
+const parseA2AHttpJsonMessageSend = (
+  raw: unknown,
+  requestHeaders: Record<string, string | string[] | undefined> = {},
+): ParsedTaskInput => {
   const root = asRecord(raw);
   if (!root) {
     throw new Error("A2A HTTP+JSON message/send payload must be a JSON object.");
@@ -394,11 +464,15 @@ const parseA2AHttpJsonMessageSend = (raw: unknown): ParsedTaskInput => {
     throw new Error("A2A message/send payload must include at least one text prompt part.");
   }
 
+  const headerPatientContext = extractFhirPatientContextFromHeaders(requestHeaders);
   return {
     inputSurface: "a2a_message_send",
     input: {
       prompt,
-      patient_context: extractA2APatientContext(root, message, root["configuration"], root["metadata"]),
+      patient_context: mergePatientContext(
+        extractA2APatientContext(root, message, root["configuration"], root["metadata"]),
+        headerPatientContext,
+      ),
     },
   };
 };
@@ -434,7 +508,10 @@ const parseA2AJsonRpcRequest = (raw: unknown): A2AJsonRpcRequest => {
   };
 };
 
-const parseA2AJsonRpcMessageSend = (request: A2AJsonRpcRequest): ParsedTaskInput => {
+const parseA2AJsonRpcMessageSend = (
+  request: A2AJsonRpcRequest,
+  requestHeaders: Record<string, string | string[] | undefined> = {},
+): ParsedTaskInput => {
   const messageParams = asRecord(request.params["message"]) || request.params;
   const prompt = extractA2AMessagePrompt(messageParams);
 
@@ -445,15 +522,19 @@ const parseA2AJsonRpcMessageSend = (request: A2AJsonRpcRequest): ParsedTaskInput
     );
   }
 
+  const headerPatientContext = extractFhirPatientContextFromHeaders(requestHeaders);
   return {
     inputSurface: "a2a_jsonrpc_params",
     input: {
       prompt,
-      patient_context: extractA2APatientContext(
-        request.params,
-        request.params["configuration"],
-        request.params["metadata"],
-        messageParams,
+      patient_context: mergePatientContext(
+        extractA2APatientContext(
+          request.params,
+          request.params["configuration"],
+          request.params["metadata"],
+          messageParams,
+        ),
+        headerPatientContext,
       ),
     },
   };
@@ -1550,7 +1631,7 @@ app.post("/tasks", async (req, res) => {
   let parsedTask: ParsedTaskInput;
 
   try {
-    parsedTask = parseTaskInput(req.body);
+    parsedTask = parseTaskInput(req.body, req.headers);
   } catch (error) {
     sendTaskValidationError(
       res,
@@ -1582,7 +1663,7 @@ const handleHttpJsonMessageSend = async (req: express.Request, res: express.Resp
   let parsedTask: ParsedTaskInput;
 
   try {
-    parsedTask = parseA2AHttpJsonMessageSend(req.body);
+    parsedTask = parseA2AHttpJsonMessageSend(req.body, req.headers);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log("error", "A2A HTTP+JSON message/send validation failed", {
@@ -1754,7 +1835,7 @@ const handleJsonRpc = async (req: express.Request, res: express.Response): Promi
 
   let parsedTask: ParsedTaskInput;
   try {
-    parsedTask = parseA2AJsonRpcMessageSend(rpc);
+    parsedTask = parseA2AJsonRpcMessageSend(rpc, req.headers);
   } catch (error) {
     if (error instanceof JsonRpcRequestError) {
       res.status(200).json(buildJsonRpcError(rpc.id, error.code, error.message, error.data));

@@ -152,6 +152,8 @@ const headless = getenv("PROMPT_OPINION_BROWSER_HEADLESS", "0") === "1";
 const promptTimeoutMs = Number(getenv("PROMPT_OPINION_PROMPT_TIMEOUT_MS", "180000"));
 const browserSlowMoMs = Number(getenv("PROMPT_OPINION_BROWSER_SLOW_MO_MS", "0"));
 const updateRegistrations = getenv("PROMPT_OPINION_UPDATE_REGISTRATIONS", "0") === "1";
+const forceSendFhirContext = getenv("PROMPT_OPINION_FORCE_SEND_FHIR_CONTEXT", "0") === "1";
+const launchpadScope = getenv("PROMPT_OPINION_LAUNCHPAD_SCOPE", "Workspace").trim() || "Workspace";
 const postSettleRuntimeGraceMs = Number(getenv("PROMPT_OPINION_POST_SETTLE_RUNTIME_GRACE_MS", "20000"));
 const finalSettleDelayMs = Number(getenv("PROMPT_OPINION_FINAL_SETTLE_DELAY_MS", "3000"));
 const settlePollMs = Number(getenv("PROMPT_OPINION_SETTLE_POLL_MS", "2000"));
@@ -779,6 +781,27 @@ const verifyWorkspaceSurface = async (page, workspaceId, route, screenshotName, 
   return { text, evidence, missing };
 };
 
+const selectLaunchpadScope = async (page, scopeName) => {
+  if (!scopeName || /^workspace$/i.test(scopeName)) {
+    return true;
+  }
+
+  const candidates = [
+    page.getByText(scopeName, { exact: true }).first(),
+    page.getByRole("button", { name: new RegExp(`^${scopeName}$`, "i") }).first(),
+    page.getByRole("tab", { name: new RegExp(`^${scopeName}$`, "i") }).first(),
+  ];
+
+  for (const candidate of candidates) {
+    if (await clickIfVisible(page, candidate, 4000)) {
+      await page.waitForTimeout(1500);
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const apiFetch = async (page, apiPath, { method = "GET", body = null } = {}) => {
   const apiUrl = new URL(apiPath.replace(/^\/+/, ""), browserBaseUrl).toString();
   return page.evaluate(
@@ -821,7 +844,7 @@ const mcpUpdatePayload = (entry, endpoint) => ({
   apiKeyHeaderValue: entry.apiKeyHeaderValue || "",
   basicAuthUsername: entry.basicAuthUsername || "",
   basicAuthPassword: entry.basicAuthPassword || "",
-  sendFhirContext: Boolean(entry.sendFhirContext),
+  sendFhirContext: forceSendFhirContext ? true : Boolean(entry.sendFhirContext),
   fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
 });
 
@@ -829,7 +852,7 @@ const a2aUpdatePayload = (entry, url) => {
   const payload = {
     url,
     displayName: entry.displayName || entry.poAgentCard?.name || "external A2A orchestrator",
-    sendFhirContextIfExtExists: Boolean(entry.sendFhirContextIfExtExists),
+    sendFhirContextIfExtExists: forceSendFhirContext ? true : Boolean(entry.sendFhirContextIfExtExists),
     fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
   };
 
@@ -911,7 +934,12 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
 
   for (const expected of expectedMcps) {
     const beforeEntry = beforeMcpEntries.find((entry) => entry.name === expected.name);
-    if (!beforeEntry || !expected.expectedUrl || normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl)) {
+    const fhirContextNeedsUpdate = forceSendFhirContext && beforeEntry && !beforeEntry.sendFhirContext;
+    if (
+      !beforeEntry ||
+      !expected.expectedUrl ||
+      (normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl) && !fhirContextNeedsUpdate)
+    ) {
       continue;
     }
 
@@ -947,10 +975,15 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
   );
   const a2aTimeoutNeedsUpdate =
     requestedA2aTimeoutSeconds > 0 && Number(beforeA2aEntry?.timeoutSeconds || 0) !== requestedA2aTimeoutSeconds;
+  const a2aFhirNeedsUpdate = forceSendFhirContext && beforeA2aEntry && !beforeA2aEntry.sendFhirContextIfExtExists;
   if (
     beforeA2aEntry &&
     publicEndpoints.externalA2a &&
-    (normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a) || a2aTimeoutNeedsUpdate)
+    (
+      normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a) ||
+      a2aTimeoutNeedsUpdate ||
+      a2aFhirNeedsUpdate
+    )
   ) {
     if (!updateRegistrations) {
       updates.push({
@@ -1438,7 +1471,25 @@ const startSession = async (page, workspaceId, agentName, lane, screenshotName) 
   await page.waitForTimeout(2500);
   await capture(page, screenshotName, `${lane} launchpad`);
 
+  const scopeSelected = await selectLaunchpadScope(page, launchpadScope);
+  recordStep(`${lane} scope selection`, scopeSelected ? "green" : "yellow", {
+    requested_scope: launchpadScope,
+    url: page.url(),
+  });
+
   const agentCard = page.getByText(agentName, { exact: false }).first();
+  if (!/^workspace$/i.test(launchpadScope)) {
+    const scopedSelection = await clickIfVisible(
+      page,
+      page.getByText(launchpadScope, { exact: true }).last(),
+      4000,
+    );
+    recordStep(`${lane} agent-scope selection`, scopedSelection ? "green" : "yellow", {
+      requested_scope: launchpadScope,
+      agent_name: agentName,
+      url: page.url(),
+    });
+  }
   const clicked = await clickIfVisible(page, agentCard, 6000);
   if (!clicked) {
     recordStep(`${lane} session start`, "red", {
