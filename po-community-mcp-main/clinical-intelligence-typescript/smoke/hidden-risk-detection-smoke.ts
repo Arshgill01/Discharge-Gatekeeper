@@ -12,6 +12,7 @@ import {
   DUPLICATE_SIGNAL_CONTROL_INPUT,
   INCONCLUSIVE_CONTEXT_INPUT,
   MARIA_ALVAREZ_ABLATION_INPUT,
+  MEDICATION_ACCESS_HIDDEN_RISK_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
@@ -21,6 +22,7 @@ import {
   CONTROL_HIDDEN_RISK_EXPECTED_MATRIX,
   DUPLICATE_SIGNAL_EXPECTED_MATRIX,
   INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX,
+  MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX,
   TRAP_HIDDEN_RISK_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
@@ -195,6 +197,31 @@ const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
     assert.ok(
       sourceLabels.some((label) => label.includes(expectedSource)),
       `Alternative hidden-risk case must cite ${expectedSource}.`,
+    );
+  }
+};
+
+const assertMedicationAccessHiddenRiskBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisksForSmoke(MEDICATION_ACCESS_HIDDEN_RISK_INPUT);
+  const payload = result.payload;
+
+  assert.equal(payload.status, MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
+  assert.equal(payload.hidden_risk_summary.result, "hidden_risk_present");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
+
+  const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
+  for (const category of MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_categories) {
+    assert.ok(categories.has(category), `Medication-access hidden-risk case missing category ${category}.`);
+  }
+
+  const sourceLabels = payload.citations.map((citation) => citation.source_label);
+  for (const expectedSource of MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.required_citation_source_labels) {
+    assert.ok(
+      sourceLabels.some((label) => label.includes(expectedSource)),
+      `Medication-access hidden-risk case must cite ${expectedSource}.`,
     );
   }
 };
@@ -504,6 +531,7 @@ const main = async (): Promise<void> => {
   await assertAblationBehavior();
   await assertDuplicateSignalSuppressionBehavior();
   await assertAlternativeHiddenRiskBehavior();
+  await assertMedicationAccessHiddenRiskBehavior();
   await assertInconclusiveContextBehavior();
   await assertMalformedModelOutputBecomesStructuredError();
   await assertCitationFailuresAreSuppressed();

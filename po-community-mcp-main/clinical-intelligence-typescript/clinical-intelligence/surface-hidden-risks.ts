@@ -268,7 +268,7 @@ const hasCriticalEvidence = (
   citationMap: Map<string, HiddenRiskOutput["citations"][number]>,
 ): boolean => {
   const criticalPattern =
-    /dropped to\s*\d{2}%|desaturat|dyspne|cannot deliver|delivery delayed|no oxygen at home|cannot stay|no caregiver|discharge hold|unsafe/i;
+    /dropped to\s*\d{2}%|desaturat|dyspne|cannot deliver|delivery delayed|no oxygen at home|cannot stay|no caregiver|discharge hold|unsafe|cannot afford|cannot dispense|prior authorization pending|pharmacy cannot|not available before discharge/i;
   const evidenceText = `${finding.title} ${finding.rationale} ${citationIds
     .map((citationId) => citationMap.get(citationId)?.excerpt || "")
     .join(" ")}`;

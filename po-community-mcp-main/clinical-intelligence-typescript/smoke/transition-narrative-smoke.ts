@@ -8,6 +8,7 @@ import { formatPromptOpinionSlimTransitionPackage } from "../tools/SynthesizeTra
 import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
   INCONCLUSIVE_CONTEXT_INPUT,
+  MEDICATION_ACCESS_HIDDEN_RISK_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
@@ -15,6 +16,7 @@ import {
   ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   INCONCLUSIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
+  MEDICATION_ACCESS_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
@@ -117,6 +119,31 @@ const assertAlternativeNarrative = async (): Promise<void> => {
   assert.ok(
     payload.citations.some((citation) => citation.source_label.includes("Case Management Escalation Note 2026-04-18 21:05")),
     "Alternative hidden-risk narrative must cite the case-management escalation note.",
+  );
+  assert.equal(
+    payload.transition_safety_packet.reconciled_transition_status.final_verdict,
+    "not_ready",
+  );
+};
+
+const assertMedicationAccessNarrative = async (): Promise<void> => {
+  const payload = await synthesizeTransitionNarrative(MEDICATION_ACCESS_HIDDEN_RISK_INPUT);
+  assert.equal(payload.status, "ok");
+  assert.equal(
+    payload.proposed_disposition,
+    MEDICATION_ACCESS_TRANSITION_NARRATIVE_EXPECTED_MATRIX.expected_proposed_disposition,
+  );
+  assert.ok(
+    payload.recommended_actions.some((action) =>
+      action.linked_categories.includes("medication_reconciliation"),
+    ),
+    "Medication-access narrative should route actionability through medication_reconciliation.",
+  );
+  assert.ok(
+    payload.citations.some((citation) =>
+      citation.source_label.includes("Pharmacy Addendum 2026-04-18 21:10"),
+    ),
+    "Medication-access narrative must cite the pharmacy addendum.",
   );
   assert.equal(
     payload.transition_safety_packet.reconciled_transition_status.final_verdict,
@@ -264,6 +291,7 @@ const assertPromptOpinionScenarioShortcutResolvesCanonicalInput = (): void => {
 const main = async (): Promise<void> => {
   await assertTrapNarrative();
   await assertAlternativeNarrative();
+  await assertMedicationAccessNarrative();
   await assertControlNarrative();
   await assertInconclusiveNarrative();
   await assertPromptOpinionSlimNarrativeStaysRenderSafe();

@@ -135,6 +135,22 @@ export const ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX: HiddenRiskExpectedMatrix =
   },
 };
 
+export const MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX: HiddenRiskExpectedMatrix = {
+  scenario_id: "phase9_medication_access_hidden_risk",
+  expected_status: "ok",
+  should_find_hidden_risk: true,
+  expected_disposition_impact: "not_ready",
+  expected_categories: ["medication_reconciliation"],
+  required_citation_source_labels: ["Pharmacy Addendum 2026-04-18 21:10"],
+  minimum_citations_per_finding: 1,
+  minimum_duplicate_findings_suppressed: 0,
+  no_risk_behavior: {
+    findings_must_be_empty: false,
+    manual_review_required: false,
+    summary_must_contain: "Structured baseline was ready",
+  },
+};
+
 export const TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrativeExpectedMatrix = {
   scenario_id: "phase0_trap_maria_alvarez",
   expected_proposed_disposition: "not_ready",
@@ -161,6 +177,18 @@ export const CONTROL_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrativeEx
 
 export const ALTERNATIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrativeExpectedMatrix = {
   scenario_id: "phase0_alt_hidden_risk_home_support",
+  expected_proposed_disposition: "not_ready",
+  must_reference_baseline_verdict: true,
+  must_include_citation_refs_when_hidden_risk_present: true,
+  grounded_action_policy: {
+    require_actions: true,
+    require_linked_categories_for_hidden_risk: true,
+    require_action_citations_for_hidden_risk: true,
+  },
+};
+
+export const MEDICATION_ACCESS_TRANSITION_NARRATIVE_EXPECTED_MATRIX: TransitionNarrativeExpectedMatrix = {
+  scenario_id: "phase9_medication_access_hidden_risk",
   expected_proposed_disposition: "not_ready",
   must_reference_baseline_verdict: true,
   must_include_citation_refs_when_hidden_risk_present: true,
