@@ -1,4 +1,5 @@
 import {
+  CANONICAL_BLOCKER_CATEGORIES,
   DeterministicBlocker,
   HiddenRiskFinding,
   HiddenRiskInput,
@@ -527,6 +528,13 @@ const inferFindingCategories = (
   return categories.slice(0, 3);
 };
 
+const coerceCategory = (value: unknown): HiddenRiskFinding["category"] | null => {
+  const normalized = asString(value);
+  return normalized && CANONICAL_BLOCKER_CATEGORIES.includes(normalized as HiddenRiskFinding["category"])
+    ? (normalized as HiddenRiskFinding["category"])
+    : null;
+};
+
 const normalizeAction = (
   value: unknown,
   dispositionImpact: HiddenRiskFinding["disposition_impact"],
@@ -664,7 +672,8 @@ const normalizeRawModelOutput = (
     const validCitationIds = [...new Set([...citationIds, ...derivedCitationIds])].filter((citationId) => citationMap.has(citationId));
     const excerpt = asString(finding["excerpt"]) || "";
     const combinedText = `${title} ${rationale} ${excerpt} ${sourceLabels.join(" ")}`.trim();
-    const categories = inferFindingCategories(combinedText);
+    const explicitCategory = coerceCategory(finding["category"]);
+    const categories = explicitCategory ? [explicitCategory] : inferFindingCategories(combinedText);
     const dispositionImpact = normalizeDispositionImpact(
       finding["disposition_impact"] ??
         finding["disposition"] ??

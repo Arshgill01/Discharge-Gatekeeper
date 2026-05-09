@@ -36,6 +36,15 @@ const SIGNALS: Signal[] = [
     criticalPattern: /(dropped to|82%|desaturat|dyspneic|discharge hold)/i,
   },
   {
+    category: "clinical_stability",
+    title: "Late symptom change suggests discharge-ready clinical posture may no longer hold",
+    rationaleStem:
+      "Narrative evidence documents late symptom change, orthopnea, or abrupt weight gain that materially conflicts with the earlier discharge-ready snapshot.",
+    riskPattern: /(orthopnea|weight gain|gained [0-9.]+ kg|lying flat|hallway walk.*symptom)/i,
+    reassuringPattern: /(weight stable|denies dyspnea|symptoms resolved)/i,
+    criticalPattern: /(orthopnea|weight gain|gained [0-9.]+ kg)/i,
+  },
+  {
     category: "equipment_and_transport",
     title: "Required home oxygen or discharge equipment unavailable tonight",
     rationaleStem:
@@ -61,6 +70,15 @@ const SIGNALS: Signal[] = [
     riskPattern: /(doac|apixaban|anticoag|prior authorization|cannot afford|cannot dispense|pharmacy cannot|not available before discharge)/i,
     reassuringPattern: /(medication ready|medications ready|meds ready|successfully dispensed|coverage confirmed|authorization approved)/i,
     criticalPattern: /(cannot afford|cannot dispense|prior authorization pending|not available before discharge|pharmacy cannot)/i,
+  },
+  {
+    category: "patient_education",
+    title: "Home monitoring plan unavailable for the first days after discharge",
+    rationaleStem:
+      "Narrative evidence shows the patient lacks the monitoring equipment or understanding needed to safely execute the early home self-monitoring plan after discharge.",
+    riskPattern: /(home scale is broken|no working home scale|daily weight monitoring unavailable|cannot monitor at home)/i,
+    reassuringPattern: /(scale obtained|monitoring plan confirmed|daily weights arranged)/i,
+    criticalPattern: /(home scale is broken|no working home scale|cannot monitor at home)/i,
   },
 ];
 

@@ -3,7 +3,6 @@ import { spawn, ChildProcess } from "node:child_process";
 import {
   DEFAULT_LOCAL_FHIR_BASE_URL,
   DEFAULT_LOCAL_FHIR_STORE_PATH,
-  searchFhirResources,
   seedFhirBundles,
 } from "../../typescript/fhir-store";
 
@@ -60,7 +59,7 @@ const createTask = async (
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      requestId: `task-${patientId}-${prompt.replace(/\W+/g, "-").toLowerCase()}`,
+      requestId: `heldout-${patientId}-${prompt.replace(/\W+/g, "-").toLowerCase()}`,
       input: {
         messages: [
           {
@@ -91,9 +90,9 @@ const main = async (): Promise<void> => {
   const root = process.cwd();
   const dgCwd = `${root}/../typescript`;
   const ciCwd = `${root}/../clinical-intelligence-typescript`;
-  const dgPort = "5185";
-  const ciPort = "5186";
-  const a2aPort = "5187";
+  const dgPort = "5215";
+  const ciPort = "5216";
+  const a2aPort = "5217";
 
   const dg = spawnService("discharge", "npx", ["tsx", "index.ts"], dgCwd, {
     PORT: dgPort,
@@ -116,73 +115,56 @@ const main = async (): Promise<void> => {
     await waitForReady(`http://127.0.0.1:${a2aPort}/readyz`, 20000);
 
     const baseUrl = `http://127.0.0.1:${a2aPort}`;
-    const maria = await createTask(baseUrl, "maria-alvarez", "maria-discharge-2026-0418", "Is this patient safe to discharge today?");
-    const daniel = await createTask(baseUrl, "daniel-brooks", "daniel-discharge-2026-0419", "Is this patient safe to discharge today?");
-    const olivia = await createTask(baseUrl, "olivia-chen", "olivia-discharge-2026-0419", "Is this patient safe to discharge today?");
+    const danielPrompt1 = await createTask(baseUrl, "daniel-brooks", "daniel-discharge-2026-0419", "Is this patient safe to discharge today?");
+    const danielPrompt3 = await createTask(
+      baseUrl,
+      "daniel-brooks",
+      "daniel-discharge-2026-0419",
+      "What exactly must happen before discharge, and prepare the transition package.",
+    );
+    const oliviaPrompt1 = await createTask(baseUrl, "olivia-chen", "olivia-discharge-2026-0419", "Is this patient safe to discharge today?");
 
-    const mariaTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/maria-discharge-2026-0418",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
-    const danielTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/daniel-discharge-2026-0419",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
-    const oliviaTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/olivia-discharge-2026-0419",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
-
-    const mariaTaskRefs: string[] = (mariaTasks.entry ?? []).map((entry) => {
-      const resource = entry.resource as { id?: string } | undefined;
-      return resource?.id ?? "";
-    });
-    const danielTaskRefs: string[] = (danielTasks.entry ?? []).map((entry) => {
-      const resource = entry.resource as { id?: string } | undefined;
-      return resource?.id ?? "";
-    });
-
-    assert.equal(maria.output.final_verdict, "not_ready");
+    assert.equal(danielPrompt1.output.final_verdict, "not_ready");
+    assert.match(String(danielPrompt1.output.contradiction_summary), /DocumentReference\/daniel-pharmacy-note-1815/);
+    assert.match(String(danielPrompt1.output.contradiction_summary), /Task\/ctc-daniel-discharge-2026-0419-medication-reconciliation/);
     assert.equal(
-      maria.output.transition_safety_packet.fhir_resources_written.some(
-        (resource: { reference: string }) => resource.reference === "Task/ctc-maria-discharge-2026-0418-clinical-stability",
+      danielPrompt1.output.transition_safety_packet.fhir_resources_written.some(
+        (resource: { reference: string }) => resource.reference === "Task/ctc-daniel-discharge-2026-0419-clinical-stability",
       ),
       true,
     );
     assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-clinical-stability"),
+      danielPrompt1.output.transition_safety_packet.fhir_resources_written.some(
+        (resource: { reference: string }) => resource.reference === "Task/ctc-daniel-discharge-2026-0419-patient-education",
+      ),
       true,
     );
     assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-equipment-and-transport"),
-      true,
+      /maria/i.test(String(danielPrompt1.output.contradiction_summary)),
+      false,
+      "Daniel output must not leak Maria-specific text.",
     );
+
+    assert.equal(danielPrompt3.output.final_verdict, "not_ready");
+    assert.match(String(danielPrompt3.output.contradiction_summary), /DocumentReference\/daniel-pharmacy-note-1815/);
+    assert.match(String(danielPrompt3.output.contradiction_summary), /DocumentReference\/daniel-nursing-note-1840/);
+
+    assert.equal(oliviaPrompt1.output.final_verdict, "ready");
     assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-home-support-and-services"),
-      true,
+      oliviaPrompt1.output.transition_safety_packet.fhir_resources_written.some(
+        (resource: { resource_type: string }) => resource.resource_type === "Task",
+      ),
+      false,
     );
+    assert.match(String(oliviaPrompt1.output.contradiction_summary), /Written FHIR Tasks: none\./i);
 
-    assert.equal(daniel.output.transition_safety_packet.fhir_resources_written.length > 0, true);
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("medication-reconciliation")), true);
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("clinical-stability")), true);
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("patient-education")), true);
-
-    assert.equal(olivia.output.final_verdict, "ready");
-    assert.equal((oliviaTasks.entry ?? []).length, 0);
-
-    console.log("SMOKE PASS: fhir task writeback");
+    console.log("SMOKE PASS: fhir heldout scenarios");
     console.log(
       JSON.stringify(
         {
-          maria_task_count: (mariaTasks.entry ?? []).length,
-          daniel_task_count: (danielTasks.entry ?? []).length,
-          olivia_task_count: (oliviaTasks.entry ?? []).length,
+          daniel_prompt1_final_verdict: danielPrompt1.output.final_verdict,
+          daniel_prompt3_final_verdict: danielPrompt3.output.final_verdict,
+          olivia_prompt1_final_verdict: oliviaPrompt1.output.final_verdict,
         },
         null,
         2,

@@ -11,6 +11,7 @@
     "smoke:hidden-risk-cache": "npx tsx smoke/hidden-risk-cache-smoke.ts",
     "smoke:decision-matrix": "npx tsx smoke/decision-matrix-smoke.ts",
     "smoke:fhir-audit-writeback": "npx tsx smoke/fhir-audit-writeback-smoke.ts",
+    "smoke:fhir-heldout-scenarios": "npx tsx smoke/fhir-heldout-scenarios-smoke.ts",
     "smoke:fhir-rearbitration": "npx tsx smoke/fhir-rearbitration-smoke.ts",
     "smoke:fhir-task-writeback": "npx tsx smoke/fhir-task-writeback-smoke.ts",
     "smoke:fhir-visible-output": "npx tsx smoke/fhir-visible-output-smoke.ts",

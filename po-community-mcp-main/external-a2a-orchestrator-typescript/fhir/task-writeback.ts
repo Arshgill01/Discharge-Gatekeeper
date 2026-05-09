@@ -36,6 +36,33 @@ const compactAction = (value: string): string => {
     .trim();
 };
 
+const buildTaskCodeText = (
+  category: string,
+  action: string,
+  rationale: string,
+  packet: ReconciliationResult["transition_safety_packet"],
+): string => {
+  const supportingText = [
+    rationale,
+    ...packet.controlling_evidence
+      .filter((item) => item.supports.includes(category as typeof item.supports[number]))
+      .map((item) => item.summary),
+  ].join(" ");
+  const lowered = supportingText.toLowerCase();
+
+  if (category === "patient_education" && /(home scale|monitoring|daily weight)/i.test(lowered)) {
+    return "Confirm a working home monitoring plan and daily weight equipment before discharge.";
+  }
+  if (category === "clinical_stability" && /(orthopnea|weight gain|symptom change)/i.test(lowered)) {
+    return "Reassess late symptom change and document whether discharge remains safe today.";
+  }
+  if (category === "medication_reconciliation" && /(cannot afford|prior authorization|dispense|medication access)/i.test(lowered)) {
+    return "Resolve medication access or bridge supply before discharge proceeds.";
+  }
+
+  return compactAction(action);
+};
+
 const buildTaskId = (
   encounterId: string | null,
   patientId: string | null,
@@ -89,6 +116,7 @@ export const writeDischargeBlockingTasks = async (
     const taskId = buildTaskId(packet.patient.encounter_id, packet.patient.patient_id, category);
     const ownerReference = practitionerRoles[OWNER_ROLE_KEY_BY_CATEGORY[category] ?? ""];
     const authoredOn = new Date().toISOString();
+    const taskCodeText = buildTaskCodeText(category, step.action, step.rationale, packet);
     const taskResource: Record<string, unknown> = {
       resourceType: "Task",
       id: taskId,
@@ -102,7 +130,7 @@ export const writeDischargeBlockingTasks = async (
         reference: encounterReference,
       },
       code: {
-        text: compactAction(step.action),
+        text: taskCodeText,
       },
       reasonReference: reasonReferences.map((reference) => ({ reference })),
       authoredOn,
@@ -141,7 +169,7 @@ export const writeDischargeBlockingTasks = async (
       resource_type: "Task",
       resource_id: taskId,
       timestamp: authoredOn,
-      summary: compactAction(step.action),
+      summary: taskCodeText,
       linked_evidence_references: reasonReferences,
     });
   }
