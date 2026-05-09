@@ -1,0 +1,504 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "daniel-brooks",
+        "name": [
+          {
+            "text": "Daniel Brooks"
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1958-07-23"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/daniel-brooks"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "daniel-discharge-2026-0419",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "period": {
+          "start": "2026-04-17T09:20:00Z"
+        },
+        "type": [
+          {
+            "text": "Heart failure discharge encounter"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/daniel-discharge-2026-0419"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "daniel-heart-failure",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Heart failure with reduced ejection fraction"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/daniel-heart-failure"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-heart-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 84,
+          "unit": "beats/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-heart-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-respiratory-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Respiratory rate"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 20,
+          "unit": "breaths/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-respiratory-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-systolic-bp",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Systolic blood pressure"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 116,
+          "unit": "mmHg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-systolic-bp"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-spo2-rest",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Oxygen saturation at rest"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 95,
+          "unit": "%"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-spo2-rest"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-o2-flow-current",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Current oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-o2-flow-current"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-o2-flow-baseline",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Baseline oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T16:30:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-o2-flow-baseline"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-weight-morning",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Morning weight"
+        },
+        "effectiveDateTime": "2026-04-19T08:00:00Z",
+        "valueQuantity": {
+          "value": 83.2,
+          "unit": "kg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-weight-morning"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "daniel-weight-evening",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Evening weight after hallway walk"
+        },
+        "effectiveDateTime": "2026-04-19T18:40:00Z",
+        "valueQuantity": {
+          "value": 85.0,
+          "unit": "kg"
+        },
+        "note": [
+          {
+            "text": "Evening weight increased by 1.8 kg after hallway walk and orthopnea was reported."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/daniel-weight-evening"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "daniel-sacubitril-valsartan",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "medicationCodeableConcept": {
+          "text": "Sacubitril/valsartan"
+        },
+        "note": [
+          {
+            "text": "Discharge medication list complete and prescription submitted."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/daniel-sacubitril-valsartan"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "daniel-furosemide",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "medicationCodeableConcept": {
+          "text": "Furosemide"
+        },
+        "note": [
+          {
+            "text": "Oral diuretic plan entered for discharge."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/daniel-furosemide"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "daniel-cardiology-follow-up",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Cardiology follow-up"
+        },
+        "note": [
+          {
+            "text": "Cardiology follow-up scheduled and confirmed before discharge."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ServiceRequest/daniel-cardiology-follow-up"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "daniel-discharge-plan",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "title": "Heart failure discharge plan",
+        "description": "Low-sodium diet, daily weights, medication list, and home discharge instructions completed in the daytime plan."
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CarePlan/daniel-discharge-plan"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "daniel-pharmacy-note-1815",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "description": "Pharmacy Note 2026-04-19 18:15",
+        "type": {
+          "text": "pharmacy_note"
+        },
+        "date": "2026-04-19T18:15:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Patient cannot afford sacubitril/valsartan refill tonight. Prior authorization pending until Monday and only two days of old medication remain at home.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/daniel-pharmacy-note-1815"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "daniel-nursing-note-1840",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "description": "Nursing Note 2026-04-19 18:40",
+        "type": {
+          "text": "nursing_note"
+        },
+        "date": "2026-04-19T18:40:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Patient gained 1.8 kg from morning weight, reports orthopnea when lying flat after hallway walk, and says the home scale is broken.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/daniel-nursing-note-1840"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "daniel-case-mgmt-note-1905",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/daniel-brooks"
+        },
+        "encounter": {
+          "reference": "Encounter/daniel-discharge-2026-0419"
+        },
+        "description": "Case Management Note 2026-04-19 19:05",
+        "type": {
+          "text": "case_management_note"
+        },
+        "date": "2026-04-19T19:05:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Daughter can drive patient home but cannot pick up medications tonight. Local pharmacy closes in 30 minutes and no working home scale is available.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/daniel-case-mgmt-note-1905"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "bedside-rn",
+        "code": [
+          {
+            "text": "Bedside RN"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/bedside-rn"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "case-manager",
+        "code": [
+          {
+            "text": "Case manager"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/case-manager"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "covering-clinician",
+        "code": [
+          {
+            "text": "Covering clinician"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/covering-clinician"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "pharmacist",
+        "code": [
+          {
+            "text": "Pharmacist"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/pharmacist"
+      }
+    }
+  ]
+}
