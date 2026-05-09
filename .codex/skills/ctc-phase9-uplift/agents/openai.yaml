@@ -1,0 +1,4 @@
+interface:
+  display_name: "CTC Phase 9 Uplift"
+  short_description: "Plan Phase 9 only after baseline proofs pass."
+  default_prompt: "Use this skill to read Phase 9 docs and create implementation waves only after all baseline gates are green."
