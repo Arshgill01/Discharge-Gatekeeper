@@ -4,6 +4,7 @@ import {
   DEFAULT_HIDDEN_RISK_SCENARIO_ID,
   resolveHiddenRiskToolInput,
 } from "../tools/canonical-hidden-risk-input";
+import { formatPromptOpinionSlimTransitionPackage } from "../tools/SynthesizeTransitionNarrativeTool";
 import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
   INCONCLUSIVE_CONTEXT_INPUT,
@@ -16,6 +17,8 @@ import {
   INCONCLUSIVE_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
   TRAP_TRANSITION_NARRATIVE_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
+
+process.env["CLINICAL_INTELLIGENCE_LLM_PROVIDER"] = "heuristic";
 
 const assertTrapNarrative = async (): Promise<void> => {
   const payload = await synthesizeTransitionNarrative(PHASE0_TRAP_PATIENT_INPUT);
@@ -221,6 +224,24 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
       "Slim key points should stay bounded for transcript safety.",
     );
   }
+
+  const visible = formatPromptOpinionSlimTransitionPackage(payload);
+  assert.ok(visible.startsWith("TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"));
+  assert.ok(visible.includes("Release condition:"));
+  assert.ok(
+    visible.includes(
+      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
+    ),
+  );
+  assert.ok(visible.includes("1. Bedside RN - repeat exertional room-air assessment before discharge."));
+  assert.ok(visible.includes("5. Care team - document updated handoff and patient-facing instructions."));
+  assert.ok(visible.includes("- Nursing Note 2026-04-18 20:40"));
+  assert.ok(visible.includes("- Case Management Addendum 2026-04-18 20:55"));
+  assert.equal(
+    visible.split(/\s+/).length <= 110,
+    true,
+    "Prompt 3 visible package must stay compact.",
+  );
 };
 
 const assertPromptOpinionScenarioShortcutResolvesCanonicalInput = (): void => {

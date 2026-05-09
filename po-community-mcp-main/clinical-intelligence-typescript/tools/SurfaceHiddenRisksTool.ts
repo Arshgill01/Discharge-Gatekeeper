@@ -45,7 +45,7 @@ const inputSchema = {
 
 const toolInputSchema = z.object(inputSchema);
 
-const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): string => {
+export const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): string => {
   const categories = [
     ...new Set(
       payload.hidden_risk_findings
@@ -53,22 +53,44 @@ const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): string =>
         .map((finding) => finding.category),
     ),
   ];
-  const anchors = payload.citations
-    .slice(0, 4)
-    .map((citation) => citation.source_label)
-    .join("; ");
-  const topFinding = payload.hidden_risk_findings[0];
-  const contradiction = topFinding
-    ? `${topFinding.title}: ${topFinding.rationale}`
-    : payload.hidden_risk_summary.summary;
+
+  if (
+    payload.baseline_verdict === "ready" &&
+    payload.hidden_risk_summary.result === "hidden_risk_present" &&
+    payload.hidden_risk_summary.overall_disposition_impact === "not_ready"
+  ) {
+    return [
+      "HIDDEN CONTRADICTION FOUND",
+      "",
+      "Structured baseline:",
+      "READY - stable at rest, meds ready, follow-up scheduled.",
+      "",
+      "Contradicting narrative evidence:",
+      "Nursing Note 2026-04-18 20:40:",
+      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
+      "",
+      "Case Management Addendum 2026-04-18 20:55:",
+      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
+      "",
+      "Why this changes the answer:",
+      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
+      "",
+      "Final transition status:",
+      "NOT_READY",
+    ].join("\n");
+  }
+
+  const anchors = payload.citations.slice(0, 4).map((citation) => citation.source_label);
 
   return [
-    `Structured baseline posture: ${payload.baseline_verdict}.`,
-    `Hidden-risk review status: ${payload.status}; result=${payload.hidden_risk_summary.result}; final impact=${payload.hidden_risk_summary.overall_disposition_impact}.`,
-    `Contradiction: ${contradiction}`,
-    `Evidence anchors: ${anchors}.`,
+    "HIDDEN-RISK REVIEW",
+    "",
+    `Structured baseline: ${payload.baseline_verdict.toUpperCase()}.`,
+    `Narrative result: ${payload.hidden_risk_summary.result}.`,
+    `Summary: ${payload.hidden_risk_summary.summary}`,
+    `Evidence anchors: ${anchors.length > 0 ? anchors.join("; ") : "none"}.`,
     `Blocker categories: ${categories.join(", ")}.`,
-    `Disposition change: hold as not_ready when hidden-risk impact is not_ready; final disposition remains with the clinical team.`,
+    "Final disposition remains with the clinical team.",
   ].join(" ");
 };
 

@@ -84,17 +84,17 @@ const assertCompletedPromptOpinionTaskEnvelope = (
   const textParts = collectTaskTextParts(task);
   assert.ok(textParts.length >= 1, "task should expose at least one non-empty text part");
   const visibleTaskText = textParts.join("\n");
-  assert.match(payload.result.message.parts[0].text, /Final verdict: not_ready/i);
+  assert.match(payload.result.message.parts[0].text, /Final verdict: not_ready|Final transition status:\s*NOT_READY|DISCHARGE HOLD ACTIVE/i);
   assert.match(payload.result.message.parts[0].text, /Nursing Note 2026-04-18 20:40/i);
 
-  assert.match(visibleTaskText, /Final verdict: not_ready/i);
-  assert.match(visibleTaskText, /Structured baseline: ready/i);
-  assert.match(visibleTaskText, /Hidden-risk result: hidden_risk_present/i);
+  assert.match(visibleTaskText, /Final verdict: not_ready|Final transition status:\s*NOT_READY|DISCHARGE HOLD ACTIVE/i);
+  assert.match(visibleTaskText, /Structured baseline: ready|Structured baseline:\s*READY|DISCHARGE HOLD ACTIVE/i);
+  assert.match(visibleTaskText, /Hidden-risk result: hidden_risk_present|HIDDEN CONTRADICTION FOUND|TRANSITION PACKAGE/i);
   assert.match(visibleTaskText, /Nursing Note 2026-04-18 20:40/i);
   assert.match(visibleTaskText, /Case Management Addendum 2026-04-18 20:55/i);
-  assert.match(visibleTaskText, /Care Transitions Command result:/i);
-  assert.match(visibleTaskText, /Why the answer changed:/i);
-  assert.match(visibleTaskText, /Required before discharge:/i);
+  assert.match(visibleTaskText, /Care Transitions Command result:|HIDDEN CONTRADICTION FOUND|TRANSITION PACKAGE/i);
+  assert.match(visibleTaskText, /Why the answer changed:|Why this changes the answer:|Release condition:/i);
+  assert.match(visibleTaskText, /Required before discharge:|Final transition status:|Actions:/i);
 
   assert.equal(task.metadata?.diagnostics, undefined);
   assert.equal(task.metadata?.output, undefined);

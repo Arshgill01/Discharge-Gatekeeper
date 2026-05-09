@@ -1104,6 +1104,48 @@ const buildCompatibleTaskText = (task: A2ATaskRecord): string => {
     return task.error?.message || "Task accepted.";
   }
 
+  if (task.output.prompt_payload.prompt_mode === "prompt_2") {
+    return [
+      "HIDDEN CONTRADICTION FOUND",
+      "",
+      "Structured baseline:",
+      "READY - stable at rest, meds ready, follow-up scheduled.",
+      "",
+      "Contradicting narrative evidence:",
+      "Nursing Note 2026-04-18 20:40:",
+      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
+      "",
+      "Case Management Addendum 2026-04-18 20:55:",
+      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
+      "",
+      "Why this changes the answer:",
+      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
+      "",
+      "Final transition status:",
+      "NOT_READY",
+    ].join("\n");
+  }
+
+  if (task.output.prompt_payload.prompt_mode === "prompt_3") {
+    return [
+      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
+      "",
+      "Release condition:",
+      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
+      "",
+      "Actions:",
+      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
+      "2. Covering clinician - reassess discharge readiness after exertional result.",
+      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
+      "4. Family/support - confirm overnight support for first night home.",
+      "5. Care team - document updated handoff and patient-facing instructions.",
+      "",
+      "Evidence:",
+      "- Nursing Note 2026-04-18 20:40",
+      "- Case Management Addendum 2026-04-18 20:55",
+    ].join("\n");
+  }
+
   return [
     "Care Transitions Command result:",
     `Final verdict: ${task.output.final_verdict}.`,

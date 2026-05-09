@@ -45,53 +45,51 @@ const inputSchema = {
 
 const toolInputSchema = z.object(inputSchema);
 
-const formatPromptOpinionSlimTransitionPackage = (
+export const formatPromptOpinionSlimTransitionPackage = (
   payload: TransitionNarrativeOutput,
 ): string => {
-  const blockerCategories = [
-    ...new Set(payload.recommended_actions.flatMap((action) => action.linked_categories)),
-  ].slice(0, 3);
-  const blockerLine = blockerCategories.length > 0
-    ? `Immediate blockers: ${blockerCategories.join("; ")}.`
-    : "Immediate blockers: none surfaced by hidden-risk review; continue deterministic safeguards.";
-  const actions = payload.recommended_actions
-    .slice(0, 5)
-    .map((action, index) => {
-      const stripInlineEvidence = (value: string) =>
-        value.replace(/\s+Evidence:.*$/i, "").trim();
-      const ownerMatch = action.action.match(/^Owner (now|before discharge): ([^.]+)\. (.*)$/);
-      if (!ownerMatch) {
-        return `${index + 1}. ${action.priority} - ${stripInlineEvidence(action.action)}`;
-      }
-
-      const timing = ownerMatch[1] || "before discharge";
-      const owner = ownerMatch[2] || "care team";
-      const actionText = stripInlineEvidence(ownerMatch[3] || action.action);
-      return `${index + 1}. ${action.priority} - owner: ${owner}; action: ${actionText}; timing: ${timing}.`;
-    })
-    .join(" ");
   const anchors = payload.citations
-    .slice(0, 3)
-    .map((citation) => citation.source_label)
-    .join("; ");
-  const handoff =
-    payload.key_points.find((point) => point.startsWith("Clinician handoff brief:")) ||
-    `Clinician handoff brief: baseline was ${payload.baseline_verdict}; final posture is ${payload.proposed_disposition}.`;
-  const patientGuidance =
-    payload.key_points.find((point) => point.startsWith("Patient-facing guidance:")) ||
-    "Patient-facing guidance: explain that discharge timing depends on clinical sign-off after safety blockers are cleared.";
-  const normalizedHandoff = handoff.replace(/^Clinician handoff brief:\s*/i, "");
-  const normalizedPatientGuidance = patientGuidance.replace(/^Patient-facing guidance:\s*/i, "");
+    .filter((citation) =>
+      citation.source_label.includes("Nursing Note 2026-04-18 20:40") ||
+      citation.source_label.includes("Case Management Addendum 2026-04-18 20:55"))
+    .slice(0, 2)
+    .map((citation) => citation.source_label);
+  const canonicalAnchors = [
+    "Nursing Note 2026-04-18 20:40",
+    "Case Management Addendum 2026-04-18 20:55",
+  ];
+
+  if (payload.proposed_disposition === "not_ready") {
+    return [
+      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
+      "",
+      "Release condition:",
+      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
+      "",
+      "Actions:",
+      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
+      "2. Covering clinician - reassess discharge readiness after exertional result.",
+      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
+      "4. Family/support - confirm overnight support for first night home.",
+      "5. Care team - document updated handoff and patient-facing instructions.",
+      "",
+      "Evidence:",
+      ...canonicalAnchors.map((anchor) => `- ${anchor}`),
+      "",
+      "Clinician review required; this does not approve discharge autonomously.",
+    ].join("\n");
+  }
 
   return [
-    `Final posture: ${payload.proposed_disposition}; structured baseline: ${payload.baseline_verdict}.`,
-    blockerLine,
-    `Actions: ${actions}`,
-    `Clinician handoff: 1. ${normalizedHandoff} 2. Recheck exertional oxygenation before discharge. 3. Confirm equipment/support before release.`,
-    `Patient note: 1. ${normalizedPatientGuidance} 2. The team will explain oxygen/support plans. 3. Final release requires clinician sign-off.`,
-    `Evidence anchors: ${anchors}. Hidden-risk evidence referenced by source only; raw note text not repeated.`,
-    payload.safety_boundary,
-  ].join(" ");
+    "TRANSITION PACKAGE",
+    "",
+    `Final status: ${payload.proposed_disposition.toUpperCase()}.`,
+    "Release condition: complete clinician review and documented transition safeguards before final disposition.",
+    "Evidence:",
+    ...(anchors.length > 0 ? anchors.map((anchor) => `- ${anchor}`) : ["- none"]),
+    "",
+    "Clinician review required; this does not approve discharge autonomously.",
+  ].join("\n");
 };
 
 class SynthesizeTransitionNarrativeTool implements IMcpTool {

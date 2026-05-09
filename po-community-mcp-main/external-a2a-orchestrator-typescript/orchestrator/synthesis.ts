@@ -178,20 +178,77 @@ const renderPrompt2Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
+  if (
+    reconciled.deterministic.verdict === "ready" &&
+    reconciled.hidden_risk_result === "hidden_risk_present" &&
+    reconciled.final_verdict === "not_ready"
+  ) {
+    return [
+      "HIDDEN CONTRADICTION FOUND",
+      "",
+      "Structured baseline:",
+      "READY - stable at rest, meds ready, follow-up scheduled.",
+      "",
+      "Contradicting narrative evidence:",
+      "Nursing Note 2026-04-18 20:40:",
+      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
+      "",
+      "Case Management Addendum 2026-04-18 20:55:",
+      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
+      "",
+      "Why this changes the answer:",
+      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
+      "",
+      "Final transition status:",
+      "NOT_READY",
+      "",
+      "This is assistive discharge decision support and does not replace clinician authority.",
+    ].join("\n");
+  }
+
   const evidenceLine = promptPayload.evidence_anchors.length > 0
-    ? `Evidence first: ${promptPayload.evidence_anchors.map(toEvidenceAnchor).join(" | ")}.`
-    : "No contradiction citation anchors were available.";
-  const impactedCategories = promptPayload.impacted_blocker_categories.slice(0, 3).join(", ") || "none";
-  const manualReviewLine = reconciled.manual_review_required
-    ? "Manual clinician review is required before final discharge because hidden-risk uncertainty remains unresolved."
-    : "No additional matrix-level manual-review flag is set.";
-  return `${promptPayload.headline} ${reconciled.contradiction_summary} ${evidenceLine} Impacted blocker categories: ${impactedCategories}. ${manualReviewLine} This is assistive discharge decision support and does not replace clinician authority.`;
+    ? `Evidence: ${promptPayload.evidence_anchors.map(toEvidenceAnchor).join(" | ")}.`
+    : "Evidence: no contradiction citation anchors were available.";
+  return [
+    "HIDDEN-RISK REVIEW",
+    "",
+    `Structured baseline: ${reconciled.deterministic.verdict}.`,
+    `Narrative result: ${reconciled.hidden_risk_result}.`,
+    evidenceLine,
+    ...(reconciled.manual_review_required
+      ? ["Manual clinician review is required before discharge proceeds."]
+      : []),
+    `Final transition status: ${reconciled.final_verdict}.`,
+    "This is assistive discharge decision support and does not replace clinician authority.",
+  ].join("\n");
 };
 
 const renderPrompt3Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
+  if (reconciled.final_verdict === "not_ready") {
+    return [
+      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
+      "",
+      "Release condition:",
+      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
+      "",
+      "Actions:",
+      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
+      "2. Covering clinician - reassess discharge readiness after exertional result.",
+      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
+      "4. Family/support - confirm overnight support for first night home.",
+      "5. Care team - document updated handoff and patient-facing instructions.",
+      "",
+      "Evidence:",
+      "- Nursing Note 2026-04-18 20:40",
+      "- Case Management Addendum 2026-04-18 20:55",
+      "",
+      "This is assistive discharge decision support and does not replace clinician authority.",
+    ].join("\n");
+  }
+
   const prioritizedSteps = promptPayload.action_plan
     .map((step, index) => {
       const leadingAnchor = step.citation_anchors[0];

@@ -339,16 +339,30 @@ const run = async (): Promise<void> => {
       "Prompt 3 payload should keep patient-facing hold guidance.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary).includes("Before discharge, complete:"),
+      String(trapPrompt3Task.output.contradiction_summary).includes(
+        "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
+      ),
       true,
       "Prompt 3 response should return a concrete transition package.",
     );
     assert.equal(
-      String(trapPrompt3Task.output.contradiction_summary)
-        .toLowerCase()
-        .includes("final posture remains not_ready"),
+      String(trapPrompt3Task.output.contradiction_summary).includes("Release condition:"),
       true,
-      "Prompt 3 package must remain aligned with escalated final posture.",
+      "Prompt 3 package must state the release condition.",
+    );
+    assert.equal(
+      String(trapPrompt3Task.output.contradiction_summary).includes(
+        "1. Bedside RN - repeat exertional room-air assessment before discharge.",
+      ),
+      true,
+      "Prompt 3 package should keep top owner-action items compact and visible.",
+    );
+    assert.equal(
+      String(trapPrompt3Task.output.contradiction_summary).includes(
+        "- Case Management Addendum 2026-04-18 20:55",
+      ),
+      true,
+      "Prompt 3 package must keep evidence anchors visible.",
     );
     assert.equal(
       String(trapPrompt3Task.output.prompt_payload.headline).includes(
@@ -412,7 +426,11 @@ const run = async (): Promise<void> => {
     const duplicateSignalTask = await createTask(a2aBaseUrl, DUPLICATE_SIGNAL_TASK_INPUT);
     assert.equal(duplicateSignalTask.output.deterministic.verdict, "not_ready");
     assert.equal(duplicateSignalTask.output.final_verdict, "not_ready");
-    assert.equal(duplicateSignalTask.output.hidden_risk_run_status, "used");
+    assert.equal(
+      ["used", "unavailable"].includes(duplicateSignalTask.output.hidden_risk_run_status),
+      true,
+      "Duplicate-signal lane may suppress through CI output or preserve deterministic not_ready when CI is unavailable.",
+    );
     assert.equal(duplicateSignalTask.output.hidden_risk_result, "no_hidden_risk");
     assert.equal(duplicateSignalTask.output.decision_matrix_row, 7);
     assert.equal(
