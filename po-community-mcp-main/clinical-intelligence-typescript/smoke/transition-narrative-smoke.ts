@@ -20,6 +20,26 @@ import {
 const assertTrapNarrative = async (): Promise<void> => {
   const payload = await synthesizeTransitionNarrative(PHASE0_TRAP_PATIENT_INPUT);
   assert.equal(payload.contract_version, "phase0_transition_narrative_v1");
+  assert.equal(payload.transition_safety_packet.packet_type, "transition_safety_packet");
+  assert.equal(
+    payload.transition_safety_packet.contract_version,
+    "phase9_transition_safety_packet_v1",
+  );
+  assert.equal(payload.transition_safety_packet.structured_baseline.verdict, "ready");
+  assert.equal(
+    payload.transition_safety_packet.reconciled_transition_status.final_verdict,
+    "not_ready",
+  );
+  assert.equal(
+    payload.transition_safety_packet.narrative_review.hidden_risk_result,
+    "hidden_risk_present",
+  );
+  assert.equal(
+    Object.values(payload.transition_safety_packet.safety_invariants).every(
+      (status) => status === "pass",
+    ),
+    true,
+  );
   assert.equal(payload.status, "ok");
   assert.equal(
     payload.proposed_disposition,
@@ -95,6 +115,10 @@ const assertAlternativeNarrative = async (): Promise<void> => {
     payload.citations.some((citation) => citation.source_label.includes("Case Management Escalation Note 2026-04-18 21:05")),
     "Alternative hidden-risk narrative must cite the case-management escalation note.",
   );
+  assert.equal(
+    payload.transition_safety_packet.reconciled_transition_status.final_verdict,
+    "not_ready",
+  );
 };
 
 const assertControlNarrative = async (): Promise<void> => {
@@ -124,6 +148,14 @@ const assertControlNarrative = async (): Promise<void> => {
     payload.recommended_actions.every((action) => action.citation_ids.length === 0),
     "Control narrative actions should not invent citations when no hidden risk exists.",
   );
+  assert.equal(
+    payload.transition_safety_packet.reconciled_transition_status.final_verdict,
+    "ready",
+  );
+  assert.equal(
+    payload.transition_safety_packet.narrative_review.hidden_risk_result,
+    "no_hidden_risk",
+  );
 };
 
 const assertInconclusiveNarrative = async (): Promise<void> => {
@@ -148,6 +180,10 @@ const assertInconclusiveNarrative = async (): Promise<void> => {
     payload.key_points.some((point) => point.includes("Clinician handoff brief:")),
     "Inconclusive narrative should include a clinician handoff brief.",
   );
+  assert.equal(
+    payload.transition_safety_packet.safety_invariants.manual_review_on_uncertainty,
+    "pass",
+  );
 };
 
 const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> => {
@@ -157,15 +193,15 @@ const assertPromptOpinionSlimNarrativeStaysRenderSafe = async (): Promise<void> 
   const serialized = JSON.stringify(payload);
 
   assert.ok(
-    serialized.length <= 4800,
-    `Prompt Opinion slim transition payload should stay compact (<=4800 bytes), saw ${serialized.length}.`,
+    serialized.length <= 6000,
+    `Prompt Opinion slim transition payload should stay compact while carrying the Phase 9 packet (<=6000 bytes), saw ${serialized.length}.`,
   );
   assert.ok(
     payload.narrative.includes("Before discharge, complete:"),
     "Slim Prompt 3 narrative should stay action-explicit for transition-package rendering.",
   );
-  assert.ok(payload.key_points.length <= 6, "Slim Prompt 3 key points should stay bounded.");
-  assert.ok(payload.recommended_actions.length <= 4, "Slim Prompt 3 actions should stay bounded.");
+  assert.ok(payload.key_points.length <= 5, "Slim Prompt 3 key points should stay bounded.");
+  assert.ok(payload.recommended_actions.length <= 3, "Slim Prompt 3 actions should stay bounded.");
   assert.ok(payload.citations.length <= 4, "Slim Prompt 3 citations should stay bounded.");
 
   for (const action of payload.recommended_actions) {

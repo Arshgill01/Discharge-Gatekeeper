@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { HiddenRiskLlmClient } from "../llm/client";
 import { HIDDEN_RISK_SYSTEM_PROMPT } from "../clinical-intelligence/prompt-contract";
-import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
+import {
+  SurfaceHiddenRiskOptions,
+  surfaceHiddenRisks,
+} from "../clinical-intelligence/surface-hidden-risks";
+import { generateHiddenRiskHeuristicResponse } from "../llm/heuristic-provider";
 import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
   DUPLICATE_SIGNAL_CONTROL_INPUT,
@@ -19,8 +23,25 @@ import {
   TRAP_HIDDEN_RISK_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
+const heuristicSmokeClient: HiddenRiskLlmClient = {
+  generateHiddenRiskResponse: async (input) => ({
+    provider: "heuristic",
+    rawText: await generateHiddenRiskHeuristicResponse(input),
+  }),
+};
+
+const surfaceHiddenRisksForSmoke = (
+  input: unknown,
+  options: Omit<SurfaceHiddenRiskOptions, "llmClientOverride"> = {},
+) => {
+  return surfaceHiddenRisks(input, {
+    ...options,
+    llmClientOverride: heuristicSmokeClient,
+  });
+};
+
 const assertFindingCitationQuality = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT);
   const payload = result.payload;
 
   for (const finding of payload.hidden_risk_findings) {
@@ -45,7 +66,7 @@ const assertFindingCitationQuality = async (): Promise<void> => {
 };
 
 const assertTrapPatientBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.contract_version, "phase0_hidden_risk_v1");
@@ -93,7 +114,7 @@ const assertTrapPatientBehavior = async (): Promise<void> => {
 };
 
 const assertControlNoRiskBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(NO_RISK_CONTROL_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(NO_RISK_CONTROL_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -123,7 +144,7 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
 };
 
 const assertAblationBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(MARIA_ALVAREZ_ABLATION_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(MARIA_ALVAREZ_ABLATION_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, ABLATION_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -137,7 +158,7 @@ const assertAblationBehavior = async (): Promise<void> => {
 };
 
 const assertDuplicateSignalSuppressionBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(DUPLICATE_SIGNAL_CONTROL_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(DUPLICATE_SIGNAL_CONTROL_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, DUPLICATE_SIGNAL_EXPECTED_MATRIX.expected_status);
@@ -152,7 +173,7 @@ const assertDuplicateSignalSuppressionBehavior = async (): Promise<void> => {
 };
 
 const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(ALTERNATIVE_HIDDEN_RISK_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(ALTERNATIVE_HIDDEN_RISK_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -178,7 +199,7 @@ const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
 };
 
 const assertInconclusiveContextBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(INCONCLUSIVE_CONTEXT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(INCONCLUSIVE_CONTEXT_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX.expected_status);
@@ -405,7 +426,7 @@ const assertLowConfidenceEscalationIsDowngradedToInconclusive = async (): Promis
 };
 
 const assertPromptOpinionSlimModeStaysRenderSafe = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT, {
     responseMode: "prompt_opinion_slim",
   });
   const payload = result.payload;

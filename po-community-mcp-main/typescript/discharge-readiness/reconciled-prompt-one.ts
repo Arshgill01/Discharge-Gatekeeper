@@ -39,6 +39,8 @@ export const buildReconciledPromptOneToolResult = async (
         narrative_source_count: payload.narrative_source_count,
         evidence_anchors: REQUIRED_EVIDENCE_ANCHORS,
         blocker_categories: REQUIRED_BLOCKER_CATEGORIES,
+        transition_safety_packet: payload.transition_safety_packet,
+        safety_invariants: payload.transition_safety_packet.safety_invariants,
       },
       isError: payload.status === "error",
     };

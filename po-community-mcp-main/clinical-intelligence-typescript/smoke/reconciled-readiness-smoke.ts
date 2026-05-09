@@ -13,10 +13,33 @@ const main = async (): Promise<void> => {
   }
 
   assert.equal(payload.structured_posture, "ready");
+  assert.equal(payload.contract_version, "phase9_reconciled_readiness_v1");
   assert.equal(payload.clinical_intelligence_status, "ok");
   assert.equal(payload.narrative_source_count > 0, true);
   assert.equal(payload.hidden_risk_result, "hidden_risk_present");
   assert.equal(payload.final_verdict, "not_ready");
+  assert.equal(payload.transition_safety_packet.packet_type, "transition_safety_packet");
+  assert.equal(
+    payload.transition_safety_packet.contract_version,
+    "phase9_transition_safety_packet_v1",
+  );
+  assert.equal(payload.transition_safety_packet.patient.patient_id, "phase0-trap-maria-alvarez");
+  assert.equal(payload.transition_safety_packet.patient.encounter_id, "enc-phase0-trap-001");
+  assert.equal(payload.transition_safety_packet.structured_baseline.verdict, "ready");
+  assert.equal(
+    payload.transition_safety_packet.narrative_review.hidden_risk_result,
+    "hidden_risk_present",
+  );
+  assert.equal(
+    payload.transition_safety_packet.reconciled_transition_status.final_verdict,
+    "not_ready",
+  );
+  assert.equal(
+    Object.values(payload.transition_safety_packet.safety_invariants).every(
+      (status) => status === "pass",
+    ),
+    true,
+  );
   assert.equal(payload.provider_evidence.configured_provider, "google");
   assert.equal(payload.provider_evidence.model, "gemma-4-31b-it");
   assert.equal(payload.provider_evidence.key_present, true);
@@ -45,6 +68,12 @@ const main = async (): Promise<void> => {
       payload.prompt_opinion_visible_answer.includes(source),
       `Visible Prompt 1 answer missing evidence source ${source}.`,
     );
+    assert.ok(
+      payload.transition_safety_packet.narrative_review.citations.some((citation) =>
+        citation.source_label.includes(source),
+      ),
+      `Transition Safety Packet missing evidence source ${source}.`,
+    );
   }
 
   assert.ok(
@@ -58,8 +87,12 @@ const main = async (): Promise<void> => {
 
   const serialized = JSON.stringify(payload);
   assert.ok(
-    serialized.length <= 5200,
-    `Reconciled Prompt 1 payload must stay compact for Prompt Opinion, saw ${serialized.length} bytes.`,
+    serialized.length <= 6500,
+    `Reconciled Prompt 1 payload must stay compact while carrying the Phase 9 packet, saw ${serialized.length} bytes.`,
+  );
+  assert.ok(
+    payload.prompt_opinion_visible_answer.split(/\s+/).length <= 90,
+    "Visible Prompt 1 answer must stay compact for Prompt Opinion.",
   );
 
   console.log("SMOKE PASS: reconciled readiness");

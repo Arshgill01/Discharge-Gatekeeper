@@ -1145,6 +1145,16 @@ const buildCompactTaskMetadata = (task: A2ATaskRecord): Record<string, unknown> 
     completed_at: task.completed_at,
     final_verdict: task.output?.final_verdict || null,
     hidden_risk_result: task.output?.hidden_risk_result || null,
+    transition_safety_packet:
+      task.output?.transition_safety_packet
+        ? {
+            packet_type: task.output.transition_safety_packet.packet_type,
+            contract_version: task.output.transition_safety_packet.contract_version,
+            final_verdict:
+              task.output.transition_safety_packet.reconciled_transition_status.final_verdict,
+            safety_invariants: task.output.transition_safety_packet.safety_invariants,
+          }
+        : null,
     narrative_source_count:
       task.output?.hidden_risk?.review_metadata?.narrative_sources_reviewed ??
       task.input.patient_context?.narrative_evidence_bundle?.length ??

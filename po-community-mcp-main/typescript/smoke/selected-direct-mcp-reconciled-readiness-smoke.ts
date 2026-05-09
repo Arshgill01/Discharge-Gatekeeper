@@ -15,6 +15,37 @@ const main = async (): Promise<void> => {
   const visibleAnswer = getText(result);
 
   assert.equal(result.isError, false);
+  const structuredContent = result.structuredContent as {
+    transition_safety_packet?: {
+      packet_type?: string;
+      contract_version?: string;
+      structured_baseline?: { verdict?: string };
+      reconciled_transition_status?: { final_verdict?: string };
+      safety_invariants?: Record<string, string>;
+    };
+  };
+  assert.equal(
+    structuredContent.transition_safety_packet?.packet_type,
+    "transition_safety_packet",
+  );
+  assert.equal(
+    structuredContent.transition_safety_packet?.contract_version,
+    "phase9_transition_safety_packet_v1",
+  );
+  assert.equal(
+    structuredContent.transition_safety_packet?.structured_baseline?.verdict,
+    "ready",
+  );
+  assert.equal(
+    structuredContent.transition_safety_packet?.reconciled_transition_status?.final_verdict,
+    "not_ready",
+  );
+  assert.equal(
+    Object.values(structuredContent.transition_safety_packet?.safety_invariants || {}).every(
+      (status) => status === "pass",
+    ),
+    true,
+  );
   assert.ok(
     visibleAnswer.includes("Final verdict: not_ready"),
     "Selected assess_discharge_readiness path must show final not_ready.",

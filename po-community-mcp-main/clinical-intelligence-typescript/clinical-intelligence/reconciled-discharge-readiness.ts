@@ -5,6 +5,10 @@ import { getHiddenRiskLlmRuntimeDiagnostics } from "../llm/client";
 import { HiddenRiskInput, HiddenRiskOutput } from "./contract";
 import { PHASE0_TRAP_PATIENT_INPUT } from "./fixtures";
 import { surfaceHiddenRisks } from "./surface-hidden-risks";
+import {
+  TransitionSafetyPacket,
+  buildTransitionSafetyPacket,
+} from "./transition-safety-packet";
 
 type CanonicalVerdict = "ready" | "ready_with_caveats" | "not_ready";
 type ResponseMode = "prompt_opinion_slim" | "full";
@@ -21,7 +25,7 @@ const REQUIRED_PROMPT_ONE_SOURCE_LABELS = [
 ] as const;
 
 export type ReconciledDischargeReadinessPayload = {
-  contract_version: "phase8_6_reconciled_readiness_v1";
+  contract_version: "phase9_reconciled_readiness_v1";
   status: "ok" | "error";
   prompt_opinion_visible_answer: string;
   structured_posture: CanonicalVerdict;
@@ -44,12 +48,14 @@ export type ReconciledDischargeReadinessPayload = {
     owner: string;
     action: string;
     timing: string;
+    release_condition: string;
   }>;
   citations: Array<{
     source_label: string;
     locator: string;
     excerpt: string;
   }>;
+  transition_safety_packet: TransitionSafetyPacket;
 };
 
 const buildHiddenRiskInput = (
@@ -123,6 +129,7 @@ const actionForCategory = (category: string): ReconciledDischargeReadinessPayloa
       owner: "Bedside RN and covering clinician",
       action: "Repeat exertional room-air assessment, including ambulation and stair tolerance, before discharge release.",
       timing: "before discharge today",
+      release_condition: "Exertional stability is documented or oxygen requirement is escalated before discharge.",
     };
   }
   if (category === "equipment_and_transport") {
@@ -130,6 +137,7 @@ const actionForCategory = (category: string): ReconciledDischargeReadinessPayloa
       owner: "Case management and oxygen vendor",
       action: "Confirm home oxygen concentrator delivery and equipment readiness before transport.",
       timing: "before discharge today",
+      release_condition: "Home oxygen availability is confirmed before transport or alternate disposition is arranged.",
     };
   }
   if (category === "home_support_and_services") {
@@ -137,12 +145,14 @@ const actionForCategory = (category: string): ReconciledDischargeReadinessPayloa
       owner: "Case management and family contact",
       action: "Confirm overnight support or a safe alternate discharge plan for the third-floor walk-up.",
       timing: "before discharge today",
+      release_condition: "First-night support is documented or discharge remains held.",
     };
   }
   return {
     owner: "Care team",
     action: `Resolve hidden-risk blocker in ${category} before discharge proceeds.`,
     timing: "before discharge today",
+    release_condition: "The blocker is resolved and documented for clinician review.",
   };
 };
 
@@ -241,8 +251,18 @@ export const assessReconciledDischargeReadiness = async (
   const evidenceContains = citations.map((citation) => citation.source_label);
   const status: ReconciledDischargeReadinessPayload["status"] =
     hiddenRisk.status === "error" ? "error" : "ok";
+  const transitionActions = blockerCategories.slice(0, 3).map(actionForCategory);
+  const transitionSafetyPacket = buildTransitionSafetyPacket({
+    input: hiddenRiskInput,
+    hiddenRisk,
+    finalVerdict,
+    blockerCategories,
+    actionRouter: transitionActions,
+    provider: provider.provider,
+    model: provider.model,
+  });
   const payloadWithoutVisibleAnswer = {
-    contract_version: "phase8_6_reconciled_readiness_v1" as const,
+    contract_version: "phase9_reconciled_readiness_v1" as const,
     status,
     structured_posture: deterministic.verdict,
     clinical_intelligence_status: hiddenRisk.status,
@@ -260,8 +280,9 @@ export const assessReconciledDischargeReadiness = async (
     },
     structured_baseline_summary: deterministic.summary,
     contradiction_summary: hiddenRisk.hidden_risk_summary.summary,
-    transition_actions: blockerCategories.slice(0, 3).map(actionForCategory),
+    transition_actions: transitionActions,
     citations,
+    transition_safety_packet: transitionSafetyPacket,
   };
 
   return {

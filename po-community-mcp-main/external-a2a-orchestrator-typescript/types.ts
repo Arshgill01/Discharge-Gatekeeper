@@ -1,3 +1,5 @@
+import { TransitionSafetyPacket } from "../clinical-intelligence-typescript/clinical-intelligence/transition-safety-packet";
+
 export type CanonicalVerdict = "ready" | "ready_with_caveats" | "not_ready";
 
 export type HiddenRiskResult = "hidden_risk_present" | "no_hidden_risk" | "inconclusive";
@@ -242,6 +244,7 @@ export type ReconciliationResult = {
     hidden_risk: HiddenRiskResponse["citations"];
   };
   contradiction_summary: string;
+  transition_safety_packet: TransitionSafetyPacket;
   prompt_payload: {
     prompt_mode: PromptMode;
     headline: string;
