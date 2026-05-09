@@ -332,6 +332,8 @@ const publicEndpoints = {
   externalA2a: getenv("PROMPT_OPINION_A2A_PUBLIC_URL"),
 };
 
+const requestedA2aTimeoutSeconds = Number(getenv("PROMPT_OPINION_A2A_TIMEOUT_SECONDS", "0"));
+
 const runtimeLogFiles = {
   a2a: getenv("PROMPT_OPINION_A2A_LOG", path.join(PO_ROOT, ".pids/external-a2a.log")),
   dischargeGatekeeper: getenv(
@@ -778,7 +780,9 @@ const a2aUpdatePayload = (entry, url) => {
   if (entry.securityType && entry.securityType !== "Open") {
     payload.securityType = entry.securityType;
   }
-  if (entry.timeoutSeconds && entry.timeoutSeconds > 0) {
+  if (requestedA2aTimeoutSeconds > 0) {
+    payload.timeoutSeconds = requestedA2aTimeoutSeconds;
+  } else if (entry.timeoutSeconds && entry.timeoutSeconds > 0) {
     payload.timeoutSeconds = entry.timeoutSeconds;
   }
   if (entry.securitySchemeName && entry.securitySchemeName !== "NONE") {
@@ -885,10 +889,12 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
       entry.displayName === "external A2A orchestrator" ||
       entry.poAgentCard?.name === "external A2A orchestrator",
   );
+  const a2aTimeoutNeedsUpdate =
+    requestedA2aTimeoutSeconds > 0 && Number(beforeA2aEntry?.timeoutSeconds || 0) !== requestedA2aTimeoutSeconds;
   if (
     beforeA2aEntry &&
     publicEndpoints.externalA2a &&
-    normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a)
+    (normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a) || a2aTimeoutNeedsUpdate)
   ) {
     if (!updateRegistrations) {
       updates.push({
@@ -898,6 +904,8 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
         reason: "PROMPT_OPINION_UPDATE_REGISTRATIONS is not enabled",
         before_url: beforeA2aEntry.cardEndpoint,
         expected_url: publicEndpoints.externalA2a,
+        before_timeout_seconds: beforeA2aEntry.timeoutSeconds ?? null,
+        expected_timeout_seconds: requestedA2aTimeoutSeconds || null,
       });
     } else {
       const payload = a2aUpdatePayload(beforeA2aEntry, publicEndpoints.externalA2a);
@@ -911,6 +919,8 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
         action: "updated",
         before_url: beforeA2aEntry.cardEndpoint,
         expected_url: publicEndpoints.externalA2a,
+        before_timeout_seconds: beforeA2aEntry.timeoutSeconds ?? null,
+        expected_timeout_seconds: requestedA2aTimeoutSeconds || null,
         ok: updateResult.ok,
         status: updateResult.status,
       });
@@ -991,6 +1001,7 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
       status: status.status,
       before_url: status.before_url,
       after_url: status.after_url,
+      timeout_seconds: status.kind === "a2a" ? afterA2aEntry?.timeoutSeconds ?? null : undefined,
       current_url_verified: status.current_url_verified,
       connection_check_status: status.connection_check?.status || null,
     })),
