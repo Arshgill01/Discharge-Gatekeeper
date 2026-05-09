@@ -2,6 +2,12 @@ import express from "express";
 import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { getRuntimeConfig } from "./runtime-config";
+import { writeDischargeBlockingTasks } from "./fhir/task-writeback";
+import { writeAuditArtifacts } from "./fhir/audit-writeback";
+import {
+  applyTaskResolutionAndRearbitration,
+  shouldProcessResolutionPrompt,
+} from "./fhir/rearbitration";
 import { buildAgentCard } from "./agent-card";
 import {
   A2AExecutionBinding,
@@ -843,7 +849,15 @@ const runTask = async (
   }
   // --- End hidden-risk cache integration ---
 
-  const reconciled = reconcileOutputs(taskInput, deterministic, hiddenRisk);
+  const reconciledBase = reconcileOutputs(taskInput, deterministic, hiddenRisk);
+  const reconciledAfterResolution = await applyTaskResolutionAndRearbitration(
+    taskInput.prompt,
+    reconciledBase,
+  );
+  const reconciledWithTasks = shouldProcessResolutionPrompt(taskInput.prompt)
+    ? reconciledAfterResolution
+    : await writeDischargeBlockingTasks(reconciledAfterResolution);
+  const reconciled = await writeAuditArtifacts(reconciledWithTasks);
 
   try {
     const synthesized = renderBoundedSynthesis(taskInput, reconciled);

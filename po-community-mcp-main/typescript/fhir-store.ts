@@ -418,6 +418,84 @@ export const writeLocalFhirResource = (
   return clonedResource;
 };
 
+export const readFhirResource = async (
+  fhirServer: string,
+  referenceOrPath: string,
+  options?: {
+    storePath?: string;
+  },
+): Promise<FhirResourceLike | null> => {
+  if (isLocalFhirBaseUrl(fhirServer)) {
+    return readLocalFhirResource(referenceOrPath, options?.storePath);
+  }
+
+  try {
+    const response = await axios.get(`${normalizeBaseUrl(fhirServer)}/${referenceOrPath.replace(/^\/+/, "")}`, {
+      headers: {
+        accept: "application/fhir+json, application/json",
+      },
+    });
+    return response.data as FhirResourceLike;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+export const searchFhirResources = async (
+  fhirServer: string,
+  resourceType: string,
+  searchParameters: string[],
+  options?: {
+    storePath?: string;
+  },
+): Promise<FhirTransactionBundle> => {
+  if (isLocalFhirBaseUrl(fhirServer)) {
+    return searchLocalFhirResources(resourceType, searchParameters, options?.storePath);
+  }
+
+  const response = await axios.get(
+    `${normalizeBaseUrl(fhirServer)}/${resourceType}?${searchParameters.join("&")}`,
+    {
+      headers: {
+        accept: "application/fhir+json, application/json",
+      },
+    },
+  );
+  return response.data as FhirTransactionBundle;
+};
+
+export const upsertFhirResource = async (
+  fhirServer: string,
+  resource: FhirResourceLike,
+  options?: {
+    storePath?: string;
+  },
+): Promise<FhirResourceLike> => {
+  if (isLocalFhirBaseUrl(fhirServer)) {
+    return writeLocalFhirResource(resource, {
+      storePath: options?.storePath,
+      fhirServer,
+    });
+  }
+
+  const resourceType = getResourceType(resource);
+  const resourceId = getResourceId(resource);
+  const response = await axios.put(
+    `${normalizeBaseUrl(fhirServer)}/${resourceType}/${resourceId}`,
+    resource,
+    {
+      headers: {
+        "content-type": "application/fhir+json",
+        accept: "application/fhir+json, application/json",
+      },
+    },
+  );
+  return response.data as FhirResourceLike;
+};
+
 export const seedRemoteFhirBundle = async (
   fhirServer: string,
   bundle: FhirTransactionBundle,

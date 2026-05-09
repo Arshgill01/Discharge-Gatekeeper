@@ -103,6 +103,24 @@ const compactVisibleAction = (value: string, maxLength: number = 110): string =>
   return condensed.length > maxLength ? `${condensed.slice(0, maxLength - 3).trimEnd()}...` : condensed;
 };
 
+const buildWrittenTaskLine = (reconciled: ReconciliationResult): string => {
+  const taskReferences = reconciled.transition_safety_packet.fhir_resources_written
+    .filter((resource) => resource.resource_type === "Task")
+    .map((resource) => resource.reference);
+  return taskReferences.length > 0
+    ? `Written FHIR Tasks: ${taskReferences.join(" | ")}.`
+    : "Written FHIR Tasks: none.";
+};
+
+const buildAuditArtifactLine = (reconciled: ReconciliationResult): string => {
+  const auditReferences = reconciled.transition_safety_packet.fhir_resources_written
+    .filter((resource) => resource.resource_type === "AuditEvent" || resource.resource_type === "Provenance")
+    .map((resource) => resource.reference);
+  return auditReferences.length > 0
+    ? `Written audit artifacts: ${auditReferences.join(" | ")}.`
+    : "Written audit artifacts: none.";
+};
+
 const buildImpactedCategories = (reconciled: ReconciliationResult): string[] => {
   const categories = reconciled.hidden_risk?.status === "ok" &&
       reconciled.hidden_risk.hidden_risk_findings.length > 0
@@ -189,17 +207,44 @@ const renderPrompt1Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
+  if (reconciled.transition_safety_packet.resolution_evidence.length > 0) {
+    const previousStatusMatch = reconciled.contradiction_summary.match(/Previous status ([a-z_]+)/i);
+    const resolvedGates = [
+      ...new Set(
+        reconciled.transition_safety_packet.resolution_evidence.flatMap((item) => item.supports),
+      ),
+    ];
+    const remainingGates = reconciled.transition_safety_packet.reconciled_transition_status.blocker_categories;
+    return [
+      "DISCHARGE STATUS UPDATE",
+      "",
+      `Previous status: ${(previousStatusMatch?.[1] ?? "unknown").toUpperCase()}`,
+      `Updated status: ${reconciled.final_verdict.toUpperCase()}`,
+      `Resolved gates: ${resolvedGates.length > 0 ? resolvedGates.join(", ") : "none"}`,
+      `Remaining unresolved gates: ${remainingGates.length > 0 ? remainingGates.join(", ") : "none"}`,
+      `Resolution summary: ${reconciled.transition_safety_packet.reconciled_transition_status.why_changed}`,
+      `Resolution evidence: ${reconciled.transition_safety_packet.resolution_evidence
+        .map((item) => item.reference)
+        .join(" | ") || "none"}`,
+      buildWrittenTaskLine(reconciled),
+      buildAuditArtifactLine(reconciled),
+      "This is assistive discharge decision support and does not replace clinician authority.",
+    ].join("\n");
+  }
+
   const categories = promptPayload.impacted_blocker_categories.slice(0, 3).join(", ") || "none";
   const evidenceLine = promptPayload.evidence_anchors.length > 0
     ? `Cited evidence: ${promptPayload.evidence_anchors.map(toEvidenceAnchor).join(" | ")}.`
     : "No additional hidden-risk citation anchors were provided.";
   const rawReferenceLine = buildRawFhirReferenceLine(promptPayload.evidence_anchors);
+  const taskLine = buildWrittenTaskLine(reconciled);
+  const auditLine = buildAuditArtifactLine(reconciled);
   const downgradeLine = reconciled.last_disposition_downgrade_by === "clinical_intelligence_mcp"
     ? "Clinical Intelligence MCP caused the last disposition downgrade."
     : reconciled.last_disposition_downgrade_by === "discharge_gatekeeper_mcp"
     ? "Discharge Gatekeeper MCP remains the last downgrade source."
     : "No downgrade beyond the deterministic baseline was required.";
-  return `${promptPayload.headline} Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} ${rawReferenceLine} This is assistive discharge decision support and does not replace clinician authority.`;
+  return `${promptPayload.headline} Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} ${rawReferenceLine} ${taskLine} ${auditLine} This is assistive discharge decision support and does not replace clinician authority.`;
 };
 
 const renderPrompt2Narrative = (
@@ -221,6 +266,8 @@ const renderPrompt2Narrative = (
     "Controlling evidence:",
     ...evidenceLines,
     buildRawFhirReferenceLine(promptPayload.evidence_anchors),
+    buildWrittenTaskLine(reconciled),
+    buildAuditArtifactLine(reconciled),
     ...(reconciled.manual_review_required
       ? ["Manual clinician review is required before discharge proceeds."]
       : []),
@@ -269,6 +316,8 @@ const renderPrompt3Narrative = (
     "Evidence:",
     ...evidenceLines,
     buildRawFhirReferenceLine(promptPayload.evidence_anchors),
+    buildWrittenTaskLine(reconciled),
+    buildAuditArtifactLine(reconciled),
     ...(clinicianLine ? ["", clinicianLine] : []),
     ...(patientLine ? [patientLine] : []),
     `Final posture: ${reconciled.final_verdict.toUpperCase()}`,

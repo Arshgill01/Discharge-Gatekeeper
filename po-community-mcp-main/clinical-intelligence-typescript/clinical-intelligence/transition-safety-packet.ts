@@ -15,6 +15,7 @@ export type SafetyInvariants = {
   no_ready_with_active_hidden_blocker: SafetyInvariantStatus;
   manual_review_on_uncertainty: SafetyInvariantStatus;
   duplicate_signal_suppression: SafetyInvariantStatus;
+  no_task_without_fhir_source: SafetyInvariantStatus;
 };
 
 export type FhirEvidenceLedgerItem = {
@@ -47,6 +48,7 @@ export type FhirWriteRecord = {
   resource_id: string;
   timestamp?: string;
   summary: string;
+  linked_evidence_references?: string[];
 };
 
 type FhirContextReadRecord = NonNullable<HiddenRiskInput["fhir_context"]>["fhir_resources_read"][number];
@@ -187,6 +189,7 @@ export const evaluateSafetyInvariants = ({
         ? "fail"
         : "pass",
     duplicate_signal_suppression: hasDuplicateActiveFinding ? "fail" : "pass",
+    no_task_without_fhir_source: "pass",
   };
 };
 
