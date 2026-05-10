@@ -80,7 +80,43 @@ const buildEvidenceAnchors = (
     return selectDistinctEvidenceAnchors(hiddenRiskAnchors).slice(0, promptMode === "prompt_2" ? 3 : 2);
   }
 
-  return selectDistinctEvidenceAnchors(deterministicAnchors).slice(0, 2);
+  if (deterministicAnchors.length > 0) {
+    return selectDistinctEvidenceAnchors(deterministicAnchors).slice(0, 2);
+  }
+
+  const fhirReadAnchors = (reconciled.deterministic.fhir_context?.fhir_resources_read ?? [])
+    .slice(0, 2)
+    .map((resource, index) => ({
+      id: `fhir-read-${index + 1}`,
+      source: "deterministic" as const,
+      source_label: resource.summary,
+      detail: resource.summary,
+      fhir_reference: resource.reference,
+      fhir_resource_type: resource.resource_type,
+      fhir_resource_id: resource.resource_id,
+    }));
+
+  if (fhirReadAnchors.length > 0) {
+    return selectDistinctEvidenceAnchors(fhirReadAnchors);
+  }
+
+  const patientReference = reconciled.deterministic.fhir_context?.patient_reference;
+  if (!patientReference) {
+    return [];
+  }
+
+  const [resourceType, resourceId] = patientReference.split("/");
+  return [
+    {
+      id: "patient-reference-fallback",
+      source: "deterministic" as const,
+      source_label: patientReference,
+      detail: patientReference,
+      fhir_reference: patientReference,
+      fhir_resource_type: resourceType,
+      fhir_resource_id: resourceId,
+    },
+  ];
 };
 
 const buildRawFhirReferenceLine = (
@@ -247,7 +283,7 @@ const renderPrompt1Narrative = (
     : reconciled.last_disposition_downgrade_by === "discharge_gatekeeper_mcp"
     ? "Discharge Gatekeeper MCP remains the last downgrade source."
     : "No downgrade beyond the deterministic baseline was required.";
-  return `${promptPayload.headline} Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} ${rawReferenceLine} ${taskLine} ${auditLine} This is assistive discharge decision support and does not replace clinician authority.`;
+  return `${promptPayload.headline} Hidden-risk result: ${reconciled.hidden_risk_result}. Hidden-risk review status: ${reconciled.hidden_risk_run_status}. Reconciliation summary: ${promptPayload.reconciliation_summary} Top blocker categories: ${categories}. ${downgradeLine} ${evidenceLine} ${rawReferenceLine} ${taskLine} ${auditLine} This is assistive discharge decision support and does not replace clinician authority.`;
 };
 
 const renderPrompt2Narrative = (
