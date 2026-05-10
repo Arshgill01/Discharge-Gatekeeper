@@ -132,12 +132,6 @@ app.post("/mcp", async (req, res) => {
                   name: "patient/CarePlan.rs",
                 },
                 {
-                  name: "patient/PractitionerRole.rs",
-                },
-                {
-                  name: "patient/Task.rs",
-                },
-                {
                   name: "patient/Provenance.rs",
                 },
                 {

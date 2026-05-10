@@ -138,8 +138,6 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
               { name: "patient/DocumentReference.rs" },
               { name: "patient/Encounter.rs" },
               { name: "patient/CarePlan.rs" },
-              { name: "patient/PractitionerRole.rs" },
-              { name: "patient/Task.rs" },
               { name: "patient/Provenance.rs" },
               { name: "patient/AuditEvent.rs" },
             ],
