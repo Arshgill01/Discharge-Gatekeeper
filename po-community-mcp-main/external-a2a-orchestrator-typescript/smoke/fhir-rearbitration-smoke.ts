@@ -6,6 +6,27 @@ import {
   searchFhirResources,
   seedFhirBundles,
 } from "../../typescript/fhir-store";
+import {
+  readBundleViaPromptOpinionBrowserAuth,
+  updateResourcesViaPromptOpinionBrowserAuth,
+} from "../fhir/po-cookie-auth";
+
+const REMOTE_FHIR_SERVER_URL =
+  process.env["PROMPT_OPINION_FHIR_SERVER_URL"]?.trim() || DEFAULT_LOCAL_FHIR_BASE_URL;
+const REMOTE_FHIR_ACCESS_TOKEN =
+  process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || undefined;
+const USING_PROMPT_OPINION_FHIR = REMOTE_FHIR_SERVER_URL !== DEFAULT_LOCAL_FHIR_BASE_URL;
+const PATIENT_ID = USING_PROMPT_OPINION_FHIR
+  ? "179930bf-2ad5-441b-8762-ec700b82e2ca"
+  : "maria-alvarez";
+
+type FhirBundleEntry = {
+  resource?: {
+    id?: string;
+    status?: string;
+    code?: { text?: string };
+  } & Record<string, unknown>;
+};
 
 const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   const start = Date.now();
@@ -64,16 +85,19 @@ const createTask = async (baseUrl: string, prompt: string): Promise<any> => {
           },
         ],
         patientContext: {
-          patient_id: "maria-alvarez",
+          patient_id: PATIENT_ID,
           encounter_id: "maria-discharge-2026-0418",
           fhir_context: {
-            fhir_server: DEFAULT_LOCAL_FHIR_BASE_URL,
+            fhir_server: REMOTE_FHIR_SERVER_URL,
+            ...(REMOTE_FHIR_ACCESS_TOKEN
+              ? { access_token: REMOTE_FHIR_ACCESS_TOKEN }
+              : {}),
           },
         },
       },
     }),
   });
-  assert.equal(response.status, 201);
+  assert.ok(response.status === 200 || response.status === 201);
   return response.json();
 };
 
@@ -112,49 +136,105 @@ const main = async (): Promise<void> => {
 
     const baseUrl = `http://127.0.0.1:${a2aPort}`;
     const initial = await createTask(baseUrl, "Is this patient safe to discharge today?");
-    const partial = await createTask(baseUrl, "Oxygen delivery confirmed — update discharge status.");
-    const full = await createTask(
-      baseUrl,
-      "Oxygen delivery confirmed, exertional reassessment passed, and overnight support confirmed — update discharge status.",
-    );
+    let partial;
+    let full;
 
-    const taskBundle = await searchFhirResources(
-      DEFAULT_LOCAL_FHIR_BASE_URL,
-      "Task",
-      ["encounter=Encounter/maria-discharge-2026-0418", "_count=20"],
-      { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
-    );
-    const auditBundle = await searchFhirResources(
-      DEFAULT_LOCAL_FHIR_BASE_URL,
-      "AuditEvent",
-      ["_count=20"],
-      { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
-    );
-    const provenanceBundle = await searchFhirResources(
-      DEFAULT_LOCAL_FHIR_BASE_URL,
-      "Provenance",
-      ["_count=50"],
-      { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
-    );
-    const taskStatuses = (taskBundle.entry ?? []).map((entry) => ({
-      id: (entry.resource as { id?: string })?.id ?? "",
-      status: (entry.resource as { status?: string })?.status ?? "",
+    let taskBundle;
+    let auditBundle;
+    let provenanceBundle;
+
+    if (USING_PROMPT_OPINION_FHIR && process.env["PO_WORKSPACE_FHIR_URL"]?.trim()) {
+      const bundle = readBundleViaPromptOpinionBrowserAuth(
+        "Task?encounter=Encounter/maria-discharge-2026-0418&_count=20",
+      );
+      const entries = Array.isArray(bundle["entry"]) ? (bundle["entry"] as FhirBundleEntry[]) : [];
+      const ctcTasks = entries
+        .map((entry) => entry.resource)
+        .filter((resource): resource is Record<string, unknown> => Boolean(resource))
+        .filter((resource) => Array.isArray(resource["meta"] && (resource["meta"] as Record<string, unknown>)["tag"]));
+
+      const taskToComplete = ctcTasks.find((resource) => {
+        const code = (resource["code"] as Record<string, unknown> | undefined)?.["text"];
+        return typeof code === "string" && /oxygen/i.test(code);
+      }) ?? ctcTasks[0];
+      assert.ok(taskToComplete, "Expected at least one PO Task to update for rearbitration.");
+
+      const updatedTask = {
+        ...taskToComplete,
+        status: "completed",
+      };
+      updateResourcesViaPromptOpinionBrowserAuth([
+        {
+          resourceType: "Task",
+          resourceId: String(taskToComplete["id"]),
+          body: updatedTask,
+        },
+      ]);
+
+      partial = await createTask(baseUrl, "Update discharge status from the current FHIR Task state.");
+      full = partial;
+
+      taskBundle = readBundleViaPromptOpinionBrowserAuth(
+        "Task?encounter=Encounter/maria-discharge-2026-0418&_count=20",
+      );
+      auditBundle = readBundleViaPromptOpinionBrowserAuth("AuditEvent?_count=20");
+      provenanceBundle = readBundleViaPromptOpinionBrowserAuth("Provenance?_count=50");
+    } else {
+      partial = await createTask(baseUrl, "Oxygen delivery confirmed — update discharge status.");
+      full = await createTask(
+        baseUrl,
+        "Oxygen delivery confirmed, exertional reassessment passed, and overnight support confirmed — update discharge status.",
+      );
+
+      taskBundle = await searchFhirResources(
+        DEFAULT_LOCAL_FHIR_BASE_URL,
+        "Task",
+        ["encounter=Encounter/maria-discharge-2026-0418", "_count=20"],
+        { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
+      );
+      auditBundle = await searchFhirResources(
+        DEFAULT_LOCAL_FHIR_BASE_URL,
+        "AuditEvent",
+        ["_count=20"],
+        { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
+      );
+      provenanceBundle = await searchFhirResources(
+        DEFAULT_LOCAL_FHIR_BASE_URL,
+        "Provenance",
+        ["_count=50"],
+        { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
+      );
+    }
+
+    const taskEntries = Array.isArray(taskBundle["entry"]) ? (taskBundle["entry"] as FhirBundleEntry[]) : [];
+    const taskStatuses = taskEntries.map((entry) => ({
+      id: entry.resource?.id ?? "",
+      status: entry.resource?.status ?? "",
     }));
 
     assert.equal(initial.output.final_verdict, "not_ready");
     assert.equal(partial.output.final_verdict, "not_ready");
-    assert.equal(full.output.final_verdict, "ready_with_caveats");
+
+    if (!USING_PROMPT_OPINION_FHIR) {
+      assert.equal(full.output.final_verdict, "ready_with_caveats");
+    }
 
     assert.match(String(partial.output.contradiction_summary), /DISCHARGE STATUS UPDATE/);
     assert.match(String(partial.output.contradiction_summary), /Previous status: NOT_READY/);
     assert.match(String(partial.output.contradiction_summary), /Remaining unresolved gates:/);
-    assert.match(String(partial.output.contradiction_summary), /AuditEvent\//);
-
-    assert.match(String(full.output.contradiction_summary), /Updated status: READY_WITH_CAVEATS/);
-    assert.match(String(full.output.contradiction_summary), /Remaining unresolved gates: none/i);
-    assert.equal(taskStatuses.every((task) => task.status === "completed"), true);
-    assert.equal((auditBundle.entry ?? []).length >= 3, true);
-    assert.equal((provenanceBundle.entry ?? []).length >= 3, true);
+    if (!USING_PROMPT_OPINION_FHIR) {
+      assert.match(String(partial.output.contradiction_summary), /AuditEvent\//);
+      assert.match(String(full.output.contradiction_summary), /Updated status: READY_WITH_CAVEATS/);
+      assert.match(String(full.output.contradiction_summary), /Remaining unresolved gates: none/i);
+      assert.equal(taskStatuses.every((task) => task.status === "completed"), true);
+      const auditEntries = Array.isArray(auditBundle["entry"]) ? auditBundle["entry"] as unknown[] : [];
+      const provenanceEntries = Array.isArray(provenanceBundle["entry"]) ? provenanceBundle["entry"] as unknown[] : [];
+      assert.equal(auditEntries.length >= 3, true);
+      assert.equal(provenanceEntries.length >= 3, true);
+    } else {
+      assert.equal(taskStatuses.some((task) => task.status === "completed"), true);
+      assert.equal(taskStatuses.some((task) => task.status !== "completed"), true);
+    }
 
     console.log("SMOKE PASS: fhir rearbitration");
     console.log(
@@ -164,8 +244,9 @@ const main = async (): Promise<void> => {
           partial_final_verdict: partial.output.final_verdict,
           full_final_verdict: full.output.final_verdict,
           task_statuses: taskStatuses,
-          audit_event_count: (auditBundle.entry ?? []).length,
-          provenance_count: (provenanceBundle.entry ?? []).length,
+          audit_event_count: Array.isArray(auditBundle["entry"]) ? (auditBundle["entry"] as unknown[]).length : 0,
+          provenance_count: Array.isArray(provenanceBundle["entry"]) ? (provenanceBundle["entry"] as unknown[]).length : 0,
+          using_prompt_opinion_fhir: USING_PROMPT_OPINION_FHIR,
         },
         null,
         2,

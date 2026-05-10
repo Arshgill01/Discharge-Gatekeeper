@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { upsertFhirResource } from "../../typescript/fhir-store";
+import {
+  createFhirResource,
+  isLocalFhirBaseUrl,
+  upsertFhirResource,
+} from "../../typescript/fhir-store";
 import { ReconciliationResult } from "../types";
+import {
+  createResourcesViaPromptOpinionBrowserAuth,
+  isPromptOpinionBrowserAuthEnabled,
+} from "./po-cookie-auth";
 
 const CTC_TAG_SYSTEM = "https://care-transitions-command.local/tags";
 
@@ -26,13 +34,19 @@ export const writeAuditArtifacts = async (
 
   const taskWrites = packet.fhir_resources_written.filter((resource) => resource.resource_type === "Task");
   const provenanceWrites: typeof packet.fhir_resources_written = [];
+  const accessToken = process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || undefined;
+  const browserAuthProvenancePayloads: Array<{
+    recorded: string;
+    taskReference: string;
+    linkedEvidenceReferences: string[] | undefined;
+    payload: Record<string, unknown>;
+  }> = [];
 
   for (const taskWrite of taskWrites) {
     const provenanceId = `ctc-provenance-${taskWrite.resource_id}-${packet.trace.task_id ?? randomUUID()}`;
     const recorded = new Date().toISOString();
-    await upsertFhirResource(fhirServer, {
+    const provenanceResource: Record<string, unknown> = {
       resourceType: "Provenance",
-      id: provenanceId,
       recorded,
       target: [{ reference: taskWrite.reference }],
       agent: [
@@ -63,22 +77,71 @@ export const writeAuditArtifacts = async (
           },
         ],
       },
-    });
+    };
+
+    if (isPromptOpinionBrowserAuthEnabled()) {
+      browserAuthProvenancePayloads.push({
+        recorded,
+        taskReference: taskWrite.reference,
+        linkedEvidenceReferences: taskWrite.linked_evidence_references,
+        payload: provenanceResource,
+      });
+      continue;
+    }
+
+    if (isLocalFhirBaseUrl(fhirServer)) {
+      provenanceResource["id"] = provenanceId;
+    }
+
+    const writtenProvenance = isLocalFhirBaseUrl(fhirServer)
+      ? await upsertFhirResource(fhirServer, provenanceResource, { accessToken })
+      : await createFhirResource(fhirServer, provenanceResource, { accessToken });
+    const writtenProvenanceId = String(writtenProvenance["id"] ?? provenanceId);
     provenanceWrites.push({
-      reference: `Provenance/${provenanceId}`,
+      reference: `Provenance/${writtenProvenanceId}`,
       resource_type: "Provenance",
-      resource_id: provenanceId,
+      resource_id: writtenProvenanceId,
       timestamp: recorded,
       summary: `Provenance for ${taskWrite.reference}`,
       linked_evidence_references: taskWrite.linked_evidence_references,
     });
   }
 
+  if (browserAuthProvenancePayloads.length > 0) {
+    const writtenProvenanceResources = createResourcesViaPromptOpinionBrowserAuth(
+      browserAuthProvenancePayloads.map((item) => item.payload),
+    );
+    writtenProvenanceResources.forEach((resource, index) => {
+      const input = browserAuthProvenancePayloads[index];
+      const writtenProvenanceId = String(resource["id"] ?? randomUUID());
+      provenanceWrites.push({
+        reference: `Provenance/${writtenProvenanceId}`,
+        resource_type: "Provenance",
+        resource_id: writtenProvenanceId,
+        timestamp: input.recorded,
+        summary: `Provenance for ${input.taskReference}`,
+        linked_evidence_references: input.linkedEvidenceReferences,
+      });
+    });
+  }
+
   const auditId = buildAuditId(packet.patient.encounter_id, packet.trace.task_id);
   const occurredAt = new Date().toISOString();
-  await upsertFhirResource(fhirServer, {
+  if (isPromptOpinionBrowserAuthEnabled()) {
+    return {
+      ...reconciled,
+      transition_safety_packet: {
+        ...packet,
+        fhir_resources_written: [
+          ...packet.fhir_resources_written,
+          ...provenanceWrites,
+        ],
+      },
+    };
+  }
+
+  const auditResource: Record<string, unknown> = {
     resourceType: "AuditEvent",
-    id: auditId,
     type: {
       text: "CareTransitionsCommand discharge arbitration",
     },
@@ -127,7 +190,16 @@ export const writeAuditArtifacts = async (
         },
       ],
     },
-  });
+  };
+
+  if (isLocalFhirBaseUrl(fhirServer)) {
+    auditResource["id"] = auditId;
+  }
+
+  const writtenAudit = isLocalFhirBaseUrl(fhirServer)
+    ? await upsertFhirResource(fhirServer, auditResource, { accessToken })
+    : await createFhirResource(fhirServer, auditResource, { accessToken });
+  const writtenAuditId = String(writtenAudit["id"] ?? auditId);
 
   return {
     ...reconciled,
@@ -137,9 +209,9 @@ export const writeAuditArtifacts = async (
         ...packet.fhir_resources_written,
         ...provenanceWrites,
         {
-          reference: `AuditEvent/${auditId}`,
+          reference: `AuditEvent/${writtenAuditId}`,
           resource_type: "AuditEvent",
-          resource_id: auditId,
+          resource_id: writtenAuditId,
           timestamp: occurredAt,
           summary: `Audit event for verdict ${reconciled.final_verdict}`,
           linked_evidence_references: packet.controlling_evidence.map((item) => item.reference),

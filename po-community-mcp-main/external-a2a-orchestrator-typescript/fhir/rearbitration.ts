@@ -1,5 +1,9 @@
 import { searchFhirResources, upsertFhirResource } from "../../typescript/fhir-store";
 import { ReconciliationResult } from "../types";
+import {
+  isPromptOpinionBrowserAuthEnabled,
+  readBundleViaPromptOpinionBrowserAuth,
+} from "./po-cookie-auth";
 
 type TaskResource = {
   resourceType: "Task";
@@ -127,12 +131,19 @@ export const applyTaskResolutionAndRearbitration = async (
     return reconciled;
   }
 
-  const taskBundle = await searchFhirResources(
-    fhirServer,
-    "Task",
-    [`encounter=${encounterReference}`, "_count=50"],
-  );
-  const tasks = (taskBundle.entry ?? [])
+  const taskBundle = isPromptOpinionBrowserAuthEnabled()
+    ? readBundleViaPromptOpinionBrowserAuth(
+        `Task?encounter=${encodeURIComponent(encounterReference)}&_count=50`,
+      )
+    : await searchFhirResources(
+        fhirServer,
+        "Task",
+        [`encounter=${encounterReference}`, "_count=50"],
+      );
+  const taskEntries = Array.isArray(taskBundle["entry"])
+    ? (taskBundle["entry"] as Array<{ resource?: unknown }>)
+    : [];
+  const tasks = taskEntries
     .map((entry) => toTaskResource(entry.resource))
     .filter((task): task is TaskResource => Boolean(task));
 
@@ -142,10 +153,22 @@ export const applyTaskResolutionAndRearbitration = async (
 
   const completedWrites: typeof packet.fhir_resources_written = [];
   const completedCategories: string[] = [];
+  const useBrowserCookieReadOnly = isPromptOpinionBrowserAuthEnabled();
 
   for (const task of tasks) {
     const category = taskCategory(task);
-    if (!category || task.status === "completed" || !shouldCompleteTask(category, taskPrompt)) {
+    if (!category) {
+      continue;
+    }
+
+    if (useBrowserCookieReadOnly) {
+      if (task.status === "completed") {
+        completedCategories.push(category);
+      }
+      continue;
+    }
+
+    if (task.status === "completed" || !shouldCompleteTask(category, taskPrompt)) {
       continue;
     }
 
@@ -174,12 +197,17 @@ export const applyTaskResolutionAndRearbitration = async (
     completedCategories.push(category);
   }
 
-  const refreshedBundle = await searchFhirResources(
-    fhirServer,
-    "Task",
-    [`encounter=${encounterReference}`, "_count=50"],
-  );
-  const refreshedTasks = (refreshedBundle.entry ?? [])
+  const refreshedBundle = useBrowserCookieReadOnly
+    ? taskBundle
+    : await searchFhirResources(
+        fhirServer,
+        "Task",
+        [`encounter=${encounterReference}`, "_count=50"],
+      );
+  const refreshedEntries = Array.isArray(refreshedBundle["entry"])
+    ? (refreshedBundle["entry"] as Array<{ resource?: unknown }>)
+    : [];
+  const refreshedTasks = refreshedEntries
     .map((entry) => toTaskResource(entry.resource))
     .filter((task): task is TaskResource => Boolean(task));
 

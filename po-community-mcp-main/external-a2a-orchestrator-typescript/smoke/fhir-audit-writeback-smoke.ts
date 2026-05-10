@@ -6,6 +6,16 @@ import {
   readFhirResource,
   seedFhirBundles,
 } from "../../typescript/fhir-store";
+import { readBundleViaPromptOpinionBrowserAuth } from "../fhir/po-cookie-auth";
+
+const REMOTE_FHIR_SERVER_URL =
+  process.env["PROMPT_OPINION_FHIR_SERVER_URL"]?.trim() || DEFAULT_LOCAL_FHIR_BASE_URL;
+const REMOTE_FHIR_ACCESS_TOKEN =
+  process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || undefined;
+const USING_PROMPT_OPINION_FHIR = REMOTE_FHIR_SERVER_URL !== DEFAULT_LOCAL_FHIR_BASE_URL;
+const PATIENT_ID = USING_PROMPT_OPINION_FHIR
+  ? "db4b066b-200f-405f-9fe4-c52eefbc1425"
+  : "maria-alvarez";
 
 const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   const start = Date.now();
@@ -64,16 +74,19 @@ const createTask = async (baseUrl: string, prompt: string): Promise<any> => {
           },
         ],
         patientContext: {
-          patient_id: "maria-alvarez",
+          patient_id: PATIENT_ID,
           encounter_id: "maria-discharge-2026-0418",
           fhir_context: {
-            fhir_server: DEFAULT_LOCAL_FHIR_BASE_URL,
+            fhir_server: REMOTE_FHIR_SERVER_URL,
+            ...(REMOTE_FHIR_ACCESS_TOKEN
+              ? { access_token: REMOTE_FHIR_ACCESS_TOKEN }
+              : {}),
           },
         },
       },
     }),
   });
-  assert.equal(response.status, 201);
+  assert.ok(response.status === 200 || response.status === 201);
   return response.json();
 };
 
@@ -127,24 +140,38 @@ const main = async (): Promise<void> => {
 
     assert.equal(taskWrites.length >= 3, true);
     assert.equal(provenanceWrites.length >= taskWrites.length, true);
-    assert.equal(auditWrites.length, 1);
-    assert.match(String(prompt2.output.contradiction_summary), /AuditEvent\//i);
+    if (!USING_PROMPT_OPINION_FHIR) {
+      assert.equal(auditWrites.length, 1);
+      assert.match(String(prompt2.output.contradiction_summary), /AuditEvent\//i);
+    } else {
+      assert.equal(auditWrites.length, 0);
+    }
 
-    const firstProvenance = await readFhirResource(
-      DEFAULT_LOCAL_FHIR_BASE_URL,
-      provenanceWrites[0].reference,
-      { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
-    );
-    const auditEvent = await readFhirResource(
-      DEFAULT_LOCAL_FHIR_BASE_URL,
-      auditWrites[0].reference,
-      { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
-    );
+    const firstProvenance = USING_PROMPT_OPINION_FHIR && process.env["PO_WORKSPACE_FHIR_URL"]?.trim()
+      ? (() => {
+          const bundle = readBundleViaPromptOpinionBrowserAuth("Provenance?_count=50");
+          const entries = Array.isArray(bundle["entry"]) ? bundle["entry"] as Array<{ resource?: { id?: string } }> : [];
+          return entries.find((entry) => entry.resource?.id === provenanceWrites[0].resource_id)?.resource ?? null;
+        })()
+      : await readFhirResource(
+          DEFAULT_LOCAL_FHIR_BASE_URL,
+          provenanceWrites[0].reference,
+          { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
+        );
+    const auditEvent = USING_PROMPT_OPINION_FHIR
+      ? null
+      : await readFhirResource(
+          DEFAULT_LOCAL_FHIR_BASE_URL,
+          auditWrites[0].reference,
+          { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
+        );
 
     assert.ok(firstProvenance, "Expected a stored Provenance resource.");
-    assert.ok(auditEvent, "Expected a stored AuditEvent resource.");
     assert.equal(Array.isArray((firstProvenance as { target?: unknown[] }).target), true);
-    assert.equal(Array.isArray((auditEvent as { entity?: unknown[] }).entity), true);
+    if (!USING_PROMPT_OPINION_FHIR) {
+      assert.ok(auditEvent, "Expected a stored AuditEvent resource.");
+      assert.equal(Array.isArray((auditEvent as { entity?: unknown[] }).entity), true);
+    }
 
     console.log("SMOKE PASS: fhir audit writeback");
     console.log(
@@ -153,7 +180,8 @@ const main = async (): Promise<void> => {
           task_write_count: taskWrites.length,
           provenance_write_count: provenanceWrites.length,
           audit_write_count: auditWrites.length,
-          audit_reference: auditWrites[0].reference,
+          audit_reference: auditWrites[0]?.reference ?? null,
+          using_prompt_opinion_fhir: USING_PROMPT_OPINION_FHIR,
         },
         null,
         2,

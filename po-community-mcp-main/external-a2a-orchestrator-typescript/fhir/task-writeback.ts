@@ -1,20 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
-import path from "node:path";
 import {
   createFhirResource,
   isLocalFhirBaseUrl,
   upsertFhirResource,
 } from "../../typescript/fhir-store";
 import { ReconciliationResult } from "../types";
-
-const COOKIE_AUTH_FHIR_REQUEST_SCRIPT = path.resolve(
-  __dirname,
-  "..",
-  "..",
-  "scripts",
-  "po-cookie-auth-fhir-request.mjs",
-);
+import {
+  createResourcesViaPromptOpinionBrowserAuth,
+  isPromptOpinionBrowserAuthEnabled,
+} from "./po-cookie-auth";
 
 const CTC_TAG_SYSTEM = "https://care-transitions-command.local/tags";
 
@@ -90,64 +84,6 @@ const uniqueReasonReferences = (
   references: Array<string | undefined>,
 ): string[] => {
   return [...new Set(references.filter((reference): reference is string => Boolean(reference)))];
-};
-
-type BrowserCookieWriteResult = {
-  method: string;
-  url: string;
-  status: number;
-  ok: boolean;
-  headers: Record<string, string>;
-  text: string;
-};
-
-const createResourcesViaPromptOpinionBrowserAuth = (
-  resources: Record<string, unknown>[],
-): Record<string, unknown>[] => {
-  const workspaceFhirUrl = process.env["PO_WORKSPACE_FHIR_URL"]?.trim();
-  if (!workspaceFhirUrl || resources.length === 0) {
-    return [];
-  }
-
-  const operations = resources.map((resource) => ({
-    method: "POST",
-    url: `${workspaceFhirUrl}/${String(resource["resourceType"] ?? "")}`,
-    body: resource,
-  }));
-
-  const child = spawnSync(
-    "npx",
-    ["--yes", "--package", "playwright", "node", COOKIE_AUTH_FHIR_REQUEST_SCRIPT],
-    {
-      env: {
-        ...process.env,
-        PO_WORKSPACE_FHIR_URL: workspaceFhirUrl,
-        PO_FHIR_OPERATIONS_JSON: JSON.stringify(operations),
-      },
-      encoding: "utf8",
-      maxBuffer: 10 * 1024 * 1024,
-    },
-  );
-
-  if (child.status !== 0) {
-    throw new Error(
-      `[po-cookie-auth-fhir-write] ${child.stderr || child.stdout || `helper exited ${child.status}`}`,
-    );
-  }
-
-  const results = JSON.parse(child.stdout || "[]") as BrowserCookieWriteResult[];
-  if (results.length !== resources.length) {
-    throw new Error("[po-cookie-auth-fhir-write] helper did not return the expected number of responses.");
-  }
-
-  return results.map((result) => {
-    if (!result.ok) {
-      throw new Error(
-        `[po-cookie-auth-fhir-write] ${result.method} ${result.url} failed with status ${result.status}: ${result.text}`,
-      );
-    }
-    return JSON.parse(result.text) as Record<string, unknown>;
-  });
 };
 
 export const writeDischargeBlockingTasks = async (
@@ -248,7 +184,7 @@ export const writeDischargeBlockingTasks = async (
       };
     }
 
-    const useBrowserCookieAuth = Boolean(process.env["PO_WORKSPACE_FHIR_URL"]?.trim());
+    const useBrowserCookieAuth = isPromptOpinionBrowserAuthEnabled();
 
     if (useBrowserCookieAuth) {
       const browserTaskResource: Record<string, unknown> = {
