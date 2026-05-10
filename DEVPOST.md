@@ -116,7 +116,7 @@ For local demo mode, Prompt Opinion patient UUIDs for Daniel, Maria, and Olivia 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
 - Prompt Opinion historical proof bundle: `output/prompt-opinion-e2e/runs/`
 - held-out patients: Daniel Brooks, Olivia Chen, Eleanor Singh, Maria Alvarez
-- live Prompt Opinion workspace reused: `019da8ef-cb09-71b0-9d7e-4e11591d55db`
+- live Prompt Opinion workspace reused from the existing demo workspace
 
 Daniel is the held-out live demo patient.
 Olivia is the clean control.

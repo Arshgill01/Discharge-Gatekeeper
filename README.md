@@ -38,7 +38,7 @@ flowchart TD
 
 ### Prompt Opinion Patient Scope
 
-- The judged direct lane uses Prompt Opinion Patient Scope with the existing workspace `019da8ef-cb09-71b0-9d7e-4e11591d55db`.
+- The judged direct lane uses Prompt Opinion Patient Scope with the existing workspace selected for the final demo.
 - Patient selection is visible in the launchpad and the chat surface shows the `FHIR Context` badge.
 - `Care Transitions Command BYO Fallback` is the live direct lane.
 
@@ -147,7 +147,7 @@ Public path proxy:
 
 ### Workspace
 
-- reuse workspace `019da8ef-cb09-71b0-9d7e-4e11591d55db`
+- reuse the existing Prompt Opinion workspace configured for the final demo
 - select `Patient` scope
 - select `Daniel Brooks`
 - confirm `FHIR Context`
