@@ -17,6 +17,14 @@ import {
 
 const detectPromptMode = (prompt: string): ReconciliationResult["prompt_payload"]["prompt_mode"] => {
   const normalized = prompt.toLowerCase();
+  if (
+    normalized.includes("re-arbitrate") ||
+    normalized.includes("rearbitrate") ||
+    normalized.includes("update discharge status") ||
+    normalized.includes("update readiness")
+  ) {
+    return "prompt_4";
+  }
   if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
     return "prompt_2";
   }

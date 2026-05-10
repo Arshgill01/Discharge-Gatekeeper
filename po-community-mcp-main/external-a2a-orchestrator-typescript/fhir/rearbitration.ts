@@ -9,11 +9,13 @@ type TaskResource = {
   resourceType: "Task";
   id: string;
   status?: string;
+  identifier?: Array<{ value?: string }>;
   encounter?: { reference?: string };
   code?: { text?: string };
   note?: Array<{ text?: string }>;
   reasonReference?: Array<{ reference?: string }>;
   meta?: {
+    lastUpdated?: string;
     tag?: Array<{ code?: string }>;
   };
 };
@@ -75,6 +77,35 @@ const taskCategory = (task: TaskResource): string | null => {
     }
   }
   return null;
+};
+
+const taskKey = (task: TaskResource): string => {
+  const identifierValue = task.identifier?.find((identifier) => identifier.value)?.value?.trim();
+  if (identifierValue) {
+    return identifierValue;
+  }
+
+  return taskCategory(task) ?? task.id;
+};
+
+const taskTimestamp = (task: TaskResource): number =>
+  Date.parse(task.meta?.lastUpdated ?? "") || 0;
+
+const collapseLatestTasks = (tasks: TaskResource[]): TaskResource[] => {
+  const sorted = [...tasks].sort((left, right) => taskTimestamp(right) - taskTimestamp(left));
+  const seen = new Set<string>();
+  const collapsed: TaskResource[] = [];
+
+  for (const task of sorted) {
+    const key = taskKey(task);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    collapsed.push(task);
+  }
+
+  return collapsed;
 };
 
 export const shouldProcessResolutionPrompt = (prompt: string): boolean => {
@@ -143,9 +174,9 @@ export const applyTaskResolutionAndRearbitration = async (
   const taskEntries = Array.isArray(taskBundle["entry"])
     ? (taskBundle["entry"] as Array<{ resource?: unknown }>)
     : [];
-  const tasks = taskEntries
+  const tasks = collapseLatestTasks(taskEntries
     .map((entry) => toTaskResource(entry.resource))
-    .filter((task): task is TaskResource => Boolean(task));
+    .filter((task): task is TaskResource => Boolean(task)));
 
   if (tasks.length === 0) {
     return reconciled;
@@ -207,9 +238,9 @@ export const applyTaskResolutionAndRearbitration = async (
   const refreshedEntries = Array.isArray(refreshedBundle["entry"])
     ? (refreshedBundle["entry"] as Array<{ resource?: unknown }>)
     : [];
-  const refreshedTasks = refreshedEntries
+  const refreshedTasks = collapseLatestTasks(refreshedEntries
     .map((entry) => toTaskResource(entry.resource))
-    .filter((task): task is TaskResource => Boolean(task));
+    .filter((task): task is TaskResource => Boolean(task)));
 
   const unresolvedCategories = refreshedTasks
     .filter((task) => task.status !== "completed")
@@ -224,6 +255,9 @@ export const applyTaskResolutionAndRearbitration = async (
   const updatedFinalVerdict = unresolvedCategories.length === 0 ? "ready_with_caveats" : "not_ready";
   const resolvedLabel = completedCategories.length > 0 ? completedCategories.join(", ") : "none";
   const unresolvedLabel = unresolvedCategories.length > 0 ? unresolvedCategories.join(", ") : "none";
+  const taskStateSummary = refreshedTasks
+    .map((task) => `Task/${task.id} [${task.status ?? "unknown"}]`)
+    .join(" | ") || "none";
 
   return {
     ...reconciled,
@@ -231,7 +265,8 @@ export const applyTaskResolutionAndRearbitration = async (
     manual_review_required: true,
     contradiction_summary:
       `Previous status ${reconciled.final_verdict}; updated status ${updatedFinalVerdict}. ` +
-      `Resolved gates: ${resolvedLabel}. Remaining unresolved gates: ${unresolvedLabel}.`,
+      `Resolved gates: ${resolvedLabel}. Remaining unresolved gates: ${unresolvedLabel}. ` +
+      `Current FHIR Task refs: ${taskStateSummary}.`,
     transition_safety_packet: {
       ...packet,
       resolution_evidence: refreshedTasks

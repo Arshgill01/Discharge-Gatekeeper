@@ -8,7 +8,7 @@ export type DispositionImpact = "none" | "caveat" | "not_ready" | "uncertain";
 
 export type HiddenRiskRunStatus = "used" | "skipped" | "unavailable" | "inconclusive";
 
-export type PromptMode = "prompt_1" | "prompt_2" | "prompt_3";
+export type PromptMode = "prompt_1" | "prompt_2" | "prompt_3" | "prompt_4";
 
 export type ParsedTaskInputSurface =
   | "root"

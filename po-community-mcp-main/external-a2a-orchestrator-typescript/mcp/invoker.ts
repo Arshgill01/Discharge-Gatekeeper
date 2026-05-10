@@ -188,7 +188,7 @@ type McpInvocationResult<T> = {
 type InvocationContext = {
   requestId: string;
   taskId: string;
-  promptMode: "prompt_1" | "prompt_2" | "prompt_3";
+  promptMode: "prompt_1" | "prompt_2" | "prompt_3" | "prompt_4";
 };
 
 export class McpInvocationError extends Error {

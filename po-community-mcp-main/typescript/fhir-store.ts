@@ -163,19 +163,56 @@ const collectReferenceStrings = (value: unknown): string[] => {
   return reference ? [reference] : [];
 };
 
-const PATIENT_ID_ALIASES: Record<string, string> = {
+const RESOURCE_ID_ALIASES: Record<string, string> = {
   "db4b066b-200f-405f-9fe4-c52eefbc1425": "daniel-brooks",
   "179930bf-2ad5-441b-8762-ec700b82e2ca": "maria-alvarez",
   "be404f97-dfa6-4875-b715-0ec8599b7d22": "olivia-chen",
+  "27af5200-8e45-4394-9d49-e3129e7c7f25": "eleanor-singh",
+  "cbd60b4b-e4af-4657-8ad7-df51cd782e69": "daniel-pharmacy-note-1815",
+  "7978a116-881e-4280-871f-1c16c59dc500": "daniel-nursing-note-1840",
+  "d7ebe424-afd0-46d6-957c-26bf381c1e14": "daniel-case-mgmt-note-1905",
+  "9121c9d7-0a44-434a-a9cc-e7c33e77ce76": "maria-nursing-note-2040",
+  "3080140a-f532-4207-b092-bb7e90bf869e": "maria-case-mgmt-2055",
+  "5ce0ae41-4700-4d3e-b886-e495e4e1dac7": "olivia-nursing-note",
+  "e04831dd-01ea-4064-bbdc-9eca17cd98ce": "olivia-pharmacy-note",
+  "bf30ce40-178d-485a-82dc-7ecee981e87d": "eleanor-pt-addendum-1650",
+  "12d4243c-90c1-4529-9a07-fc5298fedd14": "eleanor-nursing-note-1720",
+  "7c643bc4-ce7d-4523-9fb7-5e7f04bc7ec2": "eleanor-case-mgmt-note-1745",
+};
+
+const RESOURCE_REFERENCE_ALIASES: Record<string, string> = {
+  "Patient/db4b066b-200f-405f-9fe4-c52eefbc1425": "Patient/daniel-brooks",
+  "Patient/179930bf-2ad5-441b-8762-ec700b82e2ca": "Patient/maria-alvarez",
+  "Patient/be404f97-dfa6-4875-b715-0ec8599b7d22": "Patient/olivia-chen",
+  "Patient/27af5200-8e45-4394-9d49-e3129e7c7f25": "Patient/eleanor-singh",
+  "DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69": "DocumentReference/daniel-pharmacy-note-1815",
+  "DocumentReference/7978a116-881e-4280-871f-1c16c59dc500": "DocumentReference/daniel-nursing-note-1840",
+  "DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14": "DocumentReference/daniel-case-mgmt-note-1905",
+  "DocumentReference/9121c9d7-0a44-434a-a9cc-e7c33e77ce76": "DocumentReference/maria-nursing-note-2040",
+  "DocumentReference/3080140a-f532-4207-b092-bb7e90bf869e": "DocumentReference/maria-case-mgmt-2055",
+  "DocumentReference/5ce0ae41-4700-4d3e-b886-e495e4e1dac7": "DocumentReference/olivia-nursing-note",
+  "DocumentReference/e04831dd-01ea-4064-bbdc-9eca17cd98ce": "DocumentReference/olivia-pharmacy-note",
+  "DocumentReference/bf30ce40-178d-485a-82dc-7ecee981e87d": "DocumentReference/eleanor-pt-addendum-1650",
+  "DocumentReference/12d4243c-90c1-4529-9a07-fc5298fedd14": "DocumentReference/eleanor-nursing-note-1720",
+  "DocumentReference/7c643bc4-ce7d-4523-9fb7-5e7f04bc7ec2": "DocumentReference/eleanor-case-mgmt-note-1745",
 };
 
 const expandSearchAliases = (searchValue: string): string[] => {
-  const canonical = PATIENT_ID_ALIASES[searchValue];
+  const canonical = RESOURCE_ID_ALIASES[searchValue];
   return canonical ? [searchValue, canonical] : [searchValue];
 };
 
+const expandReferenceAliases = (referenceOrId: string): string[] => {
+  const byReference = RESOURCE_REFERENCE_ALIASES[referenceOrId];
+  if (byReference) {
+    return [referenceOrId, byReference];
+  }
+
+  return expandSearchAliases(referenceOrId);
+};
+
 const referenceMatches = (candidate: string, searchValue: string): boolean => {
-  return expandSearchAliases(searchValue).some(
+  return expandReferenceAliases(searchValue).some(
     (value) => candidate === value || candidate.endsWith(`/${value}`),
   );
 };
@@ -343,7 +380,17 @@ export const readLocalFhirResource = (
   const state = loadLocalFhirStoreState(storePath);
   const normalizedReference = referenceOrPath.replace(/^\/+/, "");
   const directHit = state.resources[normalizedReference];
-  return directHit ? JSON.parse(JSON.stringify(directHit)) as FhirResourceLike : null;
+  if (directHit) {
+    return JSON.parse(JSON.stringify(directHit)) as FhirResourceLike;
+  }
+
+  const aliasedReference = RESOURCE_REFERENCE_ALIASES[normalizedReference];
+  if (!aliasedReference) {
+    return null;
+  }
+
+  const aliasedHit = state.resources[aliasedReference];
+  return aliasedHit ? JSON.parse(JSON.stringify(aliasedHit)) as FhirResourceLike : null;
 };
 
 export const searchLocalFhirResources = (

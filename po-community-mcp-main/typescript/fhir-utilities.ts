@@ -8,6 +8,7 @@ const LOCAL_PROMPT_OPINION_FIXTURE_PATIENT_IDS = new Set([
   "db4b066b-200f-405f-9fe4-c52eefbc1425",
   "179930bf-2ad5-441b-8762-ec700b82e2ca",
   "be404f97-dfa6-4875-b715-0ec8599b7d22",
+  "27af5200-8e45-4394-9d49-e3129e7c7f25",
 ]);
 
 const getPatientIdFromRequest = (req: Request): string | null => {

@@ -10,6 +10,14 @@ const SYNTHESIS_GUARDRAILS = [
 
 const detectPromptMode = (prompt: string): PromptMode => {
   const normalized = prompt.toLowerCase();
+  if (
+    normalized.includes("re-arbitrate") ||
+    normalized.includes("rearbitrate") ||
+    normalized.includes("update discharge status") ||
+    normalized.includes("update readiness")
+  ) {
+    return "prompt_4";
+  }
   if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
     return "prompt_2";
   }
@@ -181,6 +189,10 @@ const buildHeadline = (
     return `Final verdict ${reconciled.final_verdict}: complete the cited owner-assigned actions before discharge proceeds.`;
   }
 
+  if (promptMode === "prompt_4") {
+    return `Re-arbitrated discharge status: ${reconciled.final_verdict}.`;
+  }
+
   if (reconciled.hidden_risk_result === "hidden_risk_present") {
     return `Structured baseline ${reconciled.deterministic.verdict}; final verdict ${reconciled.final_verdict} after cited hidden-risk escalation.`;
   }
@@ -246,7 +258,10 @@ const renderPrompt1Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
 ): string => {
-  if (reconciled.transition_safety_packet.resolution_evidence.length > 0) {
+  if (
+    promptPayload.prompt_mode === "prompt_4" ||
+    reconciled.transition_safety_packet.resolution_evidence.length > 0
+  ) {
     const previousStatusMatch = reconciled.contradiction_summary.match(/Previous status ([a-z_]+)/i);
     const resolvedGates = [
       ...new Set(
@@ -254,6 +269,9 @@ const renderPrompt1Narrative = (
       ),
     ];
     const remainingGates = reconciled.transition_safety_packet.reconciled_transition_status.blocker_categories;
+    const resolutionRefs = reconciled.transition_safety_packet.resolution_evidence
+      .map((item) => item.reference)
+      .filter(Boolean);
     return [
       "DISCHARGE STATUS UPDATE",
       "",
@@ -262,9 +280,7 @@ const renderPrompt1Narrative = (
       `Resolved gates: ${resolvedGates.length > 0 ? resolvedGates.join(", ") : "none"}`,
       `Remaining unresolved gates: ${remainingGates.length > 0 ? remainingGates.join(", ") : "none"}`,
       `Resolution summary: ${reconciled.transition_safety_packet.reconciled_transition_status.why_changed}`,
-      `Resolution evidence: ${reconciled.transition_safety_packet.resolution_evidence
-        .map((item) => item.reference)
-        .join(" | ") || "none"}`,
+      `Resolution evidence: ${resolutionRefs.length > 0 ? resolutionRefs.join(" | ") : "none"}`,
       buildWrittenTaskLine(reconciled),
       buildAuditArtifactLine(reconciled),
       "This is assistive discharge decision support and does not replace clinician authority.",
