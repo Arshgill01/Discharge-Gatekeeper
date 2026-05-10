@@ -14,9 +14,13 @@ import {
   DEFAULT_HIDDEN_RISK_SCENARIO_ID,
   resolveHiddenRiskToolInput,
 } from "./canonical-hidden-risk-input";
+import {
+  buildFhirDirectPatientScopeResult,
+  DIRECT_PATIENT_SCOPE_PROMPTS,
+} from "./fhirDirectPatientScope";
 
 export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
-  "Prompt 2 compact hidden-risk contradiction for the canonical trap patient. Call with scenario_id only; returns concise evidence anchors.";
+  "Prompt 2 hidden-risk contradiction tool. In Patient Scope / FHIR context, use the live patient discharge context and return cited contradiction evidence with raw FHIR references. Without FHIR context, fall back to the canonical trap-patient Prompt 2 demo.";
 
 const inputSchema = {
   scenario_id: z
@@ -83,7 +87,7 @@ export const formatPromptOpinionSlimHiddenRisk = (payload: HiddenRiskOutput): st
 };
 
 class SurfaceHiddenRisksTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request): void {
+  registerTool(server: McpServer, req: Request): void {
     server.registerTool(
       "surface_hidden_risks",
       {
@@ -98,6 +102,29 @@ class SurfaceHiddenRisksTool implements IMcpTool {
           const parsed = toolInputSchema.safeParse(rawInput);
           if (!parsed.success) {
             throw new Error(`Invalid input for surface_hidden_risks: ${parsed.error.message}`);
+          }
+
+          const liveResult = await buildFhirDirectPatientScopeResult(req, {
+            prompt: DIRECT_PATIENT_SCOPE_PROMPTS.prompt2,
+            explicitTaskGoal:
+              "Prompt 2 Patient Scope contradiction review from live FHIR context.",
+          });
+          if (liveResult) {
+            if (parsed.data.response_mode === "full") {
+              return McpUtilities.createTextResponse(
+                JSON.stringify(
+                  {
+                    narrative: liveResult.narrative,
+                    prompt_payload: liveResult.prompt_payload,
+                    reconciliation: liveResult.reconciled,
+                  },
+                  null,
+                  2,
+                ),
+              );
+            }
+
+            return McpUtilities.createTextResponse(liveResult.narrative);
           }
 
           const hiddenRiskInput = resolveHiddenRiskToolInput(

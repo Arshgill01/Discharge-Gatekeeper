@@ -14,8 +14,6 @@ type TaskResource = {
   };
 };
 
-const CTC_TAG_SYSTEM = "https://care-transitions-command.local/tags";
-
 const RESOLUTION_PATTERNS: Record<string, RegExp[]> = {
   clinical_stability: [
     /exertional reassessment passed/i,
@@ -42,10 +40,18 @@ const RESOLUTION_PATTERNS: Record<string, RegExp[]> = {
     /medication bridge approved/i,
     /prior authorization resolved/i,
     /medication delivered/i,
+    /medication bridge .* delivered/i,
+    /bridge .* delivered to bedside/i,
     /medication access confirmed/i,
   ],
   follow_up_and_referrals: [/follow-up confirmed/i, /referral scheduled/i],
-  patient_education: [/teach-back completed/i, /instructions understood/i],
+  patient_education: [
+    /teach-back completed/i,
+    /instructions understood/i,
+    /working home scale/i,
+    /daily weight monitoring (?:plan|confirmed|arranged)/i,
+    /home monitoring (?:plan|confirmed|arranged)/i,
+  ],
   pending_diagnostics: [/diagnostic completed/i, /results reviewed/i],
   administrative_and_documentation: [/documentation complete/i, /paperwork complete/i],
 };

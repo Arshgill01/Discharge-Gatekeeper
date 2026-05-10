@@ -14,9 +14,13 @@ import {
   DEFAULT_HIDDEN_RISK_SCENARIO_ID,
   resolveHiddenRiskToolInput,
 } from "./canonical-hidden-risk-input";
+import {
+  buildFhirDirectPatientScopeResult,
+  DIRECT_PATIENT_SCOPE_PROMPTS,
+} from "./fhirDirectPatientScope";
 
 export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
-  "Prompt 3 compact transition package for the canonical trap patient. Call with scenario_id only and return the tool text verbatim: final not_ready posture, blockers, actions, handoff, patient note, evidence anchors.";
+  "Prompt 3 transition package tool. In Patient Scope / FHIR context, create or refresh blocking FHIR Tasks plus audit artifacts and return the cited transition package. Without FHIR context, fall back to the canonical trap-patient Prompt 3 demo.";
 
 const inputSchema = {
   scenario_id: z
@@ -93,7 +97,7 @@ export const formatPromptOpinionSlimTransitionPackage = (
 };
 
 class SynthesizeTransitionNarrativeTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request): void {
+  registerTool(server: McpServer, req: Request): void {
     server.registerTool(
       "synthesize_transition_narrative",
       {
@@ -110,6 +114,29 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
             throw new Error(
               `Invalid input for synthesize_transition_narrative: ${parsed.error.message}`,
             );
+          }
+
+          const liveResult = await buildFhirDirectPatientScopeResult(req, {
+            prompt: DIRECT_PATIENT_SCOPE_PROMPTS.prompt3,
+            explicitTaskGoal:
+              "Prompt 3 Patient Scope transition package with FHIR Task write-back.",
+          });
+          if (liveResult) {
+            if (parsed.data.response_mode === "full") {
+              return McpUtilities.createTextResponse(
+                JSON.stringify(
+                  {
+                    narrative: liveResult.narrative,
+                    prompt_payload: liveResult.prompt_payload,
+                    reconciliation: liveResult.reconciled,
+                  },
+                  null,
+                  2,
+                ),
+              );
+            }
+
+            return McpUtilities.createTextResponse(liveResult.narrative);
           }
 
           const hiddenRiskInput = resolveHiddenRiskToolInput(

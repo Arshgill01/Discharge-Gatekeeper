@@ -164,6 +164,9 @@ const buildClinicianHandoffBrief = (
   }
 
   const leadingStep = reconciled.merged_next_steps[0];
+  if (!leadingStep) {
+    return undefined;
+  }
   const impactedCategories = buildImpactedCategories(reconciled).slice(0, 3).join(", ");
   return `Hold discharge at ${reconciled.final_verdict}; ${leadingStep.owner} should lead the first action. Focus domains: ${impactedCategories || "none"}.`;
 };

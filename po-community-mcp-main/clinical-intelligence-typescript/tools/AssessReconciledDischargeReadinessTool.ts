@@ -7,9 +7,13 @@ import {
   assessReconciledDischargeReadiness,
   DEFAULT_RECONCILED_SCENARIO_ID,
 } from "../clinical-intelligence/reconciled-discharge-readiness";
+import {
+  buildFhirDirectPatientScopeResult,
+  DIRECT_PATIENT_SCOPE_PROMPTS,
+} from "./fhirDirectPatientScope";
 
 export const ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION =
-  "Prompt 1 Direct-MCP reconciled readiness tool. Use when asked whether the canonical trap patient is safe to discharge today. It composes the Discharge Gatekeeper deterministic structured baseline with Clinical Intelligence hidden-risk narrative review, preserves baseline ready, and returns final not_ready with evidence anchors. Prefer this over baseline-only assess_discharge_readiness for Prompt 1.";
+  "Prompt 1 reconciled readiness tool. In Patient Scope / FHIR context, use the live patient FHIR discharge context, reconcile structured baseline plus hidden-risk evidence, and return the final verdict with FHIR references. Without FHIR context, fall back to the canonical trap-patient Prompt 1 demo.";
 
 const inputSchema = {
   scenario_id: z
@@ -27,7 +31,7 @@ const inputSchema = {
 const toolInputSchema = z.object(inputSchema);
 
 class AssessReconciledDischargeReadinessTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request): void {
+  registerTool(server: McpServer, req: Request): void {
     server.registerTool(
       "assess_reconciled_discharge_readiness",
       {
@@ -41,6 +45,27 @@ class AssessReconciledDischargeReadinessTool implements IMcpTool {
             throw new Error(
               `Invalid input for assess_reconciled_discharge_readiness: ${parsed.error.message}`,
             );
+          }
+
+          const liveResult = await buildFhirDirectPatientScopeResult(req, {
+            prompt: DIRECT_PATIENT_SCOPE_PROMPTS.prompt1,
+            explicitTaskGoal:
+              "Prompt 1 Patient Scope reconciled readiness from live FHIR context.",
+          });
+          if (liveResult) {
+            const text =
+              parsed.data.response_mode === "prompt_opinion_slim"
+                ? liveResult.narrative
+                : JSON.stringify(
+                    {
+                      narrative: liveResult.narrative,
+                      prompt_payload: liveResult.prompt_payload,
+                      reconciliation: liveResult.reconciled,
+                    },
+                    null,
+                    2,
+                  );
+            return McpUtilities.createTextResponse(text);
           }
 
           const payload = await assessReconciledDischargeReadiness({
