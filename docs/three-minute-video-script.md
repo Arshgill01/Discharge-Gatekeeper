@@ -44,11 +44,11 @@ Expected visible output:
 - structured baseline `ready`
 - final verdict `not_ready`
 - explicit `hidden_risk_result: hidden_risk_present`
-- Daniel FHIR references including at least two of:
-  - `DocumentReference/daniel-pharmacy-note-1815`
-  - `DocumentReference/daniel-nursing-note-1840`
-  - `DocumentReference/daniel-case-mgmt-note-1905`
-  - `Task/ctc-db4b066b-200f-405f-9fe4-c52eefbc1425-clinical-stability`
+- Daniel PO FHIR references including at least two of:
+  - `DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69`
+  - `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+  - `DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14`
+  - `Task/15ec9b46-f5c8-44ba-8e09-ae2991ee54df`
 
 Say:
 - “The structured chart looked ready.”
@@ -72,9 +72,9 @@ Expected visible output:
   - nursing note
   - case-management note
 - visible raw FHIR refs including:
-  - `DocumentReference/daniel-pharmacy-note-1815`
-  - `DocumentReference/daniel-nursing-note-1840`
-  - `DocumentReference/daniel-case-mgmt-note-1905`
+  - `DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69`
+  - `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+  - `DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14`
 
 Zoom / highlight:
 - the contradiction summary line
@@ -94,16 +94,16 @@ Expected visible output:
 - `TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE`
 - owner/action/timing steps
 - visible FHIR Task references
-- visible Provenance / AuditEvent references
+- visible Provenance references
 
 Zoom / highlight:
 - the release condition
 - the first two actions
-- Task / Provenance / AuditEvent references
+- Task / Provenance references
 
 Say:
 - “Now the contradiction becomes work.”
-- “The system writes blocking FHIR Tasks and the handoff packet stays aligned to that control plane.”
+- “The system writes blocking FHIR Tasks and Provenance, and the handoff packet stays aligned to that control plane.”
 
 ## 2:00–2:40 — Prompt 4 Re-Arbitration
 
@@ -116,8 +116,8 @@ Expected visible output:
 - previous status `NOT_READY`
 - resolved gates include medication and home-monitoring / patient-education
 - remaining unresolved gate `clinical_stability`
-- final status stays `NOT_READY` or conservative `READY_WITH_CAVEATS`
-- visible Task references
+- final status stays `NOT_READY`
+- visible Task references in the resolution evidence line
 
 What to highlight:
 - `Resolved gates`
@@ -164,4 +164,4 @@ Read this line verbatim once during the demo:
 
 If asked how the local demo works, say:
 
-- “For local proof, Prompt Opinion Patient Scope IDs for Daniel, Maria, and Olivia are mapped into seeded local FHIR bundles so we can honestly prove deterministic reads, Task write-back, Provenance, AuditEvent, and polling re-arbitration without claiming production EHR connectivity.”
+- “For local proof, Prompt Opinion Patient Scope IDs for Daniel, Maria, Olivia, and Eleanor are mapped into seeded local FHIR bundles so we can honestly prove deterministic reads, Task write-back, Provenance, and polling re-arbitration without claiming production EHR connectivity.”
