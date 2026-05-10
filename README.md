@@ -1,20 +1,26 @@
 # Care Transitions Command
 
-Care Transitions Command is a Prompt Opinion-native discharge control plane that catches the hidden note contradiction that a structured discharge-ready chart missed.
+Care Transitions Command is a Prompt Opinion-native discharge control plane that stops an unsafe discharge when the contradiction lives in narrative evidence, not in the clean structured chart.
 
-## Held-Out Demo
+## The Demo In One Sentence
 
-The held-out demo patient is **Daniel Brooks**. His structured baseline looks discharge-ready, but late narrative evidence changes the answer:
+Daniel Brooks looks discharge-ready on the deterministic spine. A late pharmacy note, nursing note, and case-management note contradict that posture. The system escalates to `not_ready`, writes blocking FHIR Tasks, and refuses to clear discharge until the FHIR layer says the right gates are resolved.
 
-- pharmacy note: medication bridge is blocked
-- nursing note: weight gain and orthopnea appear late
-- case-management note: medication pickup logistics fail tonight
-
-The system holds discharge, writes blocking FHIR Tasks, records Provenance and AuditEvent artifacts, then re-arbitrates readiness from FHIR Task state after partial resolution.
-
-## Primitive
+## The Primitive
 
 **Blocking evidence creates FHIR Tasks. Task completion opens the gate. The system holds discharge until the FHIR layer says otherwise.**
+
+## Why This Matters
+
+Most discharge tooling can summarize a chart. That is not enough.
+
+The real failure mode is this:
+
+- the structured chart says the patient looks ready
+- the dangerous contradiction appears later in notes
+- no one turns that contradiction into explicit operational work
+
+Care Transitions Command is built to close that gap.
 
 ## Architecture
 
@@ -34,55 +40,99 @@ flowchart TD
   REARB --> ORCH
 ```
 
-## How It Works
+## What Each Component Does
 
-### Prompt Opinion Patient Scope
+### Discharge Gatekeeper MCP
 
-- The judged direct lane uses Prompt Opinion Patient Scope with the existing workspace selected for the final demo.
-- Patient selection is visible in the launchpad and the chat surface shows the `FHIR Context` badge.
-- `Care Transitions Command BYO Fallback` is the live direct lane.
+Owns the deterministic spine:
 
-### FHIR-Native Control Plane
+- structured patient-context normalization
+- discharge-readiness posture from bounded structured evidence
+- canonical blocker taxonomy
+- next-step scaffolding
 
-- `Discharge Gatekeeper MCP` reads structured discharge context from FHIR-shaped resources.
-- `Clinical Intelligence MCP` reads note/document contradiction evidence and reconciles it against the structured posture.
-- `external A2A orchestrator` remains the synchronous architecture-proof lane for fused one-turn orchestration.
+### Clinical Intelligence MCP
 
-### Honest Local Demo Routing
+Owns bounded narrative intelligence:
+
+- contradiction detection in late notes and documents
+- hidden-risk discovery against the structured posture
+- evidence-backed escalation or de-escalation
+- concise contradiction summaries with visible FHIR references
+
+### external A2A orchestrator
+
+Owns the synchronous architecture-proof lane:
+
+- prompt-level coordination across both MCPs
+- fused answer assembly
+- FHIR Task / Provenance / AuditEvent write-back
+- polling re-arbitration after partial resolution
+
+The judged direct lane still runs through Prompt Opinion Patient Scope with `Care Transitions Command BYO Fallback`.
+
+## Honest Local Demo Note
 
 Structured EHR resources — observations, medications, orders — flow through Prompt Opinion’s FHIR context. Narrative notes live in the care documentation layer, accessed through the Clinical Intelligence MCP.
 
-For the local endgame demo, Prompt Opinion Patient Scope IDs for Daniel, Maria, and Olivia are mapped into seeded local FHIR bundles so the runtime can prove deterministic reads, Task write-back, Provenance, AuditEvent, and polling re-arbitration without claiming production hospital connectivity.
+For the local endgame proof, Prompt Opinion patient UUIDs for Daniel, Maria, and Olivia are mapped into seeded local FHIR bundles. That lets the runtime prove deterministic reads, Task write-back, Provenance, AuditEvent, and polling re-arbitration honestly, without pretending this is a production hospital deployment.
 
-## Visible Outputs
+## Held-Out Scenario Pack
 
-Every successful judged answer should converge on:
+### Daniel Brooks
 
-1. discharge readiness verdict
-2. blocker list with severity
-3. evidence trace by source
-4. prioritized next-step checklist
+Final live demo patient:
+
+- heart-failure discharge
+- medication bridge failure
+- late orthopnea / weight-change concern
+- broken home monitoring
+- medication pickup logistics failure
+
+### Olivia Chen
+
+Clean control:
+
+- remains `ready`
+- explicit `no_hidden_risk`
+- zero blocking Tasks
+
+### Eleanor Singh
+
+Scenario-matrix case:
+
+- mobility safety
+- patient education
+- home support contradiction
+
+### Maria Alvarez
+
+Regression trap:
+
+- preserves the canonical contradiction lane
+
+## What The User Should See
+
+1. a final discharge verdict
+2. blocker categories with visible evidence
+3. explicit FHIR references
+4. owner/action/timing next steps
 5. clinician handoff brief
-6. patient-friendly discharge instructions
+6. patient-facing hold / discharge guidance
 
-## Re-Arbitration Loop
+## Re-Arbitration
 
-Prompt 4 is not just persuasive LLM text. The backend control plane:
+Prompt 4 is not just better prose.
 
-1. reads outstanding FHIR Tasks for the selected encounter
-2. marks only the resolved gates as completed
+The backend:
+
+1. rereads encounter-scoped FHIR Tasks
+2. marks only resolved gates complete
 3. recomputes unresolved blocker categories
-4. keeps `clinical_stability` unresolved when orthopnea persists
-5. writes fresh AuditEvent and Provenance artifacts
+4. leaves `clinical_stability` unresolved when orthopnea persists
+5. writes fresh `AuditEvent` and `Provenance` artifacts
 
-This is why a partial resolution does **not** falsely clear discharge.
-
-## Scenario Pack
-
-- **Daniel Brooks**: held-out final demo patient, heart-failure discharge with medication access, symptom change, home monitoring, and logistics risk
-- **Maria Alvarez**: regression trap patient, preserves the canonical contradiction lane
-- **Eleanor Singh**: functional/cognitive hidden-risk case for scenario-matrix coverage
-- **Olivia Chen**: clean control, stays `ready` with zero blocking Tasks
+That is why partial resolution does **not** falsely clear discharge.
 
 ## Safety Boundaries
 
@@ -92,15 +142,13 @@ This is why a partial resolution does **not** falsely clear discharge.
 - no A2A streaming
 - no production EHR integration claim
 - no full Epic SMART claim
-- no real FHIR webhook/subscription dependency claim
+- no real webhook/subscription dependency claim
 
-The system supports clinician review by surfacing readiness posture, contradictions, blockers, evidence, and next actions.
+This system supports clinician review. It does not replace it.
 
 ## Local Run
 
 ### Install
-
-Run from repo root:
 
 ```bash
 npm --prefix po-community-mcp-main/typescript ci
@@ -114,25 +162,11 @@ npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript ci
 npx tsx po-community-mcp-main/scripts/seed-fhir-bundles.ts
 ```
 
-This seeds the local fixture store with Daniel, Maria, Eleanor, and Olivia bundles.
-
 ### Start Services
-
-Structured lane:
 
 ```bash
 ./po-community-mcp-main/scripts/start-two-mcp-local.sh
-```
-
-Orchestrator lane:
-
-```bash
 ./po-community-mcp-main/scripts/start-a2a-local.sh
-```
-
-Public path proxy:
-
-```bash
 ./po-community-mcp-main/scripts/start-public-path-proxy-local.sh
 ```
 
@@ -143,11 +177,11 @@ Public path proxy:
 ./po-community-mcp-main/scripts/check-a2a-readiness.sh
 ```
 
-## Prompt Opinion Proof
+## Prompt Opinion Proof Path
 
-### Workspace
+### Setup
 
-- reuse the existing Prompt Opinion workspace configured for the final demo
+- reuse the existing Prompt Opinion demo workspace
 - select `Patient` scope
 - select `Daniel Brooks`
 - confirm `FHIR Context`
@@ -160,14 +194,14 @@ Public path proxy:
 3. `What exactly must happen before discharge, and prepare the transition package.`
 4. `New updates arrived: the medication bridge was delivered to bedside and the daughter arranged a working home scale, but the patient still reports orthopnea when lying flat. Re-arbitrate the discharge gates from the FHIR Tasks and evidence.`
 
-### Provider
+### Current Runtime Note
 
 - Prompt Opinion model target: `GoogleFree / gemini-3.1-flash-lite`
-- local Clinical Intelligence runtime may be run in `heuristic` mode for demo stability when the live Google-backed hidden-risk call is flaky
+- local Clinical Intelligence runtime may be run in `heuristic` mode for live proof stability when the Google-backed hidden-risk path is flaky
 
 ## Validation Commands
 
-Focused endgame checks already used in this branch:
+Focused endgame commands used in this branch:
 
 ```bash
 npm --prefix po-community-mcp-main/typescript run typecheck
@@ -181,11 +215,10 @@ npx tsx po-community-mcp-main/clinical-intelligence-typescript/smoke/fhir-direct
 npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smoke:fhir-rearbitration
 ```
 
-## Proof Artifacts
+## Artifacts
 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
-- Prompt Opinion historical proof bundle: `output/prompt-opinion-e2e/runs/`
-- latest Daniel/Olivia live artifacts are being collected under the endgame run folder
+- Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
 
 ## Read Next
 
