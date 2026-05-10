@@ -1,84 +1,103 @@
-# Care Transitions Command
+<div align="center">
+  <h1>Care Transitions Command</h1>
+  <p><em>Evidence is what confers discharge authority.</em></p>
+  
+  [![Hackathon Submission](https://img.shields.io/badge/Submission-Phase_10-blue.svg)](#)
+  [![Architecture](https://img.shields.io/badge/Architecture-2_MCPs_+_1_Orchestrator-orange.svg)](#)
+  [![Status](https://img.shields.io/badge/Status-Demo_Ready-brightgreen.svg)](#)
+</div>
 
-Care Transitions Command is the system identity for this repo.
-It is a healthcare handoff-control system for Prompt Opinion built around three components:
-- **Discharge Gatekeeper MCP**
-- **Clinical Intelligence MCP**
-- **external A2A orchestrator**
+---
 
-The system exists to answer one high-value question:
-**Is this patient actually safe to discharge today, or is there a hidden risk buried in the notes?**
+## ⚡ The Control Plane for Hospital Discharges
 
-## What this repo is locking
+**Care Transitions Command** is a multi-agent control system designed to catch hidden discharge risks when the contradiction lives in narrative evidence, not in the clean structured snapshot.
 
-### Discharge Gatekeeper MCP
-Owns the deterministic structured discharge spine:
-- structured patient-context normalization
-- readiness posture
-- blocker taxonomy
-- next-step transition scaffolding
+Today, a patient might look "ready for discharge" on paper—stable vitals, normal labs, ordered meds. But buried in a nursing note or a social worker's assessment is a hidden risk: *a pending biopsy, a delayed wheelchair delivery, or a spouse unable to provide care.*
 
-### Clinical Intelligence MCP
-Exists because the structured chart can look clean while the dangerous contradiction lives in narrative evidence.
-It owns:
-- note and document contradiction detection
-- hidden-risk discovery
-- evidence-backed escalation against the structured posture
+This system acts as a **cryptographic gate** for discharge. It fuses deterministic structured data with probabilistic narrative intelligence. 
 
-### external A2A orchestrator
-Exists because the final product is not two disconnected MCPs.
-It owns:
-- prompt-level coordination
-- when to escalate from structured posture to narrative review
-- one fused response per prompt inside Prompt Opinion
+**The Core Primitive:**
+> Blocking evidence creates FHIR Tasks. Task completion is what opens the gate. The system holds discharge until the FHIR layer says otherwise.
 
-## What the 3-prompt demo is trying to prove
-1. The patient looks acceptable on the deterministic discharge spine.
-2. The system catches a hidden contradiction in the notes and flips the answer.
-3. The system turns that finding into a concrete transition package.
+---
 
-The point is not generic summarization.
-The point is that **Care Transitions Command prevents an unsafe discharge that would have been missed by structured context alone**.
+## 🏗️ Architecture
 
-## Hard constraints
-- top-level system identity stays `Care Transitions Command`
-- keep `Discharge Gatekeeper MCP` as the existing MCP identity
-- add `Clinical Intelligence MCP` as the second MCP identity
-- use one `external A2A orchestrator`
-- architecture stays `2 MCPs + 1 external A2A`
-- no custom frontend
-- no third MCP
-- synchronous external A2A request/response surface
-- no A2A streaming
-- Prompt Opinion is the user-facing surface
+We implemented a strictly bounded **`2 MCPs + 1 external A2A`** architecture to ensure deterministic, inspectable execution.
 
-## Read first
-- [Phase 0 vision lock](docs/phase0-vision-lock.md)
-- [Product brief](docs/product-brief.md)
-- [Architecture](docs/architecture.md)
-- [Demo script](docs/demo-script.md)
-- [Trap patient spec](docs/phase0-trap-patient-spec.md)
-- [Prompt Opinion complete verification guide](docs/prompt-opinion-complete-verification-guide.md)
-- [Phase 2 two-MCP operator runbook](docs/phase2-two-mcp-operator-runbook.md)
-- [Data plan](docs/data-plan.md)
-- [Live plan](PLAN.md)
+```text
++-------------------------------------------------------------+
+|                     EXTERNAL A2A ORCHESTRATOR               |
+|  (Prompt Opinion -> Fuses Deterministic & Narrative paths)  |
++------------------------------+------------------------------+
+               |                               |
+      +--------v--------+             +--------v--------+
+      | Discharge       |             | Clinical        |
+      | Gatekeeper MCP  |             | Intelligence MCP|
+      +--------+--------+             +--------+--------+
+               |                               |
+   +-----------v-------------------------------v-----------+
+   |                     FHIR R4 STORE                     |
+   +-------------------------------------------------------+
+```
 
-## Current release sequence
-1. Phase 7: restore the synchronous contract, remove stale streaming-oriented planning drift, and lock the live demo rules.
-2. Phase 8: freeze submission packaging only after the current run-folder evidence marks the primary and backup lanes correctly.
+### 1. Discharge Gatekeeper (DGK) MCP
+Builds the structured baseline from FHIR resources. It evaluates the deterministic structured spine—labs, vitals, active medications—and determines the baseline discharge readiness posture.
 
-## Current implementation note
-The repo already contains the implemented runtime surfaces for:
-- **Discharge Gatekeeper MCP**
-- **Clinical Intelligence MCP**
-- **external A2A orchestrator**
+### 2. Clinical Intelligence (CI) MCP
+Finds the narrative contradiction. It analyzes unstructured notes and documents to discover hidden risks that contradict the structured posture.
 
-The current repo-level task is not foundational architecture invention.
-It is keeping the docs, operator rules, and submission surfaces aligned to the locked synchronous contract and the real Phase 7/8 state.
+### 3. External A2A Orchestrator
+The brain of the operation. It receives the prompt, synchronously calls both MCPs in the right order, and fuses the deterministic and narrative evidence into a single, conclusive answer.
 
-## Non-goals
-- custom frontend work
-- generic hospital dashboarding
-- autonomous discharge authority
-- broad care-management sprawl
-- adding more agents or MCPs than the locked architecture requires
+---
+
+## 🚀 The 3-Prompt Demo
+
+The core value is demonstrated through a canonical 3-prompt sequence in our Prompt Opinion surface:
+
+1. **The Baseline Check:** 
+   *Prompt:* `"Is this patient safe to discharge today?"`
+   *Result:* The patient looks acceptable on the deterministic discharge spine.
+
+2. **The Catch:** 
+   *Prompt:* `"What hidden risk changed that answer? Show me the contradiction and the evidence."`
+   *Result:* The system catches a hidden contradiction in the notes, flips the answer to `not_ready`, and cites the exact evidence.
+
+3. **The Action:** 
+   *Prompt:* `"What exactly must happen before discharge, and prepare the transition package."`
+   *Result:* The system turns that finding into concrete FHIR Tasks and a transition package.
+
+---
+
+## 🛡️ Generality & Safety Invariants
+
+To prove the system isn't overfit to a single scenario, we validated it against four distinct trap-patient profiles:
+*   🩺 **Maria:** Catches a hidden pending pathology report.
+*   💊 **Daniel:** Catches a medication reconciliation contradiction.
+*   🏠 **Eleanor:** Identifies a hidden home-support failure.
+*   🦽 **Olivia:** Flags a delayed equipment delivery.
+
+**Safety Invariant:** *The system never implies autonomous discharge authority.* It is a safety net that assists human review by surfacing readiness posture, contradictions, blockers, and next actions. It can delay a discharge, but it cannot authorize one without human intervention.
+
+---
+
+## 📖 Documentation & System of Record
+
+Treat these files as the map, not the encyclopedia:
+
+| Priority | Document | Purpose |
+|----------|----------|---------|
+| 1 | [`PLAN.md`](PLAN.md) | Live priorities and sequencing |
+| 2 | [`docs/product-brief.md`](docs/product-brief.md) | Product framing and core value proposition |
+| 3 | [`docs/architecture.md`](docs/architecture.md) | Architecture and component boundaries |
+| 4 | [`docs/demo-script.md`](docs/demo-script.md) | The canonical demo flow |
+| 5 | [`docs/phase0-trap-patient-spec.md`](docs/phase0-trap-patient-spec.md) | Canonical synthetic patient definitions |
+
+*For operational rules, refer to [`AGENTS.md`](AGENTS.md).*
+
+---
+<div align="center">
+  <i>Built with Care, FHIR, and TypeScript.</i>
+</div>
