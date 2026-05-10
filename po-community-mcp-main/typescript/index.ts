@@ -125,6 +125,18 @@ app.post("/mcp", async (req, res) => {
                 {
                   name: "patient/DocumentReference.rs",
                 },
+                {
+                  name: "patient/Encounter.rs",
+                },
+                {
+                  name: "patient/CarePlan.rs",
+                },
+                {
+                  name: "patient/Provenance.rs",
+                },
+                {
+                  name: "patient/AuditEvent.rs",
+                },
               ],
             },
           },

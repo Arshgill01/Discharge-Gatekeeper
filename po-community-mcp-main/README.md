@@ -14,6 +14,10 @@ Use it as implementation substrate, not product identity.
 - `./scripts/smoke-two-mcp-integration.sh`: phase-2 direct two-MCP quality gate
 - `./scripts/smoke-a2a-orchestration.sh`: phase-3 external A2A orchestration gate (boots both MCPs + A2A)
 
+## Shared env and provider preflight
+- `./scripts/link-shared-env.sh`: links repo-root `.env.local` to `CTC_SHARED_ENV_PATH`, defaulting to `~/.config/care-transitions-command/phase8.env`; prints only key presence.
+- `./scripts/check-runtime-provider-config.sh`: reports hidden-risk provider/model/key presence and fails when Google is requested without `GOOGLE_API_KEY` or `GEMINI_API_KEY`.
+
 ## Canonical project docs
 - Product framing: [`../docs/product-brief.md`](../docs/product-brief.md)
 - Demo flow: [`../docs/demo-script.md`](../docs/demo-script.md)

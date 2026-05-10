@@ -234,3 +234,40 @@ export const ALTERNATIVE_HIDDEN_RISK_INPUT: HiddenRiskInput = {
     explicit_task_goal: "Alternative hidden-risk lane: capture isolated home-support contradiction.",
   },
 };
+
+export const MEDICATION_ACCESS_HIDDEN_RISK_INPUT: HiddenRiskInput = {
+  deterministic_snapshot: {
+    patient_id: "phase9-medication-access-hidden-risk-001",
+    encounter_id: "enc-phase9-medication-access-001",
+    baseline_verdict: "ready",
+    deterministic_blockers: [],
+    deterministic_evidence: [
+      {
+        evidence_id: "det_med_access_001",
+        source_label: "Structured discharge medication checklist",
+        detail:
+          "Vitals stable, discharge medication reconciliation marked complete, and follow-up scheduled.",
+      },
+    ],
+    deterministic_next_steps: ["Proceed with discharge medication counseling and routine follow-up."],
+    deterministic_summary:
+      "Structured discharge snapshot appears ready with medication reconciliation marked complete.",
+  },
+  narrative_evidence_bundle: [
+    {
+      source_id: "note-pharm-med-access-001",
+      source_type: "pharmacy_note",
+      source_label: "Pharmacy Addendum 2026-04-18 21:10",
+      locator: "summary",
+      timestamp: "2026-04-18T21:10:00-05:00",
+      excerpt:
+        "Discharge apixaban cannot be dispensed tonight. Prior authorization remains pending, patient cannot afford cash price, and outpatient pharmacy cannot provide medication before discharge.",
+    },
+  ],
+  optional_context_metadata: {
+    care_setting: "inpatient",
+    discharge_destination: "home",
+    explicit_task_goal:
+      "Alternative medication-access hidden-risk lane: prove the detector is not oxygen/stairs hardcoded.",
+  },
+};

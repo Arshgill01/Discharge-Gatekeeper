@@ -1,0 +1,384 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "eleanor-singh",
+        "name": [
+          {
+            "text": "Eleanor Singh"
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1944-11-03"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/eleanor-singh"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "eleanor-discharge-2026-0419",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "period": {
+          "start": "2026-04-18T07:55:00Z"
+        },
+        "type": [
+          {
+            "text": "Functional mobility discharge encounter"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/eleanor-discharge-2026-0419"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "eleanor-fall-risk",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Recent fall with mobility impairment"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/eleanor-fall-risk"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-heart-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 78,
+          "unit": "beats/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-heart-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-respiratory-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Respiratory rate"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 18,
+          "unit": "breaths/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-respiratory-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-systolic-bp",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Systolic blood pressure"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 128,
+          "unit": "mmHg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-systolic-bp"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-spo2-rest",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Oxygen saturation at rest"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 96,
+          "unit": "%"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-spo2-rest"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-o2-flow-current",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Current oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-o2-flow-current"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "eleanor-o2-flow-baseline",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Baseline oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T15:30:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/eleanor-o2-flow-baseline"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "eleanor-walker-order",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Walker delivery"
+        },
+        "note": [
+          {
+            "text": "Walker order entered and delivery confirmed before planned discharge."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ServiceRequest/eleanor-walker-order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "eleanor-discharge-plan",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "title": "Home discharge plan with walker",
+        "description": "Vitals stable, walker ordered, follow-up scheduled, and home discharge planned pending final mobility confirmation."
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CarePlan/eleanor-discharge-plan"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "eleanor-pt-addendum-1650",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "description": "PT Addendum 2026-04-19 16:50",
+        "type": {
+          "text": "physical_therapy_note"
+        },
+        "date": "2026-04-19T16:50:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Patient required two-person assist on stairs after fatigue and forgot walker precautions twice during the session.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/eleanor-pt-addendum-1650"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "eleanor-nursing-note-1720",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "description": "Nursing Note 2026-04-19 17:20",
+        "type": {
+          "text": "nursing_note"
+        },
+        "date": "2026-04-19T17:20:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Patient attempted to get out of bed unassisted twice and could not accurately repeat fall-prevention instructions.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/eleanor-nursing-note-1720"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "eleanor-case-mgmt-note-1745",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/eleanor-singh"
+        },
+        "encounter": {
+          "reference": "Encounter/eleanor-discharge-2026-0419"
+        },
+        "description": "Case Management Note 2026-04-19 17:45",
+        "type": {
+          "text": "case_management_note"
+        },
+        "date": "2026-04-19T17:45:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Son listed as overnight support is out of town until tomorrow evening and no alternate caregiver has been confirmed.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/eleanor-case-mgmt-note-1745"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "bedside-rn",
+        "code": [
+          {
+            "text": "Bedside RN"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/bedside-rn"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "case-manager",
+        "code": [
+          {
+            "text": "Case manager"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/case-manager"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "physical-therapist",
+        "code": [
+          {
+            "text": "Physical therapist"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/physical-therapist"
+      }
+    }
+  ]
+}

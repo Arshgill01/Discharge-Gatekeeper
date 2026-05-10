@@ -1,5 +1,8 @@
 import { HiddenRiskInput } from "../clinical-intelligence/contract";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import {
+  buildHiddenRiskCompactUserPrompt,
   buildHiddenRiskUserPrompt,
   HIDDEN_RISK_SYSTEM_PROMPT,
 } from "../clinical-intelligence/prompt-contract";
@@ -15,13 +18,29 @@ type ClientConfig = {
   googleModel: string;
 };
 
+export type HiddenRiskLlmRuntimeDiagnostics = {
+  provider: LlmProvider;
+  model: string;
+  google_key_present: boolean;
+  gemini_key_present: boolean;
+  key_present: boolean;
+  fallback_mode: "heuristic" | "none";
+};
+
 export type HiddenRiskLlmResult = {
   rawText: string;
   provider: LlmProvider;
 };
 
+export type HiddenRiskLlmOptions = {
+  responseMode?: "full" | "prompt_opinion_slim";
+};
+
 export interface HiddenRiskLlmClient {
-  generateHiddenRiskResponse: (input: HiddenRiskInput) => Promise<HiddenRiskLlmResult>;
+  generateHiddenRiskResponse: (
+    input: HiddenRiskInput,
+    options?: HiddenRiskLlmOptions,
+  ) => Promise<HiddenRiskLlmResult>;
 }
 
 const parseProvider = (value: string | undefined): LlmProvider => {
@@ -34,28 +53,74 @@ const parseProvider = (value: string | undefined): LlmProvider => {
   );
 };
 
+const loadRepoEnvLocal = (env: Record<string, string | undefined>): Record<string, string | undefined> => {
+  const candidates = [
+    path.resolve(process.cwd(), ".env.local"),
+    path.resolve(process.cwd(), "..", ".env.local"),
+    path.resolve(process.cwd(), "..", "..", ".env.local"),
+  ];
+  const envFile = candidates.find((candidate) => existsSync(candidate));
+  if (!envFile) {
+    return env;
+  }
+
+  const merged = { ...env };
+  for (const line of readFileSync(envFile, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)\s*$/);
+    const key = match?.[1];
+    const value = match?.[2];
+    if (!key || value === undefined || merged[key]) {
+      continue;
+    }
+    const rawValue = value.trim();
+    merged[key] = rawValue.replace(/^(['"])(.*)\1$/, "$2");
+  }
+  return merged;
+};
+
 export const getLlmClientConfigFromEnv = (
   env: Record<string, string | undefined>,
 ): ClientConfig => {
-  const timeoutMs = Number.parseInt(env["CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS"] || "12000", 10);
+  const loadedEnv = loadRepoEnvLocal(env);
+  const timeoutMs = Number.parseInt(loadedEnv["CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS"] || "12000", 10);
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error(
-      `Invalid CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS '${env["CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS"]}'.`,
+      `Invalid CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS '${loadedEnv["CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS"]}'.`,
     );
   }
 
   return {
-    provider: parseProvider(env["CLINICAL_INTELLIGENCE_LLM_PROVIDER"]),
+    provider: parseProvider(loadedEnv["CLINICAL_INTELLIGENCE_LLM_PROVIDER"]),
     timeoutMs,
-    googleApiKey: env["GOOGLE_API_KEY"] || env["GEMINI_API_KEY"],
-    googleModel: env["CLINICAL_INTELLIGENCE_GOOGLE_MODEL"] || "gemini-2.5-flash",
+    googleApiKey: loadedEnv["GOOGLE_API_KEY"] || loadedEnv["GEMINI_API_KEY"],
+    googleModel: loadedEnv["CLINICAL_INTELLIGENCE_GOOGLE_MODEL"] || "gemma-4-31b-it",
+  };
+};
+
+export const getHiddenRiskLlmRuntimeDiagnostics = (
+  env: Record<string, string | undefined>,
+): HiddenRiskLlmRuntimeDiagnostics => {
+  const loadedEnv = loadRepoEnvLocal(env);
+  const config = getLlmClientConfigFromEnv(loadedEnv);
+  const googleKeyPresent = Boolean(loadedEnv["GOOGLE_API_KEY"]);
+  const geminiKeyPresent = Boolean(loadedEnv["GEMINI_API_KEY"]);
+  return {
+    provider: config.provider,
+    model: config.googleModel,
+    google_key_present: googleKeyPresent,
+    gemini_key_present: geminiKeyPresent,
+    key_present: googleKeyPresent || geminiKeyPresent,
+    fallback_mode: config.provider === "heuristic" ? "heuristic" : "none",
   };
 };
 
 class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
   constructor(private readonly config: ClientConfig) {}
 
-  async generateHiddenRiskResponse(input: HiddenRiskInput): Promise<HiddenRiskLlmResult> {
+  async generateHiddenRiskResponse(
+    input: HiddenRiskInput,
+    options?: HiddenRiskLlmOptions,
+  ): Promise<HiddenRiskLlmResult> {
     if (this.config.provider === "google") {
       if (!this.config.googleApiKey) {
         throw new Error(
@@ -63,13 +128,17 @@ class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
         );
       }
 
-      const userPrompt = buildHiddenRiskUserPrompt(input);
+      const useCompactPrompt = options?.responseMode === "prompt_opinion_slim";
+      const userPrompt = useCompactPrompt
+        ? buildHiddenRiskCompactUserPrompt(input)
+        : buildHiddenRiskUserPrompt(input);
       const rawText = await generateGoogleResponse({
         apiKey: this.config.googleApiKey,
         model: this.config.googleModel,
         timeoutMs: this.config.timeoutMs,
         systemPrompt: HIDDEN_RISK_SYSTEM_PROMPT,
         userPrompt,
+        maxOutputTokens: useCompactPrompt ? 384 : 2048,
       });
       return { rawText, provider: "google" };
     }

@@ -43,4 +43,4 @@ check_surface \
 check_surface \
   "${CLINICAL_INTELLIGENCE_BASE_URL}" \
   "Clinical Intelligence MCP" \
-  "surface_hidden_risks,synthesize_transition_narrative"
+  "assess_reconciled_discharge_readiness,surface_hidden_risks,synthesize_transition_narrative"

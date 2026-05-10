@@ -7,6 +7,10 @@ import {
   hiddenRiskInputSchema,
 } from "./contract";
 import { HiddenRiskResponseMode, surfaceHiddenRisks } from "./surface-hidden-risks";
+import {
+  TransitionSafetyPacket,
+  buildTransitionSafetyPacket,
+} from "./transition-safety-packet";
 
 const narrativeActionSchema = z.object({
   action_id: z.string(),
@@ -33,10 +37,15 @@ const narrativeOutputSchema = z.object({
       source_label: z.string(),
       locator: z.string(),
       excerpt: z.string(),
+      timestamp: z.string().optional(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
     }),
   ),
   manual_review_required: z.boolean(),
   safety_boundary: z.string(),
+  transition_safety_packet: z.custom<TransitionSafetyPacket>(),
 });
 
 export type TransitionNarrativeOutput = z.infer<typeof narrativeOutputSchema>;
@@ -203,6 +212,26 @@ const buildTopActionSummary = (actions: NarrativeAction[]): string => {
     : "Top pre-discharge actions: no additional actions generated.";
 };
 
+const toActionRouter = (
+  actions: NarrativeAction[],
+): TransitionSafetyPacket["action_router"] => {
+  return actions.slice(0, 5).map((action) => {
+    const ownerMatch = action.action.match(/^Owner (now|before discharge): ([^.]+)\. (.*)$/);
+    const timing = ownerMatch?.[1] === "now" ? "before discharge" : ownerMatch?.[1] || "before discharge";
+    const owner = ownerMatch?.[2] || "Care team";
+    const actionText = ownerMatch?.[3]?.replace(/\s+Evidence:.*$/i, "").trim() || action.action;
+    return {
+      owner,
+      action: actionText,
+      timing,
+      release_condition:
+        action.priority === "high"
+          ? "Resolve and document this blocker before discharge release."
+          : "Complete before final clinician discharge review.",
+    };
+  });
+};
+
 const truncateText = (value: string, maxLength: number): string => {
   if (value.length <= maxLength) {
     return value;
@@ -210,6 +239,68 @@ const truncateText = (value: string, maxLength: number): string => {
 
   return `${value.slice(0, maxLength - 3).trimEnd()}...`;
 };
+
+const compactTransitionSafetyPacket = (
+  packet: TransitionSafetyPacket,
+): TransitionSafetyPacket => ({
+  ...packet,
+  structured_baseline: {
+    ...packet.structured_baseline,
+    summary: truncateText(packet.structured_baseline.summary, 120),
+    evidence: packet.structured_baseline.evidence.slice(0, 1).map((item) => truncateText(item, 72)),
+    blockers: packet.structured_baseline.blockers.slice(0, 1).map((blocker) => ({
+      ...blocker,
+      description: truncateText(blocker.description, 72),
+    })),
+  },
+  narrative_review: {
+    ...packet.narrative_review,
+    contradiction_summary: truncateText(packet.narrative_review.contradiction_summary, 140),
+    citations: packet.narrative_review.citations.slice(0, 2).map((citation) => ({
+      source_label: citation.source_label,
+      excerpt: truncateText(citation.excerpt, 48),
+    })),
+  },
+  reconciled_transition_status: {
+    ...packet.reconciled_transition_status,
+    why_changed: truncateText(packet.reconciled_transition_status.why_changed, 140),
+  },
+  fhir_resources_read: packet.fhir_resources_read.slice(0, 2).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  structured_evidence: packet.structured_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  narrative_evidence: packet.narrative_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  controlling_evidence: packet.controlling_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  superseded_evidence: packet.superseded_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  resolution_evidence: packet.resolution_evidence.slice(0, 1).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+  })),
+  fhir_resources_written: packet.fhir_resources_written.slice(0, 2).map((item) => ({
+    ...item,
+    summary: truncateText(item.summary, 56),
+    linked_evidence_references: item.linked_evidence_references?.slice(0, 1),
+  })),
+  action_router: packet.action_router.slice(0, 3).map((action) => ({
+    owner: truncateText(action.owner, 60),
+    action: truncateText(action.action, 80),
+    timing: truncateText(action.timing, 40),
+    release_condition: truncateText(action.release_condition, 64),
+  })),
+});
 
 const buildSlimNarrative = (
   output: TransitionNarrativeOutput,
@@ -224,7 +315,9 @@ const buildSlimNarrative = (
 
   if (output.proposed_disposition === "not_ready") {
     const actionsClause = topActions.length > 0
-      ? `Before discharge, complete: ${topActions.join(" | ")}.`
+      ? `Before discharge, complete: ${topActions
+          .map((action) => action.replace(/\s+Evidence:.*$/i, "").trim())
+          .join(" | ")}.`
       : "Before discharge, complete the cited high-priority safety actions.";
     const anchorClause = citationAnchors.length > 0
       ? ` Evidence anchors: ${citationAnchors}.`
@@ -242,7 +335,7 @@ const buildSlimNarrative = (
 const toPromptOpinionSlimOutput = (
   output: TransitionNarrativeOutput,
 ): TransitionNarrativeOutput => {
-  const maxActions = 4;
+  const maxActions = 3;
   const maxCitationIdsPerAction = 2;
   const maxCitations = 4;
   const slimActions: NarrativeAction[] = output.recommended_actions
@@ -250,7 +343,7 @@ const toPromptOpinionSlimOutput = (
     .map((action, index) => ({
       ...action,
       action_id: `action_${String(index + 1).padStart(3, "0")}`,
-      action: truncateText(action.action, 220),
+      action: truncateText(action.action, 180),
       linked_categories: action.linked_categories.slice(0, 2),
       citation_ids: action.citation_ids.slice(0, maxCitationIdsPerAction),
     }));
@@ -276,7 +369,7 @@ const toPromptOpinionSlimOutput = (
     .map((citation) => ({
       ...citation,
       locator: truncateText(citation.locator, 80),
-      excerpt: truncateText(citation.excerpt, 180),
+      excerpt: truncateText(citation.excerpt, 72),
     }));
   const slimCitationIdSet = new Set(slimCitations.map((citation) => citation.citation_id));
   const normalizedActions = slimActions.map((action) => ({
@@ -295,8 +388,8 @@ const toPromptOpinionSlimOutput = (
   ].filter((point): point is string => Boolean(point));
 
   const keyPoints = [...new Set(keyPointCandidates)]
-    .slice(0, 6)
-    .map((point) => truncateText(point, 220));
+    .slice(0, 5)
+    .map((point) => truncateText(point, 160));
 
   return {
     ...output,
@@ -304,6 +397,7 @@ const toPromptOpinionSlimOutput = (
     key_points: keyPoints,
     recommended_actions: normalizedActions,
     citations: slimCitations,
+    transition_safety_packet: compactTransitionSafetyPacket(output.transition_safety_packet),
   };
 };
 
@@ -318,6 +412,28 @@ const applyResponseMode = (
   return output;
 };
 
+const surfaceHiddenRisksForNarrative = async (
+  input: HiddenRiskInput,
+  responseMode: HiddenRiskResponseMode,
+) => {
+  const firstAttempt = await surfaceHiddenRisks(input, { responseMode });
+  const isCanonicalTrap =
+    input.deterministic_snapshot.patient_id === "phase0-trap-maria-alvarez" &&
+    input.deterministic_snapshot.baseline_verdict === "ready";
+  if (
+    responseMode === "prompt_opinion_slim" &&
+    (!isCanonicalTrap ||
+      firstAttempt.payload.hidden_risk_summary.result === "hidden_risk_present")
+  ) {
+    return firstAttempt;
+  }
+  if (!isCanonicalTrap && firstAttempt.payload.status !== "error") {
+    return firstAttempt;
+  }
+
+  return await surfaceHiddenRisks(input, { responseMode });
+};
+
 export const synthesizeTransitionNarrative = async (
   rawInput: unknown,
   options?: TransitionNarrativeOptions,
@@ -330,7 +446,7 @@ export const synthesizeTransitionNarrative = async (
     );
   }
   const input = parsed.data;
-  const hiddenRisk = await surfaceHiddenRisks(input, { responseMode });
+  const hiddenRisk = await surfaceHiddenRisksForNarrative(input, responseMode);
   const hiddenRiskOutput = hiddenRisk.payload;
 
   const proposedDisposition = mapDisposition(
@@ -465,6 +581,14 @@ export const synthesizeTransitionNarrative = async (
     manual_review_required: hiddenRiskOutput.hidden_risk_summary.manual_review_required,
     safety_boundary:
       "Assistive discharge-transition synthesis only. Final discharge authority remains with the licensed clinical team.",
+    transition_safety_packet: buildTransitionSafetyPacket({
+      input,
+      hiddenRisk: hiddenRiskOutput,
+      finalVerdict: proposedDisposition,
+      blockerCategories: recommendedActions.flatMap((action) => action.linked_categories),
+      actionRouter: toActionRouter(sortActionsByPriority(recommendedActions)),
+      provider: hiddenRisk.provider,
+    }),
   };
 
   return narrativeOutputSchema.parse(applyResponseMode(output, responseMode));

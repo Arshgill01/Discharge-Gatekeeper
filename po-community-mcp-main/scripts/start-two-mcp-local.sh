@@ -3,9 +3,31 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PO_COMMUNITY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PO_COMMUNITY_ROOT}/.." && pwd)"
 RUNTIME_DIR="${PO_COMMUNITY_ROOT}/.runtime/two-mcp"
 
 mkdir -p "${RUNTIME_DIR}"
+
+REQUESTED_CLINICAL_INTELLIGENCE_LLM_PROVIDER="${CLINICAL_INTELLIGENCE_LLM_PROVIDER:-}"
+REQUESTED_CLINICAL_INTELLIGENCE_GOOGLE_MODEL="${CLINICAL_INTELLIGENCE_GOOGLE_MODEL:-}"
+REQUESTED_CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS:-}"
+
+if [[ -f "${REPO_ROOT}/.env.local" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/.env.local"
+  set +a
+fi
+
+if [[ -n "${REQUESTED_CLINICAL_INTELLIGENCE_LLM_PROVIDER}" ]]; then
+  CLINICAL_INTELLIGENCE_LLM_PROVIDER="${REQUESTED_CLINICAL_INTELLIGENCE_LLM_PROVIDER}"
+fi
+if [[ -n "${REQUESTED_CLINICAL_INTELLIGENCE_GOOGLE_MODEL}" ]]; then
+  CLINICAL_INTELLIGENCE_GOOGLE_MODEL="${REQUESTED_CLINICAL_INTELLIGENCE_GOOGLE_MODEL}"
+fi
+if [[ -n "${REQUESTED_CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS}" ]]; then
+  CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${REQUESTED_CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS}"
+fi
 
 DISCHARGE_GATEKEEPER_HOST="${DISCHARGE_GATEKEEPER_HOST:-127.0.0.1}"
 DISCHARGE_GATEKEEPER_PORT="${DISCHARGE_GATEKEEPER_PORT:-5055}"
@@ -16,7 +38,7 @@ DISCHARGE_GATEKEEPER_ALLOWED_HOSTS="${DISCHARGE_GATEKEEPER_ALLOWED_HOSTS:-localh
 CLINICAL_INTELLIGENCE_ALLOWED_HOSTS="${CLINICAL_INTELLIGENCE_ALLOWED_HOSTS:-localhost,127.0.0.1}"
 
 CLINICAL_INTELLIGENCE_LLM_PROVIDER="${CLINICAL_INTELLIGENCE_LLM_PROVIDER:-heuristic}"
-CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS:-12000}"
+CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS:-60000}"
 
 wait_for_health() {
   local endpoint="$1"
@@ -40,7 +62,8 @@ start_server() {
   local working_dir="$2"
   local log_file="$3"
   local pid_file="$4"
-  shift 4
+  local health_endpoint="$5"
+  shift 5
 
   if [[ -f "${pid_file}" ]]; then
     local existing_pid
@@ -51,9 +74,14 @@ start_server() {
     fi
   fi
 
+  if curl -sSf "${health_endpoint}" >/dev/null 2>&1; then
+    echo "[two-mcp] ${server_key} already healthy at ${health_endpoint}"
+    return 0
+  fi
+
   (
     cd "${working_dir}"
-    env "$@" npm run start >"${log_file}" 2>&1 &
+    nohup env "$@" npm run start >"${log_file}" 2>&1 </dev/null &
     echo $! >"${pid_file}"
   )
 
@@ -65,24 +93,31 @@ start_server \
   "${PO_COMMUNITY_ROOT}/typescript" \
   "${RUNTIME_DIR}/discharge-gatekeeper.log" \
   "${RUNTIME_DIR}/discharge-gatekeeper.pid" \
+  "http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/healthz" \
   HOST="${DISCHARGE_GATEKEEPER_HOST}" \
   PORT="${DISCHARGE_GATEKEEPER_PORT}" \
   PO_ENV="local" \
   MCP_SERVER_NAME="Discharge Gatekeeper MCP" \
-  ALLOWED_HOSTS="${DISCHARGE_GATEKEEPER_ALLOWED_HOSTS}"
+  ALLOWED_HOSTS="${DISCHARGE_GATEKEEPER_ALLOWED_HOSTS}" \
+  DISABLE_HOST_VALIDATION="${DISABLE_HOST_VALIDATION:-0}"
 
 start_server \
   "clinical-intelligence" \
   "${PO_COMMUNITY_ROOT}/clinical-intelligence-typescript" \
   "${RUNTIME_DIR}/clinical-intelligence.log" \
   "${RUNTIME_DIR}/clinical-intelligence.pid" \
+  "http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/healthz" \
   HOST="${CLINICAL_INTELLIGENCE_HOST}" \
   PORT="${CLINICAL_INTELLIGENCE_PORT}" \
   PO_ENV="local" \
   MCP_SERVER_NAME="Clinical Intelligence MCP" \
   ALLOWED_HOSTS="${CLINICAL_INTELLIGENCE_ALLOWED_HOSTS}" \
+  DISABLE_HOST_VALIDATION="${DISABLE_HOST_VALIDATION:-0}" \
   CLINICAL_INTELLIGENCE_LLM_PROVIDER="${CLINICAL_INTELLIGENCE_LLM_PROVIDER}" \
-  CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS}"
+  CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS="${CLINICAL_INTELLIGENCE_LLM_TIMEOUT_MS}" \
+  CLINICAL_INTELLIGENCE_GOOGLE_MODEL="${CLINICAL_INTELLIGENCE_GOOGLE_MODEL:-gemma-4-31b-it}" \
+  GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
+  GEMINI_API_KEY="${GEMINI_API_KEY:-}"
 
 wait_for_health "http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/healthz" "Discharge Gatekeeper MCP"
 wait_for_health "http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/healthz" "Clinical Intelligence MCP"

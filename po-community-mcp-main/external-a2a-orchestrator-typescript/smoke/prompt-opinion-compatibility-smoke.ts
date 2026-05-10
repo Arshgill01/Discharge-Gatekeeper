@@ -43,13 +43,77 @@ const spawnService = (
   return child;
 };
 
+const collectTaskTextParts = (task: Record<string, any>): string[] => {
+  const statusParts = Array.isArray(task?.status?.message?.parts)
+    ? task.status.message.parts
+    : [];
+  const artifactParts = Array.isArray(task?.artifacts)
+    ? task.artifacts.flatMap((artifact: Record<string, any>) =>
+        Array.isArray(artifact?.parts) ? artifact.parts : [],
+      )
+    : [];
+
+  return [...statusParts, ...artifactParts]
+    .map((part: Record<string, any>) => part?.text)
+    .filter((text: unknown): text is string => typeof text === "string" && text.trim().length > 0);
+};
+
+const assertCompletedPromptOpinionTaskEnvelope = (
+  payload: Record<string, any>,
+  expectedId: string,
+): Record<string, any> => {
+  assert.equal(payload.jsonrpc, "2.0");
+  assert.equal(payload.id, expectedId);
+  assert.equal(typeof payload.result?.task?.id, "string");
+  assert.equal(payload.result?.message?.role, "ROLE_AGENT");
+  assert.equal(typeof payload.result?.message?.messageId, "string");
+  assert.equal(typeof payload.result?.message?.parts?.[0]?.text, "string");
+  assert.equal(typeof payload.task?.id, "string");
+  assert.equal(payload.task.id, payload.result.task.id);
+  assert.ok(
+    Buffer.byteLength(JSON.stringify(payload), "utf8") <= 15000,
+    "Prompt Opinion message:send response should stay compact",
+  );
+
+  const task = payload.result.task;
+  assert.equal(typeof task.contextId, "string");
+  assert.ok(task.contextId.length > 0);
+  assert.equal(typeof task.status, "object");
+  assert.equal(task.status.state, "TASK_STATE_COMPLETED");
+
+  const textParts = collectTaskTextParts(task);
+  assert.ok(textParts.length >= 1, "task should expose at least one non-empty text part");
+  const visibleTaskText = textParts.join("\n");
+  assert.match(payload.result.message.parts[0].text, /Final verdict: not_ready|Final transition status:\s*NOT_READY|DISCHARGE HOLD ACTIVE/i);
+  assert.match(payload.result.message.parts[0].text, /Nursing Note 2026-04-18 20:40/i);
+
+  assert.match(visibleTaskText, /Final verdict: not_ready|Final transition status:\s*NOT_READY|DISCHARGE HOLD ACTIVE/i);
+  assert.match(visibleTaskText, /Structured baseline: ready|Structured baseline:\s*READY|DISCHARGE HOLD ACTIVE/i);
+  assert.match(visibleTaskText, /Hidden-risk result: hidden_risk_present|HIDDEN CONTRADICTION FOUND|TRANSITION PACKAGE/i);
+  assert.match(visibleTaskText, /Nursing Note 2026-04-18 20:40/i);
+  assert.match(visibleTaskText, /Case Management Addendum 2026-04-18 20:55/i);
+  assert.match(visibleTaskText, /Care Transitions Command result:|HIDDEN CONTRADICTION FOUND|TRANSITION PACKAGE/i);
+  assert.match(visibleTaskText, /Why the answer changed:|Why this changes the answer:|Release condition:/i);
+  assert.match(visibleTaskText, /Required before discharge:|Final transition status:|Actions:/i);
+
+  assert.equal(task.metadata?.diagnostics, undefined);
+  assert.equal(task.metadata?.output, undefined);
+  assert.equal(task.metadata?.runtime_summary, "compact_prompt_opinion_response");
+  assert.equal(task.metadata?.both_mcps_hit, true);
+  assert.equal(task.metadata?.final_verdict, "not_ready");
+  assert.equal(task.metadata?.hidden_risk_result, "hidden_risk_present");
+  assert.equal(typeof task.metadata?.diagnostics_available_via, "string");
+
+  return task;
+};
+
 const run = async (): Promise<void> => {
   const root = process.cwd();
   const dgCwd = `${root}/../typescript`;
   const ciCwd = `${root}/../clinical-intelligence-typescript`;
-  const dgPort = "5055";
-  const ciPort = "5056";
-  const a2aPort = "5057";
+  const dgPort = process.env.ORCHESTRATOR_SMOKE_DG_PORT || "5055";
+  const ciPort = process.env.ORCHESTRATOR_SMOKE_CI_PORT || "5056";
+  const a2aPort = process.env.ORCHESTRATOR_SMOKE_A2A_PORT || "5057";
   const baseUrl = `http://127.0.0.1:${a2aPort}`;
 
   const dg = spawnService("discharge", "npx", ["tsx", "index.ts"], dgCwd, {
@@ -59,7 +123,7 @@ const run = async (): Promise<void> => {
   const ci = spawnService("clinical", "npx", ["tsx", "index.ts"], ciCwd, {
     PORT: ciPort,
     MCP_SERVER_NAME: "Clinical Intelligence MCP",
-    CLINICAL_INTELLIGENCE_PROVIDER: "heuristic",
+    CLINICAL_INTELLIGENCE_LLM_PROVIDER: "heuristic",
   });
   const a2a = spawnService("a2a", "npx", ["tsx", "index.ts"], root, {
     PORT: a2aPort,
@@ -77,10 +141,12 @@ const run = async (): Promise<void> => {
       method: "POST",
       headers: {
         "content-type": "application/a2a+json",
+        "A2A-Version": "1.0",
         "x-request-id": "po-http-json-request",
         "x-correlation-id": "po-http-json-correlation",
       },
       body: JSON.stringify({
+        id: "po-http-json-id-1",
         message: {
           role: "ROLE_USER",
           parts: [{ text: TRAP_PATIENT_TASK_INPUT.prompt }],
@@ -92,23 +158,23 @@ const run = async (): Promise<void> => {
     });
     assert.equal(httpJsonResponse.status, 200);
     const httpJsonPayload = await httpJsonResponse.json();
-    assert.equal(typeof httpJsonPayload?.task?.id, "string");
-    assert.equal(httpJsonPayload.task.status.state, "TASK_STATE_COMPLETED");
-    assert.equal(
-      httpJsonPayload.task.metadata.diagnostics.incoming_request.selected_binding,
-      "http_json",
+    const httpJsonTask = assertCompletedPromptOpinionTaskEnvelope(
+      httpJsonPayload,
+      "po-http-json-id-1",
     );
     assert.equal(
-      httpJsonPayload.task.metadata.diagnostics.incoming_request.correlation_id,
-      "po-http-json-correlation",
+      httpJsonTask.metadata.diagnostics_available_via,
+      `/tasks/${httpJsonTask.id}`,
     );
 
     const v1HttpJsonResponse = await fetch(`${baseUrl}/v1/message:send`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
+        id: "po-http-json-id-2",
         message: {
           role: "ROLE_USER",
           parts: [{ text: "What hidden risk changed that answer? Show me the contradiction and the evidence." }],
@@ -120,36 +186,57 @@ const run = async (): Promise<void> => {
     });
     assert.equal(v1HttpJsonResponse.status, 200);
     const v1HttpJsonPayload = await v1HttpJsonResponse.json();
-    assert.equal(typeof v1HttpJsonPayload?.task?.id, "string");
+    assertCompletedPromptOpinionTaskEnvelope(v1HttpJsonPayload, "po-http-json-id-2");
 
     const nestedHttpJsonResponse = await fetch(`${baseUrl}/message:send/v1/message:send`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
+        id: "po-http-json-id-3",
         message: {
           role: "ROLE_USER",
           parts: [{ text: "Is this patient safe to discharge today?" }],
-        },
-        metadata: {
-          patient_context: TRAP_PATIENT_TASK_INPUT.patient_context,
         },
       }),
     });
     assert.equal(nestedHttpJsonResponse.status, 200);
     const nestedHttpJsonPayload = await nestedHttpJsonResponse.json();
-    assert.equal(typeof nestedHttpJsonPayload?.task?.id, "string");
-    assert.equal(typeof nestedHttpJsonPayload.task.status.message.messageId, "string");
-    assert.equal(
-      nestedHttpJsonPayload.task.metadata.diagnostics.incoming_request.selected_binding,
-      "http_json",
+    const nestedHttpJsonTask = assertCompletedPromptOpinionTaskEnvelope(
+      nestedHttpJsonPayload,
+      "po-http-json-id-3",
     );
+    assert.equal(typeof nestedHttpJsonTask.status.message.messageId, "string");
+    assert.equal(
+      nestedHttpJsonTask.status.message.metadata.requestId,
+      "po-http-json-id-3",
+    );
+
+    const rootHttpJsonResponse = await fetch(`${baseUrl}/`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/a2a+json",
+        "A2A-Version": "1.0",
+      },
+      body: JSON.stringify({
+        id: "po-http-json-id-4",
+        message: {
+          role: "ROLE_USER",
+          parts: [{ text: "Is this patient safe to discharge today?" }],
+        },
+      }),
+    });
+    assert.equal(rootHttpJsonResponse.status, 200);
+    const rootHttpJsonPayload = await rootHttpJsonResponse.json();
+    assertCompletedPromptOpinionTaskEnvelope(rootHttpJsonPayload, "po-http-json-id-4");
 
     const jsonRpcResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
         "x-request-id": "po-jsonrpc-request",
       },
       body: JSON.stringify({
@@ -169,22 +256,17 @@ const run = async (): Promise<void> => {
     });
     assert.equal(jsonRpcResponse.status, 200);
     const jsonRpcPayload = await jsonRpcResponse.json();
-    assert.equal(jsonRpcPayload.jsonrpc, "2.0");
-    assert.equal(jsonRpcPayload.id, "po-rpc-id-1");
-    assert.equal(typeof jsonRpcPayload.result?.task?.id, "string");
+    const jsonRpcTask = assertCompletedPromptOpinionTaskEnvelope(jsonRpcPayload, "po-rpc-id-1");
     assert.equal(
-      jsonRpcPayload.result.task.metadata.diagnostics.incoming_request.selected_binding,
-      "jsonrpc",
-    );
-    assert.equal(
-      jsonRpcPayload.result.task.metadata.diagnostics.incoming_request.protocol_request_id,
-      "po-rpc-id-1",
+      jsonRpcTask.status.message.metadata.requestId,
+      "po-jsonrpc-request",
     );
 
     const slashMethodResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -203,36 +285,34 @@ const run = async (): Promise<void> => {
     });
     assert.equal(slashMethodResponse.status, 200);
     const slashMethodPayload = await slashMethodResponse.json();
-    assert.equal(slashMethodPayload.jsonrpc, "2.0");
-    assert.equal(slashMethodPayload.id, "po-rpc-id-2");
-    assert.equal(slashMethodPayload.result.task.status.state, "TASK_STATE_COMPLETED");
-    assert.equal(
-      Array.isArray(slashMethodPayload.result.task.metadata.diagnostics.downstream_correlation),
-      true,
+    const slashMethodTask = assertCompletedPromptOpinionTaskEnvelope(
+      slashMethodPayload,
+      "po-rpc-id-2",
     );
     assert.equal(
-      slashMethodPayload.result.task.metadata.diagnostics.downstream_correlation.length >= 1,
-      true,
+      slashMethodTask.metadata.diagnostics_available_via,
+      `/tasks/${slashMethodTask.id}`,
     );
 
     const getTaskResponse = await fetch(`${baseUrl}/rpc`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "A2A-Version": "1.0",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: "po-rpc-id-3",
         method: "GetTask",
         params: {
-          id: slashMethodPayload.result.task.id,
+          id: slashMethodTask.id,
         },
       }),
     });
     assert.equal(getTaskResponse.status, 200);
     const getTaskPayload = await getTaskResponse.json();
     assert.equal(getTaskPayload.id, "po-rpc-id-3");
-    assert.equal(getTaskPayload.result.task.id, slashMethodPayload.result.task.id);
+    assert.equal(getTaskPayload.result.task.id, slashMethodTask.id);
 
     console.log("PASS prompt opinion compatibility smoke");
   } finally {

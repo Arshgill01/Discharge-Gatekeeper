@@ -1,3 +1,5 @@
+import { TransitionSafetyPacket } from "../clinical-intelligence-typescript/clinical-intelligence/transition-safety-packet";
+
 export type CanonicalVerdict = "ready" | "ready_with_caveats" | "not_ready";
 
 export type HiddenRiskResult = "hidden_risk_present" | "no_hidden_risk" | "inconclusive";
@@ -6,7 +8,7 @@ export type DispositionImpact = "none" | "caveat" | "not_ready" | "uncertain";
 
 export type HiddenRiskRunStatus = "used" | "skipped" | "unavailable" | "inconclusive";
 
-export type PromptMode = "prompt_1" | "prompt_2" | "prompt_3";
+export type PromptMode = "prompt_1" | "prompt_2" | "prompt_3" | "prompt_4";
 
 export type ParsedTaskInputSurface =
   | "root"
@@ -32,6 +34,9 @@ export type NarrativeSource = {
   locator?: string;
   timestamp?: string;
   excerpt: string;
+  fhir_reference?: string;
+  fhir_resource_type?: string;
+  fhir_resource_id?: string;
 };
 
 export type A2ATaskInput = {
@@ -40,6 +45,12 @@ export type A2ATaskInput = {
     scenario_id?: string;
     patient_id?: string | null;
     encounter_id?: string | null;
+    fhir_context?: {
+      fhir_server: string;
+      access_token?: string;
+      refresh_token?: string;
+      refresh_token_url?: string;
+    };
     narrative_evidence_bundle?: NarrativeSource[];
     optional_context_metadata?: {
       care_setting?: string;
@@ -97,6 +108,13 @@ export type TaskRuntimeDiagnostics = {
   execution_finished_at: string;
   task_duration_ms: number;
   hidden_risk_invoked: boolean;
+  hidden_risk_provider: {
+    provider: string;
+    model: string | null;
+    key_present: boolean | null;
+    fallback_mode: string | null;
+    status: "reported" | "unavailable" | "skipped";
+  };
   fallbacks_applied: string[];
   incoming_request: IncomingRequestDiagnostic;
   downstream_correlation: Array<{
@@ -106,6 +124,15 @@ export type TaskRuntimeDiagnostics = {
     propagated_correlation_id: string | null;
   }>;
   downstream_calls: DownstreamCallDiagnostic[];
+  hidden_risk_cache?: {
+    cache_enabled: boolean;
+    cache_warm_only: boolean;
+    cache_status: "hit" | "miss" | "disabled" | "warm_only_miss" | "rejected_error" | "rejected_no_anchors" | "rejected_no_hidden_risk" | "expired";
+    cache_key_hash: string | null;
+    cache_entry_count: number;
+    cache_entry_age_ms: number | null;
+    computed: boolean;
+  };
 };
 
 export type DeterministicResponse = {
@@ -123,6 +150,10 @@ export type DeterministicResponse = {
     source_type: string;
     source_label: string;
     detail: string;
+    fhir_reference?: string;
+    fhir_resource_type?: string;
+    fhir_resource_id?: string;
+    fhir_timestamp?: string;
   }>;
   next_steps: Array<{
     id: string;
@@ -135,6 +166,27 @@ export type DeterministicResponse = {
     trace_summary: string;
   }>;
   summary: string;
+  fhir_context?: {
+    fhir_server: string | null;
+    patient_reference: string | null;
+    encounter_reference: string | null;
+    read_mode: "fhir_native";
+    fhir_resources_read: Array<{
+      reference: string;
+      resource_type: string;
+      resource_id: string;
+      timestamp?: string;
+      summary: string;
+    }>;
+    narrative_evidence_bundle: NarrativeSource[];
+    optional_context_metadata?: {
+      care_setting?: string;
+      discharge_destination?: string;
+      reviewer_timestamp?: string;
+      explicit_task_goal?: string;
+    };
+    practitioner_roles?: Record<string, string>;
+  };
 };
 
 export type HiddenRiskResponse = {
@@ -172,6 +224,10 @@ export type HiddenRiskResponse = {
     source_label: string;
     locator: string;
     excerpt: string;
+    timestamp?: string;
+    fhir_reference?: string;
+    fhir_resource_type?: string;
+    fhir_resource_id?: string;
   }>;
   review_metadata: {
     narrative_sources_reviewed: number;
@@ -219,13 +275,25 @@ export type ReconciliationResult = {
       source_label: string;
       locator?: string;
       detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
     }>;
   }>;
   citations: {
-    deterministic: Array<{ id: string; source_label: string; detail: string }>;
+    deterministic: Array<{
+      id: string;
+      source_label: string;
+      detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
+      fhir_timestamp?: string;
+    }>;
     hidden_risk: HiddenRiskResponse["citations"];
   };
   contradiction_summary: string;
+  transition_safety_packet: TransitionSafetyPacket;
   prompt_payload: {
     prompt_mode: PromptMode;
     headline: string;
@@ -239,6 +307,9 @@ export type ReconciliationResult = {
       source_label: string;
       locator?: string;
       detail: string;
+      fhir_reference?: string;
+      fhir_resource_type?: string;
+      fhir_resource_id?: string;
     }>;
     impacted_blocker_categories: string[];
     action_plan: ReconciliationResult["merged_next_steps"];

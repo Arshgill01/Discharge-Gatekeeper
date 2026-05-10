@@ -4,6 +4,8 @@ import {
   HiddenRiskResponse,
   ReconciliationResult,
 } from "../types";
+import { HiddenRiskInput, HiddenRiskOutput } from "../../clinical-intelligence-typescript/clinical-intelligence/contract";
+import { buildTransitionSafetyPacket } from "../../clinical-intelligence-typescript/clinical-intelligence/transition-safety-packet";
 import { applyDecisionMatrix } from "./decision-matrix";
 import { BlockerCategory, BlockerPriority } from "../../typescript/discharge-readiness/contract";
 import {
@@ -15,6 +17,14 @@ import {
 
 const detectPromptMode = (prompt: string): ReconciliationResult["prompt_payload"]["prompt_mode"] => {
   const normalized = prompt.toLowerCase();
+  if (
+    normalized.includes("re-arbitrate") ||
+    normalized.includes("rearbitrate") ||
+    normalized.includes("update discharge status") ||
+    normalized.includes("update readiness")
+  ) {
+    return "prompt_4";
+  }
   if (normalized.includes("hidden risk") || normalized.includes("contradiction")) {
     return "prompt_2";
   }
@@ -141,6 +151,9 @@ const buildMergedNextSteps = (
         source: "deterministic" as const,
         source_label: evidence.source_label,
         detail: evidence.detail,
+        fhir_reference: evidence.fhir_reference,
+        fhir_resource_type: evidence.fhir_resource_type,
+        fhir_resource_id: evidence.fhir_resource_id,
       })),
   }));
 
@@ -179,6 +192,9 @@ const buildMergedNextSteps = (
           source_label: citation.source_label,
           locator: citation.locator,
           detail: citation.excerpt,
+          fhir_reference: citation.fhir_reference,
+          fhir_resource_type: citation.fhir_resource_type,
+          fhir_resource_id: citation.fhir_resource_id,
         })),
     }));
 
@@ -212,6 +228,83 @@ const buildContradictionSummary = (
   return hiddenRisk.hidden_risk_summary.summary;
 };
 
+const toHiddenRiskInput = (
+  taskInput: A2ATaskInput,
+  deterministic: DeterministicResponse,
+): HiddenRiskInput => ({
+  deterministic_snapshot: {
+    patient_id: taskInput.patient_context?.patient_id ?? null,
+    encounter_id: taskInput.patient_context?.encounter_id ?? null,
+    baseline_verdict: deterministic.verdict,
+    deterministic_blockers: deterministic.blockers
+      .filter((blocker) => isCanonicalBlockerCategory(blocker.category))
+      .map((blocker) => ({
+        blocker_id: blocker.id,
+        category: blocker.category as BlockerCategory,
+        description: blocker.description,
+        severity: toBlockerPriority(blocker.priority),
+      })),
+    deterministic_evidence: deterministic.evidence.map((evidence) => ({
+      evidence_id: evidence.id,
+      source_label: evidence.source_label,
+      detail: evidence.detail,
+      fhir_reference: evidence.fhir_reference,
+      fhir_resource_type: evidence.fhir_resource_type,
+      fhir_resource_id: evidence.fhir_resource_id,
+      fhir_timestamp: evidence.fhir_timestamp,
+    })),
+    deterministic_next_steps: deterministic.next_steps.map((step) => step.action),
+    deterministic_summary: deterministic.summary,
+  },
+  narrative_evidence_bundle:
+    taskInput.patient_context?.narrative_evidence_bundle ||
+    deterministic.fhir_context?.narrative_evidence_bundle ||
+    [],
+  optional_context_metadata:
+    taskInput.patient_context?.optional_context_metadata ??
+    deterministic.fhir_context?.optional_context_metadata,
+  fhir_context: deterministic.fhir_context,
+});
+
+const buildUnavailableHiddenRisk = (
+  deterministic: DeterministicResponse,
+  reason: string,
+): HiddenRiskOutput => ({
+  contract_version: "phase0_hidden_risk_v1",
+  status: "insufficient_context",
+  patient_id: null,
+  encounter_id: null,
+  baseline_verdict: deterministic.verdict,
+  hidden_risk_summary: {
+    result: "inconclusive",
+    overall_disposition_impact: "uncertain",
+    confidence: "low",
+    summary: reason,
+    manual_review_required: true,
+    false_positive_guardrail:
+      "No hidden-risk escalation is fabricated without Clinical Intelligence evidence.",
+  },
+  hidden_risk_findings: [],
+  citations: [],
+  review_metadata: {
+    narrative_sources_reviewed: 0,
+    duplicate_findings_suppressed: 0,
+    weak_findings_suppressed: 0,
+  },
+});
+
+const toClinicalHiddenRiskOutput = (
+  hiddenRisk: HiddenRiskResponse,
+): HiddenRiskOutput => ({
+  ...hiddenRisk,
+  hidden_risk_findings: hiddenRisk.hidden_risk_findings
+    .filter((finding) => isCanonicalBlockerCategory(finding.category))
+    .map((finding) => ({
+      ...finding,
+      category: finding.category as BlockerCategory,
+    })),
+});
+
 export const reconcileOutputs = (
   taskInput: A2ATaskInput,
   deterministic: DeterministicResponse,
@@ -237,6 +330,27 @@ export const reconcileOutputs = (
   const mergedNextSteps = buildMergedNextSteps(deterministic, hiddenRisk);
   const mergedBlockers = buildMergedBlockers(deterministic, hiddenRisk);
   const impactedBlockerCategories = [...new Set(mergedBlockers.map((blocker) => blocker.category))];
+  const packetHiddenRisk = hiddenRisk
+    ? toClinicalHiddenRiskOutput(hiddenRisk)
+    : buildUnavailableHiddenRisk(
+        deterministic,
+        "Hidden-risk review unavailable; deterministic posture preserved and manual review is required if narrative evidence is needed.",
+      );
+  const transitionSafetyPacket = buildTransitionSafetyPacket({
+    input: toHiddenRiskInput(taskInput, deterministic),
+    hiddenRisk: packetHiddenRisk,
+    finalVerdict: decision.finalVerdict,
+    blockerCategories: impactedBlockerCategories,
+    actionRouter: mergedNextSteps.slice(0, 5).map((step) => ({
+      owner: step.owner,
+      action: step.action,
+      timing: step.timing,
+      release_condition:
+        step.priority === "high"
+          ? "Resolve and document this blocker before discharge release."
+          : "Complete before final clinician discharge review.",
+    })),
+  });
   const lastDispositionDowngradeBy = deterministic.verdict === "ready"
     ? decision.finalVerdict === "ready"
       ? "none"
@@ -263,10 +377,15 @@ export const reconcileOutputs = (
         id: evidence.id,
         source_label: evidence.source_label,
         detail: evidence.detail,
+        fhir_reference: evidence.fhir_reference,
+        fhir_resource_type: evidence.fhir_resource_type,
+        fhir_resource_id: evidence.fhir_resource_id,
+        fhir_timestamp: evidence.fhir_timestamp,
       })),
       hidden_risk: hiddenRisk?.citations || [],
     },
     contradiction_summary: contradictionSummary,
+    transition_safety_packet: transitionSafetyPacket,
     prompt_payload: {
       prompt_mode: promptMode,
       headline: `Structured baseline ${deterministic.verdict}; final verdict ${decision.finalVerdict}.`,

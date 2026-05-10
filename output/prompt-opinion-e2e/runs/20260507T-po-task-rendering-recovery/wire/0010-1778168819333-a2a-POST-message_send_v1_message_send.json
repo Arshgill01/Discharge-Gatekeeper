@@ -1,0 +1,263 @@
+{
+  "timestamp": "2026-05-07T15:46:59.333Z",
+  "method": "POST",
+  "original_path": "/message:send/v1/message:send",
+  "path": "/message:send/v1/message:send",
+  "route": "a2a",
+  "route_label": "a2a",
+  "target": "http://127.0.0.1:5057/message:send/v1/message:send",
+  "target_url": "http://127.0.0.1:5057/message:send/v1/message:send",
+  "status_code": 200,
+  "request_headers": {
+    "host": "underpaid-passion-unloaded.ngrok-free.dev",
+    "transfer-encoding": "chunked",
+    "content-type": "application/json; charset=utf-8",
+    "traceparent": "00-f4f500d34bc70da766a137ee0d713a06-3f3c65763ca5539d-00",
+    "x-forwarded-for": "20.80.113.52",
+    "x-forwarded-host": "underpaid-passion-unloaded.ngrok-free.dev",
+    "x-forwarded-proto": "https",
+    "accept-encoding": "gzip"
+  },
+  "request_body_redacted": {
+    "message": {
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "is this patient safe to discharge today?"
+        }
+      ],
+      "messageId": "3e402f44-d07b-4995-aad8-084ed0fc0a10"
+    }
+  },
+  "request_byte_count": 145,
+  "request": {
+    "byte_count": 145,
+    "captured_byte_count": 145,
+    "truncated": false,
+    "body": {
+      "message": {
+        "role": "ROLE_USER",
+        "parts": [
+          {
+            "text": "is this patient safe to discharge today?"
+          }
+        ],
+        "messageId": "3e402f44-d07b-4995-aad8-084ed0fc0a10"
+      }
+    }
+  },
+  "response_headers": {
+    "x-powered-by": "Express",
+    "access-control-allow-origin": "*",
+    "x-request-id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+    "request-id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+    "x-correlation-id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+    "cache-control": "no-store",
+    "x-a2a-task-id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "5356",
+    "etag": "W/\"14ec-yd8UYzDTBSiqAhwOjioLAGpF29A\"",
+    "date": "Thu, 07 May 2026 15:46:59 GMT",
+    "connection": "keep-alive",
+    "keep-alive": "timeout=5"
+  },
+  "response_body_redacted": {
+    "jsonrpc": "2.0",
+    "id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+    "result": {
+      "task": {
+        "id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+        "contextId": "enc-phase0-trap-001",
+        "status": {
+          "state": "TASK_STATE_COMPLETED",
+          "timestamp": "2026-05-07T15:46:59.326Z",
+          "message": {
+            "messageId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0-status-message",
+            "role": "ROLE_AGENT",
+            "parts": [
+              {
+                "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+              }
+            ],
+            "metadata": {
+              "requestId": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+              "taskId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+            }
+          }
+        },
+        "artifacts": [
+          {
+            "artifactId": "care-transitions-command-7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+            "name": "Care Transitions Command fused response",
+            "parts": [
+              {
+                "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "runtime_summary": "compact_prompt_opinion_response",
+          "request_id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+          "task_id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+          "status": "completed",
+          "created_at": "2026-05-07T15:46:24.172Z",
+          "completed_at": "2026-05-07T15:46:59.326Z",
+          "final_verdict": "not_ready",
+          "hidden_risk_result": "hidden_risk_present",
+          "narrative_source_count": 3,
+          "both_mcps_hit": true,
+          "diagnostics_available_via": "/tasks/7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+        }
+      }
+    },
+    "task": {
+      "id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+      "contextId": "enc-phase0-trap-001",
+      "status": {
+        "state": "TASK_STATE_COMPLETED",
+        "timestamp": "2026-05-07T15:46:59.326Z",
+        "message": {
+          "messageId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0-status-message",
+          "role": "ROLE_AGENT",
+          "parts": [
+            {
+              "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+            }
+          ],
+          "metadata": {
+            "requestId": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+            "taskId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+          }
+        }
+      },
+      "artifacts": [
+        {
+          "artifactId": "care-transitions-command-7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+          "name": "Care Transitions Command fused response",
+          "parts": [
+            {
+              "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "runtime_summary": "compact_prompt_opinion_response",
+        "request_id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+        "task_id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+        "status": "completed",
+        "created_at": "2026-05-07T15:46:24.172Z",
+        "completed_at": "2026-05-07T15:46:59.326Z",
+        "final_verdict": "not_ready",
+        "hidden_risk_result": "hidden_risk_present",
+        "narrative_source_count": 3,
+        "both_mcps_hit": true,
+        "diagnostics_available_via": "/tasks/7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+      }
+    }
+  },
+  "response_byte_count": 5356,
+  "response": {
+    "byte_count": 5356,
+    "captured_byte_count": 5356,
+    "truncated": false,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+      "result": {
+        "task": {
+          "id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+          "contextId": "enc-phase0-trap-001",
+          "status": {
+            "state": "TASK_STATE_COMPLETED",
+            "timestamp": "2026-05-07T15:46:59.326Z",
+            "message": {
+              "messageId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0-status-message",
+              "role": "ROLE_AGENT",
+              "parts": [
+                {
+                  "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+                }
+              ],
+              "metadata": {
+                "requestId": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+                "taskId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+              }
+            }
+          },
+          "artifacts": [
+            {
+              "artifactId": "care-transitions-command-7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+              "name": "Care Transitions Command fused response",
+              "parts": [
+                {
+                  "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "runtime_summary": "compact_prompt_opinion_response",
+            "request_id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+            "task_id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+            "status": "completed",
+            "created_at": "2026-05-07T15:46:24.172Z",
+            "completed_at": "2026-05-07T15:46:59.326Z",
+            "final_verdict": "not_ready",
+            "hidden_risk_result": "hidden_risk_present",
+            "narrative_source_count": 3,
+            "both_mcps_hit": true,
+            "diagnostics_available_via": "/tasks/7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+          }
+        }
+      },
+      "task": {
+        "id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+        "contextId": "enc-phase0-trap-001",
+        "status": {
+          "state": "TASK_STATE_COMPLETED",
+          "timestamp": "2026-05-07T15:46:59.326Z",
+          "message": {
+            "messageId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0-status-message",
+            "role": "ROLE_AGENT",
+            "parts": [
+              {
+                "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+              }
+            ],
+            "metadata": {
+              "requestId": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+              "taskId": "7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+            }
+          }
+        },
+        "artifacts": [
+          {
+            "artifactId": "care-transitions-command-7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+            "name": "Care Transitions Command fused response",
+            "parts": [
+              {
+                "text": "Care Transitions Command result:\nFinal verdict: not_ready.\nStructured baseline: ready.\nHidden-risk result: hidden_risk_present.\n\nWhy the answer changed:\nThe structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.\n\nEvidence:\n- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.\n- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.\n\nImmediate blockers:\n- clinical_stability\n- equipment_and_transport\n- home_support_and_services\n\nRequired before discharge:\nHold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff."
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "runtime_summary": "compact_prompt_opinion_response",
+          "request_id": "26a99518-bf14-4a53-ad56-d8ef44e7c2a9",
+          "task_id": "7acbb7b2-57f5-46c1-b98d-fada54d60da0",
+          "status": "completed",
+          "created_at": "2026-05-07T15:46:24.172Z",
+          "completed_at": "2026-05-07T15:46:59.326Z",
+          "final_verdict": "not_ready",
+          "hidden_risk_result": "hidden_risk_present",
+          "narrative_source_count": 3,
+          "both_mcps_hit": true,
+          "diagnostics_available_via": "/tasks/7acbb7b2-57f5-46c1-b98d-fada54d60da0"
+        }
+      }
+    }
+  },
+  "duration_ms": 35203
+}

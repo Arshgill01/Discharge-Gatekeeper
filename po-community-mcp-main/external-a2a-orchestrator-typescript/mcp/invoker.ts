@@ -10,6 +10,7 @@ import {
   HiddenRiskResponse,
 } from "../types";
 import { RuntimeConfig } from "../runtime-config";
+import { McpConstants } from "../../typescript/mcp-constants";
 
 const deterministicResponseSchema = z.object({
   verdict: z.enum(["ready", "ready_with_caveats", "not_ready"]),
@@ -29,6 +30,10 @@ const deterministicResponseSchema = z.object({
       source_type: z.string(),
       source_label: z.string(),
       detail: z.string(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
+      fhir_timestamp: z.string().optional(),
     }),
   ),
   next_steps: z.array(
@@ -44,6 +49,45 @@ const deterministicResponseSchema = z.object({
     }),
   ),
   summary: z.string(),
+  fhir_context: z
+    .object({
+      fhir_server: z.string().nullable(),
+      patient_reference: z.string().nullable(),
+      encounter_reference: z.string().nullable(),
+      read_mode: z.literal("fhir_native"),
+      fhir_resources_read: z.array(
+        z.object({
+          reference: z.string(),
+          resource_type: z.string(),
+          resource_id: z.string(),
+          timestamp: z.string().optional(),
+          summary: z.string(),
+        }),
+      ),
+      narrative_evidence_bundle: z.array(
+        z.object({
+          source_id: z.string(),
+          source_type: z.string(),
+          source_label: z.string(),
+          locator: z.string(),
+          timestamp: z.string().optional(),
+          excerpt: z.string(),
+          fhir_reference: z.string(),
+          fhir_resource_type: z.string(),
+          fhir_resource_id: z.string(),
+        }),
+      ),
+      optional_context_metadata: z
+        .object({
+          care_setting: z.string().optional(),
+          discharge_destination: z.string().optional(),
+          reviewer_timestamp: z.string().optional(),
+          explicit_task_goal: z.string().optional(),
+        })
+        .optional(),
+      practitioner_roles: z.record(z.string(), z.string()).optional(),
+    })
+    .optional(),
 });
 
 const hiddenRiskResponseSchema = z.object({
@@ -85,6 +129,10 @@ const hiddenRiskResponseSchema = z.object({
       source_label: z.string(),
       locator: z.string(),
       excerpt: z.string(),
+      timestamp: z.string().optional(),
+      fhir_reference: z.string().optional(),
+      fhir_resource_type: z.string().optional(),
+      fhir_resource_id: z.string().optional(),
     }),
   ),
   review_metadata: z.object({
@@ -140,7 +188,7 @@ type McpInvocationResult<T> = {
 type InvocationContext = {
   requestId: string;
   taskId: string;
-  promptMode: "prompt_1" | "prompt_2" | "prompt_3";
+  promptMode: "prompt_1" | "prompt_2" | "prompt_3" | "prompt_4";
 };
 
 export class McpInvocationError extends Error {
@@ -217,6 +265,7 @@ export class McpToolInvoker {
     invocationContext: InvocationContext,
     action: (client: Client) => Promise<unknown>,
     parser: (payload: unknown) => T,
+    extraHeaders: Record<string, string> = {},
   ): Promise<McpInvocationResult<T>> {
     const callId = randomUUID();
     const startedAt = new Date().toISOString();
@@ -229,6 +278,7 @@ export class McpToolInvoker {
       "x-a2a-task-id": invocationContext.taskId,
       "x-a2a-call-id": callId,
       "x-a2a-prompt-mode": invocationContext.promptMode,
+      ...extraHeaders,
     };
 
     try {
@@ -277,6 +327,18 @@ export class McpToolInvoker {
     invocationContext: InvocationContext,
   ): Promise<McpInvocationResult<DeterministicResponse>> {
     const scenarioId = input.patient_context?.scenario_id || this.config.defaultStructuredScenarioId;
+    const fhirHeaders = input.patient_context?.fhir_context
+      ? {
+          [McpConstants.FhirServerUrlHeaderName]: input.patient_context.fhir_context.fhir_server,
+          [McpConstants.PatientIdHeaderName]: input.patient_context?.patient_id ?? "",
+          ...(input.patient_context?.encounter_id
+            ? { [McpConstants.EncounterIdHeaderName]: input.patient_context.encounter_id }
+            : {}),
+          ...(input.patient_context.fhir_context.access_token
+            ? { [McpConstants.FhirAccessTokenHeaderName]: input.patient_context.fhir_context.access_token }
+            : {}),
+        }
+      : {};
 
     return this.invokeWithDiagnostics(
       "discharge_gatekeeper_mcp",
@@ -289,7 +351,9 @@ export class McpToolInvoker {
         return client.callTool({
           name: "assess_discharge_readiness",
           arguments: {
-            scenario_id: scenarioId,
+            ...(input.patient_context?.fhir_context ? {} : { scenario_id: scenarioId }),
+            readiness_mode: "deterministic_structured_baseline",
+            context_mode: input.patient_context?.fhir_context ? "fhir_native" : "standard",
           },
         });
       },
@@ -300,6 +364,7 @@ export class McpToolInvoker {
         }
         return parsed.data;
       },
+      fhirHeaders,
     );
   }
 
@@ -308,7 +373,10 @@ export class McpToolInvoker {
     input: A2ATaskInput,
     invocationContext: InvocationContext,
   ): Promise<McpInvocationResult<HiddenRiskResponse>> {
-    const narrative = input.patient_context?.narrative_evidence_bundle || [];
+    const narrative =
+      input.patient_context?.narrative_evidence_bundle ||
+      deterministic.fhir_context?.narrative_evidence_bundle ||
+      [];
     return this.invokeWithDiagnostics(
       "clinical_intelligence_mcp",
       "surface_hidden_risks",
@@ -339,7 +407,11 @@ export class McpToolInvoker {
               deterministic_summary: deterministic.summary,
             },
             narrative_evidence_bundle: narrative,
-            optional_context_metadata: input.patient_context?.optional_context_metadata,
+            optional_context_metadata:
+              input.patient_context?.optional_context_metadata ??
+              deterministic.fhir_context?.optional_context_metadata,
+            fhir_context: deterministic.fhir_context,
+            response_mode: "full",
           },
         });
       },

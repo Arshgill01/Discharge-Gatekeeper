@@ -28,3 +28,38 @@ export const buildHiddenRiskUserPrompt = (input: HiddenRiskInput): string => {
     JSON.stringify(input, null, 2),
   ].join("\n");
 };
+
+const truncateText = (value: string, maxLength: number): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 3).trimEnd()}...`;
+};
+
+export const buildHiddenRiskCompactUserPrompt = (input: HiddenRiskInput): string => {
+  const compactPayload = {
+    baseline_verdict: input.deterministic_snapshot.baseline_verdict,
+    deterministic_summary: truncateText(input.deterministic_snapshot.deterministic_summary, 220),
+    deterministic_blocker_categories: input.deterministic_snapshot.deterministic_blockers
+      .map((blocker) => blocker.category)
+      .slice(0, 6),
+    narrative_sources: input.narrative_evidence_bundle.map((source) => ({
+      citation_id: source.source_id,
+      source_label: source.source_label,
+      source_type: source.source_type,
+      locator: source.locator || source.timestamp || "n/a",
+      excerpt: truncateText(source.excerpt, 360),
+    })),
+  };
+
+  return [
+    "Task: identify only discharge-changing hidden risk.",
+    "Return raw compact JSON only. Do not quote note text.",
+    'Schema: {"status":"ok","hidden_risk_summary":{"result":"hidden_risk_present|no_hidden_risk|inconclusive","overall_disposition_impact":"not_ready|caveat|uncertain|none","confidence":"high|medium|low","summary":"one sentence","manual_review_required":false},"hidden_risk_findings":[{"title":"short title","category":"clinical_stability|equipment_and_transport|home_support_and_services|pending_diagnostics|medication_reconciliation|follow_up_and_referrals|patient_education|administrative_and_documentation","disposition_impact":"not_ready|caveat|uncertain|none","confidence":"high|medium|low","rationale":"one short sentence","recommended_orchestrator_action":"add_blocker|request_manual_review|ignore_duplicate","citation_ids":["source_id"]}]}',
+    "Rules: use only source_ids from narrative_sources; do not invent citations; suppress weak/uncited claims; use not_ready only for cited discharge-changing evidence.",
+    "",
+    "Compact input:",
+    JSON.stringify(compactPayload),
+  ].join("\n");
+};

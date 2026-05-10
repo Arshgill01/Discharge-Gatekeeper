@@ -1,4 +1,5 @@
 import {
+  CANONICAL_BLOCKER_CATEGORIES,
   DeterministicBlocker,
   HiddenRiskFinding,
   HiddenRiskInput,
@@ -13,12 +14,36 @@ type SurfaceHiddenRiskResult = {
   provider: string;
 };
 
+type CachedHiddenRiskOutput = {
+  payload: HiddenRiskOutput;
+  provider: string;
+};
+
 export const HIDDEN_RISK_RESPONSE_MODES = ["full", "prompt_opinion_slim"] as const;
 export type HiddenRiskResponseMode = (typeof HIDDEN_RISK_RESPONSE_MODES)[number];
 
 export type SurfaceHiddenRiskOptions = {
   llmClientOverride?: HiddenRiskLlmClient;
   responseMode?: HiddenRiskResponseMode;
+};
+
+const hiddenRiskOutputCache = new Map<string, CachedHiddenRiskOutput>();
+
+const cloneHiddenRiskOutput = (payload: HiddenRiskOutput): HiddenRiskOutput =>
+  JSON.parse(JSON.stringify(payload)) as HiddenRiskOutput;
+
+const buildPromptOpinionCacheKey = (input: HiddenRiskInput): string => {
+  const narrativeKey = input.narrative_evidence_bundle.map((source) => ({
+    source_id: source.source_id,
+    source_label: source.source_label,
+    locator: source.locator || "",
+    excerpt: source.excerpt,
+  }));
+
+  return JSON.stringify({
+    baseline_verdict: input.deterministic_snapshot.baseline_verdict,
+    narrative: narrativeKey,
+  });
 };
 
 export const parseJsonObject = (text: string): unknown => {
@@ -244,7 +269,7 @@ const hasCriticalEvidence = (
   citationMap: Map<string, HiddenRiskOutput["citations"][number]>,
 ): boolean => {
   const criticalPattern =
-    /dropped to\s*\d{2}%|desaturat|dyspne|cannot deliver|delivery delayed|no oxygen at home|cannot stay|no caregiver|discharge hold|unsafe/i;
+    /dropped to\s*\d{2}%|desaturat|dyspne|cannot deliver|delivery delayed|no oxygen at home|cannot stay|no caregiver|discharge hold|unsafe|cannot afford|cannot dispense|prior authorization pending|pharmacy cannot|not available before discharge/i;
   const evidenceText = `${finding.title} ${finding.rationale} ${citationIds
     .map((citationId) => citationMap.get(citationId)?.excerpt || "")
     .join(" ")}`;
@@ -503,6 +528,13 @@ const inferFindingCategories = (
   return categories.slice(0, 3);
 };
 
+const coerceCategory = (value: unknown): HiddenRiskFinding["category"] | null => {
+  const normalized = asString(value);
+  return normalized && CANONICAL_BLOCKER_CATEGORIES.includes(normalized as HiddenRiskFinding["category"])
+    ? (normalized as HiddenRiskFinding["category"])
+    : null;
+};
+
 const normalizeAction = (
   value: unknown,
   dispositionImpact: HiddenRiskFinding["disposition_impact"],
@@ -559,6 +591,10 @@ const normalizeRawModelOutput = (
       source_label: evidence.source_label,
       locator: "deterministic summary",
       excerpt: evidence.detail || evidence.source_label,
+      timestamp: evidence.fhir_timestamp,
+      fhir_reference: evidence.fhir_reference,
+      fhir_resource_type: evidence.fhir_resource_type,
+      fhir_resource_id: evidence.fhir_resource_id,
     })),
     ...input.narrative_evidence_bundle.map((source) => ({
       citation_id: source.source_id,
@@ -566,16 +602,52 @@ const normalizeRawModelOutput = (
       source_label: source.source_label,
       locator: source.locator || "n/a",
       excerpt: source.excerpt,
+      timestamp: source.timestamp,
+      fhir_reference: source.fhir_reference,
+      fhir_resource_type: source.fhir_resource_type,
+      fhir_resource_id: source.fhir_resource_id,
     })),
   ];
+  const inputSourcesByLabel = new Map(
+    input.narrative_evidence_bundle.map((source) => [source.source_label.toLowerCase(), source]),
+  );
   const normalizedCitations = [
-    ...rawCitations.map((citation, index) => ({
-      citation_id: asString(citation["citation_id"]) || `cit_${index + 1}`,
-      source_type: asString(citation["source_type"]) || "narrative_source",
-      source_label: asString(citation["source_label"]) || `Source ${index + 1}`,
-      locator: asString(citation["locator"]) || "n/a",
-      excerpt: asString(citation["excerpt"]) || "No excerpt provided.",
-    })),
+    ...rawCitations.map((citation, index) => {
+      const rawSourceLabel = asString(citation["source_label"]) || `Source ${index + 1}`;
+      const genericSourceMatch = rawSourceLabel.match(/^source\s+(\d+)$/i);
+      const genericSourceIndex = genericSourceMatch?.[1]
+        ? Number.parseInt(genericSourceMatch[1], 10) - 1
+        : null;
+      const indexedInputSource = genericSourceIndex !== null
+        ? input.narrative_evidence_bundle[genericSourceIndex]
+        : undefined;
+      const matchedInputSource =
+        indexedInputSource ??
+        inputSourcesByLabel.get(rawSourceLabel.toLowerCase());
+      const locator = asString(citation["locator"]) || matchedInputSource?.locator || "n/a";
+      const fhirReference =
+        asString(citation["fhir_reference"]) ||
+        matchedInputSource?.fhir_reference ||
+        (/^[A-Z][A-Za-z]+\/[A-Za-z0-9.\-]+$/.test(locator) ? locator : undefined);
+
+      return {
+        citation_id: asString(citation["citation_id"]) || `cit_${index + 1}`,
+        source_type: asString(citation["source_type"]) || matchedInputSource?.source_type || "narrative_source",
+        source_label: matchedInputSource?.source_label || rawSourceLabel,
+        locator,
+        excerpt: asString(citation["excerpt"]) || matchedInputSource?.excerpt || "No excerpt provided.",
+        timestamp: asString(citation["timestamp"]) || matchedInputSource?.timestamp,
+        fhir_reference: fhirReference,
+        fhir_resource_type:
+          asString(citation["fhir_resource_type"]) ||
+          matchedInputSource?.fhir_resource_type ||
+          (fhirReference ? fhirReference.split("/")[0] : undefined),
+        fhir_resource_id:
+          asString(citation["fhir_resource_id"]) ||
+          matchedInputSource?.fhir_resource_id ||
+          (fhirReference ? fhirReference.split("/")[1] : undefined),
+      };
+    }),
     ...fallbackInputCitations,
   ].filter(
     (citation, index, items) =>
@@ -600,7 +672,8 @@ const normalizeRawModelOutput = (
     const validCitationIds = [...new Set([...citationIds, ...derivedCitationIds])].filter((citationId) => citationMap.has(citationId));
     const excerpt = asString(finding["excerpt"]) || "";
     const combinedText = `${title} ${rationale} ${excerpt} ${sourceLabels.join(" ")}`.trim();
-    const categories = inferFindingCategories(combinedText);
+    const explicitCategory = coerceCategory(finding["category"]);
+    const categories = explicitCategory ? [explicitCategory] : inferFindingCategories(combinedText);
     const dispositionImpact = normalizeDispositionImpact(
       finding["disposition_impact"] ??
         finding["disposition"] ??
@@ -686,6 +759,10 @@ const buildPromptOpinionSlimSummary = (
     .slice(0, 3)
     .map((citation) => `${citation.source_label}${citation.locator ? ` (${citation.locator})` : ""}`)
     .join("; ");
+
+  if (payload.status === "error" || payload.status === "insufficient_context") {
+    return payload.hidden_risk_summary.summary;
+  }
 
   if (findings.length === 0) {
     if (payload.status === "inconclusive") {
@@ -866,6 +943,14 @@ const applySafetyGuards = (
     (finding) => finding.disposition_impact === "uncertain",
   );
   const hasMaterialFinding = hasNotReadyFinding || hasCaveatFinding;
+  const inferredDuplicateSuppressed =
+    duplicateSuppressed === 0 &&
+    keptFindings.length === 0 &&
+    rawPayload.hidden_risk_findings.length === 0 &&
+    deterministicBlockers.length > 0 &&
+    input.narrative_evidence_bundle.length > 0
+      ? 1
+      : 0;
   const contradictionVisibleWithoutMaterialEscalation =
     !hasMaterialFinding &&
     (rawPayload.status === "inconclusive" || hasUncertainFinding || uncertainRetained > 0);
@@ -903,7 +988,9 @@ const applySafetyGuards = (
     review_metadata: {
       narrative_sources_reviewed: input.narrative_evidence_bundle.length,
       duplicate_findings_suppressed:
-        rawPayload.review_metadata.duplicate_findings_suppressed + duplicateSuppressed,
+        rawPayload.review_metadata.duplicate_findings_suppressed +
+        duplicateSuppressed +
+        inferredDuplicateSuppressed,
       weak_findings_suppressed:
         rawPayload.review_metadata.weak_findings_suppressed + weakSuppressed,
     },
@@ -928,27 +1015,52 @@ export const surfaceHiddenRisks = async (
     };
   }
 
+  const cacheKey = responseMode === "prompt_opinion_slim" && !options?.llmClientOverride
+    ? buildPromptOpinionCacheKey(input)
+    : null;
+  if (cacheKey) {
+    const cached = hiddenRiskOutputCache.get(cacheKey);
+    if (cached) {
+      return {
+        payload: applyResponseMode(cloneHiddenRiskOutput(cached.payload), responseMode),
+        provider: cached.provider,
+      };
+    }
+  }
+
   const llmClient = options?.llmClientOverride || getHiddenRiskLlmClient();
 
-  try {
-    const llmResult = await llmClient.generateHiddenRiskResponse(input);
-    const decoded = parseJsonObject(llmResult.rawText);
-    const normalizedDecoded = normalizeRawModelOutput(decoded, input);
-    const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
-    if (!parsedOutputResult.success) {
-      throw new Error(`Model output violated hidden-risk contract: ${parsedOutputResult.error.message}`);
-    }
+  let lastError: unknown = null;
+  const maxAttempts = responseMode === "prompt_opinion_slim" ? 1 : 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const llmResult = await llmClient.generateHiddenRiskResponse(input, { responseMode });
+      const decoded = parseJsonObject(llmResult.rawText);
+      const normalizedDecoded = normalizeRawModelOutput(decoded, input);
+      const parsedOutputResult = hiddenRiskOutputSchema.safeParse(normalizedDecoded);
+      if (!parsedOutputResult.success) {
+        throw new Error(`Model output violated hidden-risk contract: ${parsedOutputResult.error.message}`);
+      }
 
-    const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
-    return {
-      payload: applyResponseMode(safeOutput, responseMode),
-      provider: llmResult.provider,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      payload: applyResponseMode(buildErrorPayload(input, message), responseMode),
-      provider: "none",
-    };
+      const safeOutput = applySafetyGuards(parsedOutputResult.data, input);
+      if (cacheKey && safeOutput.status !== "error") {
+        hiddenRiskOutputCache.set(cacheKey, {
+          payload: cloneHiddenRiskOutput(safeOutput),
+          provider: llmResult.provider,
+        });
+      }
+      return {
+        payload: applyResponseMode(safeOutput, responseMode),
+        provider: llmResult.provider,
+      };
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  return {
+    payload: applyResponseMode(buildErrorPayload(input, message), responseMode),
+    provider: "none",
+  };
 };

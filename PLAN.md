@@ -1,6 +1,8 @@
 # PLAN.md
 
 ## Latest update
+- 2026-05-05, Phase 8.6 Integration: merged the A2A prompt-hydration and Direct-MCP recovery lanes on `int/phase8.6-real-green`; static/package/full-system validation is green, provider proof is Google/Gemma with keys present, but the current full combined Prompt Opinion browser proof is RED for both A2A one-turn and Direct-MCP 3-prompt. Source-of-truth browser run: `output/prompt-opinion-e2e/runs/20260505T185501Z-phase8-6-integration-browser-clean`; local rehearsal run: `output/prompt-opinion-e2e/runs/20260505T175406Z`. A2A one-turn status: red, blocker `chat_path_not_routed` with no external runtime hit/downstream MCP correlation and visible timeout/cancelled signals in A2A variants. Direct-MCP 3-prompt status: red, blocker `chat_path_not_routed`; Prompt 3 observed `The LLM took too long to respond and the operation was cancelled` during final settle. Phase 9 entry criteria are not met from this integrated browser proof.
+- 2026-05-03, Phase 8.6 Runtime Consistency: lock shared env setup, provider preflight, and runtime provider diagnostics so Google/Gemini proof cannot be confused with heuristic local regression.
 - 2026-04-28, Coordinator: added Phase 8.5 route-lock + demo-safe freeze so worker lanes can harden the green live demo path without reopening architecture.
 
 ## Objective
@@ -24,6 +26,19 @@ Care Transitions Command uses a deterministic discharge spine plus bounded note 
 - keep the final demo to 3 prompts
 
 ## Current phase
+### Phase 8.6: runtime consistency hardening
+Goal:
+- eliminate env/model/provider drift across Discharge Gatekeeper MCP, Clinical Intelligence MCP, and the external A2A orchestrator
+- make new worktrees use the same ignored `.env.local` source without copying secrets into git
+- prevent browser-proof or Phase 9 notes from claiming Google/Gemini when Clinical Intelligence ran in heuristic mode
+
+Phase 8.6 deliverables:
+- shared-env symlink script for new worktrees
+- provider preflight script with red/yellow/green status
+- Clinical Intelligence `/readyz` provider/model/key-present/fallback diagnostics without secret values
+- A2A task diagnostics that record hidden-risk provider/model/status from Clinical Intelligence readiness
+- browser proof provider evidence and Google-proof enforcement switch
+
 ### Phase 8.5: route-lock + demo-safe freeze
 Goal:
 - freeze the live demo route on the lane that is actually green

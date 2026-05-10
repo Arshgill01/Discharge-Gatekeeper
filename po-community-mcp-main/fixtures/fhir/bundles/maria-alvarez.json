@@ -1,0 +1,418 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "maria-alvarez",
+        "name": [
+          {
+            "text": "Maria Alvarez"
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1951-02-11"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/maria-alvarez"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "maria-discharge-2026-0418",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "period": {
+          "start": "2026-04-16T14:10:00Z"
+        },
+        "type": [
+          {
+            "text": "COPD exacerbation discharge encounter"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/maria-discharge-2026-0418"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "maria-copd",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Chronic obstructive pulmonary disease"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/maria-copd"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-spo2-rest",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Oxygen saturation at rest"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 94,
+          "unit": "%"
+        },
+        "note": [
+          {
+            "text": "Room-air oxygen saturation stable at rest during daytime discharge review."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-spo2-rest"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-heart-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 88,
+          "unit": "beats/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-heart-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-respiratory-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Respiratory rate"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 18,
+          "unit": "breaths/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-respiratory-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-systolic-bp",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Systolic blood pressure"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 122,
+          "unit": "mmHg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-systolic-bp"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-o2-flow-current",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Current oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-o2-flow-current"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-o2-flow-baseline",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Baseline oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-18T17:40:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-o2-flow-baseline"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "maria-spo2-exertion",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Exertional oxygen saturation after stairs"
+        },
+        "effectiveDateTime": "2026-04-18T20:40:00Z",
+        "valueQuantity": {
+          "value": 82,
+          "unit": "%"
+        },
+        "note": [
+          {
+            "text": "Dropped to 82% after 20 feet and 6 stairs during evening reassessment."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/maria-spo2-exertion"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "maria-inhaler",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "medicationCodeableConcept": {
+          "text": "Tiotropium inhaler"
+        },
+        "note": [
+          {
+            "text": "Final medication list reviewed and inhaler ready for discharge."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/maria-inhaler"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "maria-home-oxygen",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "code": {
+          "text": "Home oxygen coordination"
+        },
+        "note": [
+          {
+            "text": "Home oxygen vendor confirmed for planned discharge earlier in the day."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ServiceRequest/maria-home-oxygen"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "maria-discharge-plan-morning",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "title": "Morning discharge plan",
+        "description": "Planned discharge home after stable rest assessment, medication reconciliation, and scheduled pulmonology follow-up."
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CarePlan/maria-discharge-plan-morning"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "maria-nursing-note-2040",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "description": "Nursing Note 2026-04-18 20:40",
+        "type": {
+          "text": "nursing_note"
+        },
+        "date": "2026-04-18T20:40:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>SpO2 dropped to 82% after approximately 20 feet and 6 stairs. Patient became visibly dyspneic and said she does not have oxygen at home tonight.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/maria-nursing-note-2040"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "maria-case-mgmt-2055",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/maria-alvarez"
+        },
+        "encounter": {
+          "reference": "Encounter/maria-discharge-2026-0418"
+        },
+        "description": "Case Management Addendum 2026-04-18 20:55",
+        "type": {
+          "text": "case_management_note"
+        },
+        "date": "2026-04-18T20:55:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Confirmed home oxygen delivery delayed until tomorrow morning. Daughter unavailable overnight and no alternate caregiver for first night home.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/maria-case-mgmt-2055"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "bedside-rn",
+        "code": [
+          {
+            "text": "Bedside RN"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/bedside-rn"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "case-manager",
+        "code": [
+          {
+            "text": "Case manager"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/case-manager"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "covering-clinician",
+        "code": [
+          {
+            "text": "Covering clinician"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/covering-clinician"
+      }
+    }
+  ]
+}

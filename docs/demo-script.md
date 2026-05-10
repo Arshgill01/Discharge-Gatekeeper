@@ -18,7 +18,7 @@ The demo story assumes:
 
 Primary live demo path:
 - Direct-MCP 3 prompts in Prompt Opinion:
-  - Prompt 1 via `Discharge Gatekeeper MCP`
+  - Prompt 1 via `Clinical Intelligence MCP.assess_reconciled_discharge_readiness`, which composes the Discharge Gatekeeper structured baseline with Clinical Intelligence hidden-risk review
   - Prompt 2 via `Clinical Intelligence MCP`
   - Prompt 3 via `Clinical Intelligence MCP.synthesize_transition_narrative`
 

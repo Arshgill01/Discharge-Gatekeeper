@@ -7,6 +7,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Request } from "express";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { REGISTERED_TOOL_NAMES, REGISTERED_TOOLS } from "../tools";
+import { ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION } from "../tools/AssessReconciledDischargeReadinessTool";
+import { REARBITRATE_DISCHARGE_READINESS_TOOL_DESCRIPTION } from "../tools/RearbitrateDischargeReadinessTool";
 import { SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION } from "../tools/SurfaceHiddenRisksTool";
 import { SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION } from "../tools/SynthesizeTransitionNarrativeTool";
 
@@ -43,7 +45,12 @@ const reserveOpenPort = async (): Promise<number> => {
 const assertToolRegistrationSurface = (): void => {
   assert.deepEqual(
     REGISTERED_TOOL_NAMES,
-    ["surface_hidden_risks", "synthesize_transition_narrative"],
+    [
+      "assess_reconciled_discharge_readiness",
+      "surface_hidden_risks",
+      "synthesize_transition_narrative",
+      "rearbitrate_discharge_readiness",
+    ],
     "Registered tool names must match canonical Clinical Intelligence MCP tools.",
   );
 
@@ -66,6 +73,11 @@ const assertToolRegistrationSurface = (): void => {
     `Runtime registration surface must be exactly ${JSON.stringify(REGISTERED_TOOL_NAMES)}.`,
   );
   assert.equal(
+    descriptions.get("assess_reconciled_discharge_readiness"),
+    ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION,
+    "Reconciled readiness tool description should preserve the canonical Prompt 1 routing hint.",
+  );
+  assert.equal(
     descriptions.get("surface_hidden_risks"),
     SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION,
     "Hidden-risk tool description should preserve the canonical Prompt 2 routing hint.",
@@ -74,6 +86,11 @@ const assertToolRegistrationSurface = (): void => {
     descriptions.get("synthesize_transition_narrative"),
     SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION,
     "Transition narrative tool description should preserve the canonical Prompt 3 routing hint.",
+  );
+  assert.equal(
+    descriptions.get("rearbitrate_discharge_readiness"),
+    REARBITRATE_DISCHARGE_READINESS_TOOL_DESCRIPTION,
+    "Rearbitration tool description should preserve the Prompt 4 routing hint.",
   );
 };
 

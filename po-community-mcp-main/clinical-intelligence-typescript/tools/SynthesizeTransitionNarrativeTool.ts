@@ -3,51 +3,37 @@ import { Request } from "express";
 import { z } from "zod";
 import { IMcpTool } from "../IMcpTool";
 import { McpUtilities } from "../mcp-utilities";
-import { CANONICAL_BLOCKER_CATEGORIES, CANONICAL_VERDICTS } from "../clinical-intelligence/contract";
 import { synthesizeTransitionNarrative } from "../clinical-intelligence/synthesize-transition-narrative";
+import { TransitionNarrativeOutput } from "../clinical-intelligence/synthesize-transition-narrative";
+import {
+  deterministicSnapshotSchema,
+  fhirContextSchema,
+  narrativeSourceSchema,
+} from "../clinical-intelligence/contract";
+import {
+  DEFAULT_HIDDEN_RISK_SCENARIO_ID,
+  resolveHiddenRiskToolInput,
+} from "./canonical-hidden-risk-input";
+import {
+  buildFhirDirectPatientScopeResult,
+  DIRECT_PATIENT_SCOPE_PROMPTS,
+} from "./fhirDirectPatientScope";
 
 export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
-  "Prompt 3 tool for pre-discharge execution. Use when asked what must happen before discharge and to prepare the transition package grounded in hidden-risk findings. Do not use this for Prompt 1 deterministic baseline-only assessment.";
+  "Prompt 3 transition package tool. In Patient Scope / FHIR context, create or refresh blocking FHIR Tasks plus audit artifacts and return the cited transition package. Without FHIR context, fall back to the canonical trap-patient Prompt 3 demo.";
 
 const inputSchema = {
-  deterministic_snapshot: z.object({
-    patient_id: z.string().nullable().optional(),
-    encounter_id: z.string().nullable().optional(),
-    baseline_verdict: z.enum(CANONICAL_VERDICTS),
-    deterministic_blockers: z
-      .array(
-        z.object({
-          blocker_id: z.string(),
-          category: z.enum(CANONICAL_BLOCKER_CATEGORIES),
-          description: z.string(),
-          severity: z.enum(["low", "medium", "high"]).optional(),
-        }),
-      )
-      .default([]),
-    deterministic_evidence: z
-      .array(
-        z.object({
-          evidence_id: z.string().optional(),
-          source_label: z.string(),
-          detail: z.string().optional(),
-        }),
-      )
-      .default([]),
-    deterministic_next_steps: z.array(z.string()).default([]),
-    deterministic_summary: z.string(),
-  }),
+  scenario_id: z
+    .literal(DEFAULT_HIDDEN_RISK_SCENARIO_ID)
+    .default(DEFAULT_HIDDEN_RISK_SCENARIO_ID)
+    .describe("Canonical Prompt Opinion trap patient scenario id."),
+  deterministic_snapshot: deterministicSnapshotSchema
+    .optional()
+    .describe("Structured baseline snapshot supplied by the A2A/direct validation path."),
   narrative_evidence_bundle: z
-    .array(
-      z.object({
-        source_id: z.string(),
-        source_type: z.string(),
-        source_label: z.string(),
-        locator: z.string().optional(),
-        timestamp: z.string().optional(),
-        excerpt: z.string(),
-      }),
-    )
-    .default([]),
+    .array(narrativeSourceSchema)
+    .optional()
+    .describe("Narrative evidence supplied by the A2A/direct validation path."),
   optional_context_metadata: z
     .object({
       care_setting: z.string().optional(),
@@ -56,22 +42,69 @@ const inputSchema = {
       explicit_task_goal: z.string().optional(),
     })
     .optional(),
+  fhir_context: fhirContextSchema
+    .optional()
+    .describe("Optional FHIR-native context envelope carrying resource references and narrative provenance."),
   response_mode: z
     .enum(["prompt_opinion_slim", "full"])
-    .default("prompt_opinion_slim")
-    .describe(
-      "Optional output mode. Use prompt_opinion_slim for compact transcript-safe payloads in Prompt Opinion. Use full for full-fidelity debugging.",
-    ),
+    .optional()
+    .describe("Use full JSON for machine validation; use prompt_opinion_slim for visible Prompt Opinion output."),
 };
 
 const toolInputSchema = z.object(inputSchema);
 
+export const formatPromptOpinionSlimTransitionPackage = (
+  payload: TransitionNarrativeOutput,
+): string => {
+  const compactAction = (value: string): string => {
+    const condensed = value
+      .replace(/^Owner (?:now|before discharge):\s*/i, "")
+      .replace(/\s+Evidence:.*$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return condensed.length > 92 ? `${condensed.slice(0, 89).trimEnd()}...` : condensed;
+  };
+  const evidenceLines = payload.citations
+    .slice(0, 4)
+    .map((citation) => {
+      const prefix = citation.fhir_reference ? `${citation.fhir_reference} | ` : "";
+      return `- ${prefix}${citation.source_label}`;
+    });
+  const rawReferences = [...new Set(payload.citations.map((citation) => citation.fhir_reference).filter(Boolean))];
+  const actionLines = payload.recommended_actions
+    .slice(0, 5)
+    .map((action, index) => `${index + 1}. ${compactAction(action.action)}`);
+
+  return [
+    payload.proposed_disposition === "not_ready"
+      ? "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"
+      : "TRANSITION PACKAGE",
+    "",
+    "Release condition:",
+    payload.proposed_disposition === "not_ready"
+      ? "Do not discharge until the cited blocking gates are resolved and clinician review confirms a safe transition."
+      : "Complete the cited actions and clinician review before final disposition.",
+    "",
+    "Actions:",
+    ...(actionLines.length > 0 ? actionLines : ["1. No additional actions generated."]),
+    "",
+    "Evidence:",
+    ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
+    `Raw FHIR references: ${rawReferences.length > 0 ? rawReferences.join(" | ") : "none"}.`,
+    "",
+    "Clinician review required; this does not approve discharge autonomously.",
+  ].join("\n");
+};
+
 class SynthesizeTransitionNarrativeTool implements IMcpTool {
-  registerTool(server: McpServer, _req: Request): void {
+  registerTool(server: McpServer, req: Request): void {
     server.registerTool(
       "synthesize_transition_narrative",
       {
         description: SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION,
+        annotations: {
+          readOnlyHint: true,
+        },
         inputSchema,
       },
       async (rawInput) => {
@@ -83,11 +116,53 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
             );
           }
 
-          const payload = await synthesizeTransitionNarrative(parsed.data, {
-            responseMode: parsed.data.response_mode,
+          const liveResult = await buildFhirDirectPatientScopeResult(req, {
+            prompt: DIRECT_PATIENT_SCOPE_PROMPTS.prompt3,
+            explicitTaskGoal:
+              "Prompt 3 Patient Scope transition package with FHIR Task write-back.",
+          });
+          if (liveResult) {
+            if (parsed.data.response_mode === "full") {
+              return McpUtilities.createTextResponse(
+                JSON.stringify(
+                  {
+                    narrative: liveResult.narrative,
+                    prompt_payload: liveResult.prompt_payload,
+                    reconciliation: liveResult.reconciled,
+                  },
+                  null,
+                  2,
+                ),
+              );
+            }
+
+            return McpUtilities.createTextResponse(liveResult.narrative);
+          }
+
+          const hiddenRiskInput = resolveHiddenRiskToolInput(
+            parsed.data,
+            "Prompt 3 Direct-MCP concise transition package using compact canonical scenario input.",
+          );
+          const responseMode =
+            parsed.data.response_mode ??
+            (parsed.data.deterministic_snapshot ? "full" : "prompt_opinion_slim");
+          const payload = await synthesizeTransitionNarrative(hiddenRiskInput, {
+            responseMode,
           });
           const isError = payload.status === "error";
-          return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
+          if (responseMode === "full") {
+            return McpUtilities.createTextResponse(JSON.stringify(payload, null, 2), { isError });
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: formatPromptOpinionSlimTransitionPackage(payload),
+              },
+            ],
+            isError,
+          };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           return McpUtilities.createTextResponse(

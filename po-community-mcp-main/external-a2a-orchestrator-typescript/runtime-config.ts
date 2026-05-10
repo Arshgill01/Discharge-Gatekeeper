@@ -3,7 +3,7 @@ type Environment = Record<string, string | undefined>;
 const DEFAULT_HOST = "0.0.0.0";
 const DEFAULT_PORT = 5057;
 const SUPPORTED_PO_ENVS = new Set(["local", "dev", "prod"]);
-const DEFAULT_TASK_TIMEOUT_MS = 12000;
+const DEFAULT_TASK_TIMEOUT_MS = 120000;
 
 const normalizeHostEntry = (value: string): string => {
   const trimmed = value.trim();

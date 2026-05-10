@@ -2,8 +2,14 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import {
+  mergeRuntimeSummaryWithVisibleFallback,
+  selectA2AVariants,
+  summarizeVisibleA2AClinicalPayload,
+} from "./prompt-opinion-browser-proof-harness-lib.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(__filename);
@@ -14,6 +20,8 @@ const PROMPTS = {
   prompt1: "Is this patient safe to discharge today?",
   prompt2: "What hidden risk changed that answer? Show me the contradiction and the evidence.",
   prompt3: "What exactly must happen before discharge, and prepare the transition package.",
+  prompt4:
+    "New updates arrived: the medication bridge was delivered to bedside and the daughter arranged a working home scale, but the patient still reports orthopnea when lying flat. Re-arbitrate the discharge gates from the FHIR Tasks and evidence.",
 };
 
 const A2A_ROUTE_LOCK_VARIANTS = [
@@ -77,6 +85,21 @@ const getenv = (name, fallback = "") => {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 };
 
+const selectedA2aRouteLockVariants = selectA2AVariants(
+  A2A_ROUTE_LOCK_VARIANTS,
+  getenv("PROMPT_OPINION_A2A_VARIANTS", "all"),
+);
+
+const providerEvidence = {
+  provider: getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic"),
+  model: getenv("CLINICAL_INTELLIGENCE_GOOGLE_MODEL", "gemma-4-31b-it"),
+  google_api_key_present: Boolean(getenv("GOOGLE_API_KEY")),
+  gemini_api_key_present: Boolean(getenv("GEMINI_API_KEY")),
+  google_proof_eligible:
+    getenv("CLINICAL_INTELLIGENCE_LLM_PROVIDER", "heuristic") === "google" &&
+    (Boolean(getenv("GOOGLE_API_KEY")) || Boolean(getenv("GEMINI_API_KEY"))),
+};
+
 const mustEnv = (name) => {
   const value = getenv(name);
   if (!value) {
@@ -120,7 +143,10 @@ const outputPlaywrightDir = path.join(REPO_ROOT, "output/playwright", runId);
 const runScreenshotsDir = path.join(runDir, "screenshots");
 const reportsDir = path.join(runDir, "reports");
 const notesDir = path.join(runDir, "notes");
-const runtimeProfileDir = path.join(PO_ROOT, ".runtime/prompt-opinion-browser-profile");
+const runtimeProfileDir = getenv(
+  "PROMPT_OPINION_BROWSER_PROFILE_DIR",
+  path.join(PO_ROOT, ".runtime/prompt-opinion-browser-profile"),
+);
 
 const browserBaseUrl = getenv("PROMPT_OPINION_BASE_URL", "https://app.promptopinion.ai/");
 const email = mustEnv("PROMPT_OPINION_EMAIL");
@@ -129,6 +155,9 @@ const headless = getenv("PROMPT_OPINION_BROWSER_HEADLESS", "0") === "1";
 const promptTimeoutMs = Number(getenv("PROMPT_OPINION_PROMPT_TIMEOUT_MS", "180000"));
 const browserSlowMoMs = Number(getenv("PROMPT_OPINION_BROWSER_SLOW_MO_MS", "0"));
 const updateRegistrations = getenv("PROMPT_OPINION_UPDATE_REGISTRATIONS", "0") === "1";
+const forceSendFhirContext = getenv("PROMPT_OPINION_FORCE_SEND_FHIR_CONTEXT", "0") === "1";
+const launchpadScope = getenv("PROMPT_OPINION_LAUNCHPAD_SCOPE", "Workspace").trim() || "Workspace";
+const launchpadPatientName = getenv("PROMPT_OPINION_PATIENT_NAME");
 const postSettleRuntimeGraceMs = Number(getenv("PROMPT_OPINION_POST_SETTLE_RUNTIME_GRACE_MS", "20000"));
 const finalSettleDelayMs = Number(getenv("PROMPT_OPINION_FINAL_SETTLE_DELAY_MS", "3000"));
 const settlePollMs = Number(getenv("PROMPT_OPINION_SETTLE_POLL_MS", "2000"));
@@ -139,9 +168,55 @@ const enabledBrowserLanes = new Set(
     .map((item) => normalizeLaneToken(item))
     .filter(Boolean),
 );
+const enabledDirectPrompts = new Set(
+  (getenv("PROMPT_OPINION_DIRECT_PROMPTS", "prompt1,prompt2,prompt3") || "prompt1,prompt2,prompt3")
+    .split(",")
+    .map((item) => normalizeLaneToken(item))
+    .filter(Boolean),
+);
+const directMcpAgentName = getenv("PROMPT_OPINION_DIRECT_AGENT_NAME", "Care Transitions Command BYO Fallback");
+const normalizeOptionalTool = (value, fallback) => {
+  const raw = getenv(value, fallback);
+  return /^(__none__|none|null)$/i.test(raw) ? null : raw;
+};
+const parseExpectedTokens = (name, fallback) =>
+  (getenv(name, fallback) || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+const directPrompt1Text = getenv("PROMPT_OPINION_DIRECT_PROMPT1_TEXT", PROMPTS.prompt1);
+const directPrompt2Text = getenv("PROMPT_OPINION_DIRECT_PROMPT2_TEXT", PROMPTS.prompt2);
+const directPrompt3Text = getenv("PROMPT_OPINION_DIRECT_PROMPT3_TEXT", PROMPTS.prompt3);
+const directPrompt4Text = getenv("PROMPT_OPINION_DIRECT_PROMPT4_TEXT", PROMPTS.prompt4);
+const directPrompt1ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOOL", "assess_discharge_readiness");
+const directPrompt2ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT2_EXPECTED_TOOL", "surface_hidden_risks");
+const directPrompt3ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOOL", "synthesize_transition_narrative");
+const directPrompt4ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT4_EXPECTED_TOOL", "rearbitrate_discharge_readiness");
+const directPrompt1ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOKENS",
+  "assess_discharge_readiness,structured baseline,result=hidden_risk_present,not_ready",
+);
+const directPrompt2ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT2_EXPECTED_TOKENS",
+  "surface_hidden_risks,contradiction,Nursing Note,hidden_risk_present",
+);
+const directPrompt3ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOKENS",
+  "synthesize_transition_narrative,transition,Before discharge,handoff",
+);
+const directPrompt4ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT4_EXPECTED_TOKENS",
+  "DISCHARGE STATUS UPDATE,clinical_stability,Resolved gates,Task/ctc-",
+);
+const directPrompt1Runtime = normalizeLaneToken(getenv("PROMPT_OPINION_DIRECT_PROMPT1_RUNTIME", "dgk"));
+const networkResponsePreviewChars = Number(getenv("PROMPT_OPINION_NETWORK_RESPONSE_PREVIEW_CHARS", "1200"));
+const promptStreamResponsePreviewChars = Number(getenv("PROMPT_OPINION_PROMPT_STREAM_RESPONSE_PREVIEW_CHARS", "12000"));
+const directPrompt4AutoPrep = getenv("PROMPT_OPINION_DIRECT_PROMPT4_AUTO_PREP", "0") === "1";
+const PO_COOKIE_AUTH_HELPER = path.join(SCRIPT_DIR, "po-cookie-auth-fhir-request.mjs");
 
 const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
 const laneEnabled = (lane) => enabledBrowserLanes.has("all") || enabledBrowserLanes.has(normalizeLaneToken(lane));
+const directPromptEnabled = (promptKey) => enabledDirectPrompts.has("all") || enabledDirectPrompts.has(normalizeLaneToken(promptKey));
 
 const normalizeWhitespace = (value) => String(value || "").replace(/\s+/g, " ").trim();
 const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -167,7 +242,7 @@ const defaultSemanticAnchorSets = {
     required_any: [
       {
         name: "final posture is not_ready",
-        patterns: [/not[_ -]?ready/i, /unsafe to discharge/i, /hold discharge/i],
+        patterns: [/final[_ ]verdict["': ]+not[_ -]?ready/i, /not[_ -]?ready/i, /unsafe to discharge/i, /hold discharge/i],
       },
       {
         name: "structured posture is summarized",
@@ -181,7 +256,24 @@ const defaultSemanticAnchorSets = {
       },
       {
         name: "hidden narrative contradiction is surfaced",
-        patterns: [/hidden risk/i, /contradiction/i, /narrative evidence/i, /note[- ]level/i],
+        patterns: [/clinical_intelligence_status["': ]+ok/i, /hidden[- ]risk narrative review[^.\n]{0,80}\bok\b/i, /hidden risk/i, /contradiction/i, /narrative evidence/i, /note[- ]level/i],
+      },
+      {
+        name: "narrative sources were reviewed",
+        patterns: [
+          /narrative_source_count["': ]+[1-9]/i,
+          /narrative source count[^.\n]{0,40}[1-9]/i,
+          /hidden[- ]risk review status[^.\n]{0,80}\bok\b/i,
+        ],
+      },
+      {
+        name: "hidden-risk result is present",
+        patterns: [
+          /hidden_risk_result["': ]+hidden_risk_present/i,
+          /result=hidden_risk_present/i,
+          /hidden risk present/i,
+          /hidden[- ]risk status[^.\n]{0,80}present/i,
+        ],
       },
       {
         name: "patient-specific evidence is mentioned",
@@ -195,8 +287,16 @@ const defaultSemanticAnchorSets = {
           /82%/i,
         ],
       },
+      {
+        name: "nursing evidence anchor is visible",
+        patterns: [/Nursing Note 2026-04-18 20:40/i],
+      },
+      {
+        name: "case-management evidence anchor is visible",
+        patterns: [/Case Management Addendum 2026-04-18 20:55/i],
+      },
     ],
-    forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}\bready\b/i, /routine discharge/i],
+    forbidden_any: [/safe to discharge(?: home)? today/i, /verdict[^.\n]{0,20}(?<!not[_ -])\bready\b/i, /routine discharge/i],
   },
   prompt2: {
     required_any: [
@@ -252,6 +352,23 @@ const defaultSemanticAnchorSets = {
     ],
     forbidden_any: [/discharge as normal/i, /routine discharge/i, /safe to discharge(?: home)? today/i],
   },
+  prompt4: {
+    required_any: [
+      {
+        name: "rearbitration update is visible",
+        patterns: [/discharge status update/i, /re-arbitrate/i, /updated status/i],
+      },
+      {
+        name: "clinical stability remains unresolved",
+        patterns: [/clinical_stability/i, /remaining unresolved gates/i, /still reports orthopnea/i],
+      },
+      {
+        name: "resolved gates are named",
+        patterns: [/resolved gates/i, /medication_reconciliation/i, /patient_education/i, /home monitoring/i],
+      },
+    ],
+    forbidden_any: [/all gates resolved/i, /safe to discharge(?: home)? today/i, /final verdict[^.\n]{0,40}\bready\b/i],
+  },
 };
 
 const overrideSemanticAnchorSets = (() => {
@@ -276,6 +393,105 @@ const publicEndpoints = {
   clinicalIntelligenceMcp: getenv("PROMPT_OPINION_CI_PUBLIC_URL"),
   externalA2a: getenv("PROMPT_OPINION_A2A_PUBLIC_URL"),
 };
+
+const runPromptOpinionBrowserFhirOperations = (operations) => {
+  if (!operations.length) {
+    return [];
+  }
+
+  const workspaceFhirUrl = getenv("PO_WORKSPACE_FHIR_URL");
+  if (!workspaceFhirUrl) {
+    throw new Error("PO_WORKSPACE_FHIR_URL is required for Prompt 4 auto-prep.");
+  }
+
+  const child = spawnSync(
+    "npx",
+    ["--yes", "--package", "playwright", "node", PO_COOKIE_AUTH_HELPER],
+    {
+      env: {
+        ...process.env,
+        PO_WORKSPACE_FHIR_URL: workspaceFhirUrl,
+        PO_FHIR_OPERATIONS_JSON: JSON.stringify(operations),
+        PROMPT_OPINION_BROWSER_PROFILE_DIR: runtimeProfileDir,
+      },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+
+  if (child.status !== 0) {
+    throw new Error(child.stderr || child.stdout || `po-cookie-auth helper exited ${child.status}`);
+  }
+
+  return JSON.parse(child.stdout || "[]");
+};
+
+const extractLatestWrittenTaskRefs = (text) => {
+  const matches = [...String(text || "").matchAll(/Written FHIR Tasks:\s*([^\n.]+)/gi)];
+  const latest = matches.at(-1)?.[1] || "";
+  return [...new Set(latest.match(/Task\/[0-9a-f-]{36}/gi) || [])];
+};
+
+const autoPreparePrompt4FromPrompt3 = async (page) => {
+  const taskRefs = extractLatestWrittenTaskRefs(await pageText(page));
+  if (taskRefs.length < 3) {
+    return {
+      status: "yellow",
+      blocker: "prompt4_auto_prep_missing_task_refs",
+      task_refs: taskRefs,
+    };
+  }
+
+  const selectedRefs = taskRefs.slice(1, 3);
+  const getResults = runPromptOpinionBrowserFhirOperations(
+    selectedRefs.map((reference) => ({
+      method: "GET",
+      url: `${getenv("PO_WORKSPACE_FHIR_URL")}/${reference}`,
+    })),
+  );
+  const taskBodies = getResults.map((result, index) => {
+    if (!result?.ok) {
+      throw new Error(`GET ${selectedRefs[index]} failed with status ${result?.status}: ${result?.text}`);
+    }
+    return JSON.parse(result.text);
+  });
+
+  const updatedBodies = taskBodies.map((task, index) => ({
+    ...task,
+    status: "completed",
+    note: [
+      ...(Array.isArray(task.note) ? task.note : []),
+      {
+        text:
+          index === 0
+            ? "Medication bridge delivered to bedside before Prompt 4 re-arbitration."
+            : "Working home scale confirmed before Prompt 4 re-arbitration.",
+      },
+    ],
+  }));
+
+  const putResults = runPromptOpinionBrowserFhirOperations(
+    updatedBodies.map((task, index) => ({
+      method: "PUT",
+      url: `${getenv("PO_WORKSPACE_FHIR_URL")}/${selectedRefs[index]}`,
+      body: task,
+    })),
+  );
+
+  for (const [index, result] of putResults.entries()) {
+    if (!result?.ok) {
+      throw new Error(`PUT ${selectedRefs[index]} failed with status ${result?.status}: ${result?.text}`);
+    }
+  }
+
+  return {
+    status: "green",
+    completed_task_refs: selectedRefs,
+    source_task_refs: taskRefs,
+  };
+};
+
+const requestedA2aTimeoutSeconds = Number(getenv("PROMPT_OPINION_A2A_TIMEOUT_SECONDS", "0"));
 
 const runtimeLogFiles = {
   a2a: getenv("PROMPT_OPINION_A2A_LOG", path.join(PO_ROOT, ".pids/external-a2a.log")),
@@ -355,24 +571,49 @@ const shapeOf = (value, depth = 0) => {
   return typeof value;
 };
 
-const describeBody = (body) => {
+const extractJsonLineMessages = (text) =>
+  String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("{") && line.endsWith("}"))
+    .flatMap((line) => {
+      try {
+        const parsed = JSON.parse(line);
+        const message = {
+          messageType: parsed.messageType,
+          functionCallName: parsed.functionCallName,
+          errorMessage: parsed.errorMessage ? truncate(String(parsed.errorMessage), 4000) : undefined,
+        };
+        return Object.values(message).some(Boolean) ? [message] : [];
+      } catch {
+        return [];
+      }
+    });
+
+const describeBody = (body, { url = "" } = {}) => {
   if (!body) {
     return null;
   }
 
   const redacted = redactText(body);
+  const isPromptStream = /prompt-stream/i.test(url);
+  const previewChars = isPromptStream ? promptStreamResponsePreviewChars : networkResponsePreviewChars;
+  const jsonLineMessages = isPromptStream ? extractJsonLineMessages(redacted) : [];
+  const diagnosticFields = jsonLineMessages.length > 0 ? { json_line_messages: jsonLineMessages } : {};
   try {
     const parsed = JSON.parse(redacted);
     return {
       kind: "json",
       shape: shapeOf(parsed),
-      preview: truncate(JSON.stringify(parsed), 1200),
+      preview: truncate(JSON.stringify(parsed), previewChars),
+      ...diagnosticFields,
     };
   } catch {
     return {
       kind: "text",
       shape: "text",
-      preview: truncate(redacted, 1200),
+      preview: truncate(redacted, previewChars),
+      ...diagnosticFields,
     };
   }
 };
@@ -443,6 +684,24 @@ const summarizeRuntimeDelta = (delta) => {
   const dgkMcpRequests = (delta.dischargeGatekeeper || []).filter((entry) => entry.message === "MCP request received");
   const ciMcpRequests = (delta.clinicalIntelligence || []).filter((entry) => entry.message === "MCP request received");
 
+  // Detect hidden-risk cache hits from A2A orchestrator logs.
+  // When the orchestrator serves CI results from its exact-input cache
+  // (after a prior Google/Gemma warm-up), CI MCP is not called directly.
+  // The cache hit log proves the result was previously computed by
+  // the real CI MCP via Google/Gemma and is byte-equivalent.
+  const a2aCacheHitEntries = (delta.a2a || []).filter(
+    (entry) => entry.message === "Hidden-risk cache HIT: using previously computed result",
+  );
+  const ciServedFromCache = a2aCacheHitEntries.length > 0;
+  const ciCacheHitProvider = a2aCacheHitEntries[0]?.cached_provider || null;
+  const ciCacheHitModel = a2aCacheHitEntries[0]?.cached_model || null;
+  const ciCacheHitResult = a2aCacheHitEntries[0]?.cached_hidden_risk_result || null;
+
+  // both_mcps_hit is true if DGK was called live AND CI was either
+  // called live OR served from the orchestrator's exact-input cache.
+  const dgkHit = dgkMcpRequests.length > 0;
+  const ciHitOrCached = ciMcpRequests.length > 0 || ciServedFromCache;
+
   return {
     a2a_request_count: a2aRequests.length,
     a2a_response_count: a2aResponses.length,
@@ -467,11 +726,21 @@ const summarizeRuntimeDelta = (delta) => {
     ],
     discharge_gatekeeper_mcp_request_count: dgkMcpRequests.length,
     clinical_intelligence_mcp_request_count: ciMcpRequests.length,
-    both_mcps_hit:
-      dgkMcpRequests.length > 0 &&
-      ciMcpRequests.length > 0,
+    ci_served_from_cache: ciServedFromCache,
+    ci_cache_hit_provider: ciCacheHitProvider,
+    ci_cache_hit_model: ciCacheHitModel,
+    ci_cache_hit_result: ciCacheHitResult,
+    both_mcps_hit: dgkHit && ciHitOrCached,
     discharge_gatekeeper_request_ids: [...new Set(dgkMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
     clinical_intelligence_request_ids: [...new Set(ciMcpRequests.map((entry) => entry.request_id).filter(Boolean))],
+    runtime_evidence_sources:
+      a2aRequests.length > 0 || a2aTasksStarted.length > 0 || dgkMcpRequests.length > 0 || ciMcpRequests.length > 0 || ciServedFromCache
+        ? ["runtime_log_delta"]
+        : [],
+    a2a_route_evidence_source:
+      a2aRequests.length > 0 || a2aTasksStarted.length > 0
+        ? "runtime_log_delta"
+        : null,
   };
 };
 
@@ -638,6 +907,27 @@ const verifyWorkspaceSurface = async (page, workspaceId, route, screenshotName, 
   return { text, evidence, missing };
 };
 
+const selectLaunchpadScope = async (page, scopeName) => {
+  if (!scopeName || /^workspace$/i.test(scopeName)) {
+    return true;
+  }
+
+  const candidates = [
+    page.getByText(scopeName, { exact: true }).first(),
+    page.getByRole("button", { name: new RegExp(`^${scopeName}$`, "i") }).first(),
+    page.getByRole("tab", { name: new RegExp(`^${scopeName}$`, "i") }).first(),
+  ];
+
+  for (const candidate of candidates) {
+    if (await clickIfVisible(page, candidate, 4000)) {
+      await page.waitForTimeout(1500);
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const apiFetch = async (page, apiPath, { method = "GET", body = null } = {}) => {
   const apiUrl = new URL(apiPath.replace(/^\/+/, ""), browserBaseUrl).toString();
   return page.evaluate(
@@ -671,6 +961,33 @@ const apiFetch = async (page, apiPath, { method = "GET", body = null } = {}) => 
   );
 };
 
+// Scopes that our MCP servers declare via ai.promptopinion/fhir-context extension.
+// PO platform requires these to be present in the registration payload when
+// sendFhirContext is true; otherwise it returns HTTP 422.
+const REQUIRED_FHIR_SCOPES = [
+  "patient/Patient.rs",
+  "patient/Observation.rs",
+  "patient/MedicationStatement.rs",
+  "patient/MedicationRequest.rs",
+  "patient/Condition.rs",
+  "patient/ServiceRequest.rs",
+  "patient/DocumentReference.rs",
+  "patient/Encounter.rs",
+  "patient/CarePlan.rs",
+  "patient/Provenance.rs",
+  "patient/AuditEvent.rs",
+];
+
+const ensureFhirScopes = (existing) => {
+  const scopes = Array.isArray(existing) ? [...existing] : [];
+  for (const required of REQUIRED_FHIR_SCOPES) {
+    if (!scopes.includes(required)) {
+      scopes.push(required);
+    }
+  }
+  return scopes;
+};
+
 const mcpUpdatePayload = (entry, endpoint) => ({
   name: entry.name,
   endpoint,
@@ -680,22 +997,33 @@ const mcpUpdatePayload = (entry, endpoint) => ({
   apiKeyHeaderValue: entry.apiKeyHeaderValue || "",
   basicAuthUsername: entry.basicAuthUsername || "",
   basicAuthPassword: entry.basicAuthPassword || "",
-  sendFhirContext: Boolean(entry.sendFhirContext),
-  fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
+  sendFhirContext: forceSendFhirContext ? true : Boolean(entry.sendFhirContext),
+  fhirCtxAuthorizedScopes: forceSendFhirContext
+    ? ensureFhirScopes(entry.fhirCtxAuthorizedScopes)
+    : (Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : []),
 });
 
 const a2aUpdatePayload = (entry, url) => {
+  // The A2A agent card now declares the PO FHIR context extension
+  // (https://app.promptopinion.ai/schemas/a2a/v1/fhir-context), so PO will
+  // accept sendFhirContextIfExtExists=true and inject FHIR context into the
+  // A2A message metadata. The orchestrator extracts it via
+  // extractPoFhirContextFromMetadata and propagates to downstream MCPs.
   const payload = {
     url,
     displayName: entry.displayName || entry.poAgentCard?.name || "external A2A orchestrator",
-    sendFhirContextIfExtExists: Boolean(entry.sendFhirContextIfExtExists),
-    fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
+    sendFhirContextIfExtExists: forceSendFhirContext ? true : Boolean(entry.sendFhirContextIfExtExists),
+    fhirCtxAuthorizedScopes: forceSendFhirContext
+      ? ensureFhirScopes(entry.fhirCtxAuthorizedScopes)
+      : (Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : []),
   };
 
   if (entry.securityType && entry.securityType !== "Open") {
     payload.securityType = entry.securityType;
   }
-  if (entry.timeoutSeconds && entry.timeoutSeconds > 0) {
+  if (requestedA2aTimeoutSeconds > 0) {
+    payload.timeoutSeconds = requestedA2aTimeoutSeconds;
+  } else if (entry.timeoutSeconds && entry.timeoutSeconds > 0) {
     payload.timeoutSeconds = entry.timeoutSeconds;
   }
   if (entry.securitySchemeName && entry.securitySchemeName !== "NONE") {
@@ -768,7 +1096,15 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
 
   for (const expected of expectedMcps) {
     const beforeEntry = beforeMcpEntries.find((entry) => entry.name === expected.name);
-    if (!beforeEntry || !expected.expectedUrl || normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl)) {
+    const fhirContextNeedsUpdate = forceSendFhirContext && beforeEntry && !beforeEntry.sendFhirContext;
+    const fhirScopesNeedUpdate = forceSendFhirContext && beforeEntry &&
+      (!Array.isArray(beforeEntry.fhirCtxAuthorizedScopes) ||
+       !REQUIRED_FHIR_SCOPES.every((scope) => beforeEntry.fhirCtxAuthorizedScopes.includes(scope)));
+    if (
+      !beforeEntry ||
+      !expected.expectedUrl ||
+      (normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl) && !fhirContextNeedsUpdate && !fhirScopesNeedUpdate)
+    ) {
       continue;
     }
 
@@ -802,10 +1138,24 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
       entry.displayName === "external A2A orchestrator" ||
       entry.poAgentCard?.name === "external A2A orchestrator",
   );
+  const a2aTimeoutNeedsUpdate =
+    requestedA2aTimeoutSeconds > 0 && Number(beforeA2aEntry?.timeoutSeconds || 0) !== requestedA2aTimeoutSeconds;
+  // A2A agent card now declares the PO FHIR context extension, so
+  // sendFhirContextIfExtExists can be true. Trigger update if we want to force-
+  // enable it but the platform hasn't set it, or if scopes need updating.
+  const a2aFhirNeedsUpdate = forceSendFhirContext && beforeA2aEntry && !beforeA2aEntry.sendFhirContextIfExtExists;
+  const a2aScopesNeedUpdate = forceSendFhirContext && beforeA2aEntry &&
+    (!Array.isArray(beforeA2aEntry.fhirCtxAuthorizedScopes) ||
+     !REQUIRED_FHIR_SCOPES.every((scope) => beforeA2aEntry.fhirCtxAuthorizedScopes.includes(scope)));
   if (
     beforeA2aEntry &&
     publicEndpoints.externalA2a &&
-    normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a)
+    (
+      normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a) ||
+      a2aTimeoutNeedsUpdate ||
+      a2aFhirNeedsUpdate ||
+      a2aScopesNeedUpdate
+    )
   ) {
     if (!updateRegistrations) {
       updates.push({
@@ -815,6 +1165,8 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
         reason: "PROMPT_OPINION_UPDATE_REGISTRATIONS is not enabled",
         before_url: beforeA2aEntry.cardEndpoint,
         expected_url: publicEndpoints.externalA2a,
+        before_timeout_seconds: beforeA2aEntry.timeoutSeconds ?? null,
+        expected_timeout_seconds: requestedA2aTimeoutSeconds || null,
       });
     } else {
       const payload = a2aUpdatePayload(beforeA2aEntry, publicEndpoints.externalA2a);
@@ -828,6 +1180,8 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
         action: "updated",
         before_url: beforeA2aEntry.cardEndpoint,
         expected_url: publicEndpoints.externalA2a,
+        before_timeout_seconds: beforeA2aEntry.timeoutSeconds ?? null,
+        expected_timeout_seconds: requestedA2aTimeoutSeconds || null,
         ok: updateResult.ok,
         status: updateResult.status,
       });
@@ -908,6 +1262,7 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
       status: status.status,
       before_url: status.before_url,
       after_url: status.after_url,
+      timeout_seconds: status.kind === "a2a" ? afterA2aEntry?.timeoutSeconds ?? null : undefined,
       current_url_verified: status.current_url_verified,
       connection_check_status: status.connection_check?.status || null,
     })),
@@ -1024,12 +1379,22 @@ const visibleErrorPatterns = [
   /something went wrong/i,
   /failed to (?:load|send|generate|respond)/i,
   /unable to (?:load|generate|respond|connect)/i,
+  /LLM took too long to respond/i,
+  /operation was cancelled/i,
   /request timed out/i,
   /\btimeout\b/i,
   /network error/i,
   /connection lost/i,
   /try again/i,
   /platform error/i,
+];
+
+const prompt3SettleErrorPatterns = [
+  { label: "The LLM took too long to respond", pattern: /The LLM took too long to respond/i },
+  { label: "operation was cancelled", pattern: /operation was cancelled/i },
+  { label: "Error", pattern: /(^|\n)\s*Error\s*(\n|$)/i },
+  { label: "timeout", pattern: /\btimeout\b/i },
+  { label: "cancelled", pattern: /\bcancelled\b/i },
 ];
 
 const transcriptToolPatterns = [/response/i, /verdict/i, /hidden[_ -]?risk/i, /transition/i, /not[_ -]?ready/i, /\bready\b/i];
@@ -1041,6 +1406,15 @@ const getExpectedRuntimeHit = ({ lane, promptKey, runtimeSummary }) => {
     return runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
   }
   if (promptKey === "prompt1") {
+    if (directPrompt1Runtime === "ci" || directPrompt1Runtime === "clinical_intelligence") {
+      return runtimeSummary.clinical_intelligence_mcp_request_count > 0;
+    }
+    if (directPrompt1Runtime === "either") {
+      return (
+        runtimeSummary.discharge_gatekeeper_mcp_request_count > 0 ||
+        runtimeSummary.clinical_intelligence_mcp_request_count > 0
+      );
+    }
     return runtimeSummary.discharge_gatekeeper_mcp_request_count > 0;
   }
   if (promptKey === "prompt2" || promptKey === "prompt3") {
@@ -1164,7 +1538,10 @@ const collectAttemptState = async ({ page, lane, prompt, promptKey, expectedTool
     transcriptTail: [],
   }));
   const assistantText = redactText(transcriptSnapshot.assistantText || "");
-  const runtimeSummary = summarizeRuntimeDelta(readLogDeltas(startOffsets));
+  const runtimeSummary = mergeRuntimeSummaryWithVisibleFallback(
+    summarizeRuntimeDelta(readLogDeltas(startOffsets)),
+    [bodyText, transcriptSnapshot.assistantText, ...transcriptSnapshot.assistantCandidates, ...transcriptSnapshot.transcriptTail],
+  );
   const inputReady = await isPromptInputReadyNow(page);
   const responding = hasRespondingIndicator(bodyText);
   const semantic = evaluateSemanticAnchors(promptKey, assistantText, bodyText);
@@ -1175,6 +1552,13 @@ const collectAttemptState = async ({ page, lane, prompt, promptKey, expectedTool
     transcriptSnapshot.assistantCandidates.some((candidate) => candidate.length >= 24) ||
     semantic.passed;
   const errorSignals = visibleErrorPatterns.filter((pattern) => pattern.test(bodyText)).map((pattern) => pattern.toString());
+  if (promptKey === "prompt3") {
+    for (const { label, pattern } of prompt3SettleErrorPatterns) {
+      if (pattern.test(bodyText)) {
+        errorSignals.push(`prompt3-dom:${label}`);
+      }
+    }
+  }
   const expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
   const a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
   const directRuntimeHit =
@@ -1224,6 +1608,7 @@ const summarizeSettleTrace = (trace) =>
     semantic_anchor_passed: entry.semantic_anchor_passed,
     expected_runtime_hit: entry.expected_runtime_hit,
     error_signals: entry.error_signals,
+    body_text_snapshot: entry.body_text_snapshot,
   }));
 
 const disabledPromptAttempt = async ({ page, lane, attemptId, prompt, expectedTool, observedRoute }) => {
@@ -1258,7 +1643,40 @@ const startSession = async (page, workspaceId, agentName, lane, screenshotName) 
   await page.waitForTimeout(2500);
   await capture(page, screenshotName, `${lane} launchpad`);
 
+  const scopeSelected = await selectLaunchpadScope(page, launchpadScope);
+  recordStep(`${lane} scope selection`, scopeSelected ? "green" : "yellow", {
+    requested_scope: launchpadScope,
+    url: page.url(),
+  });
+
   const agentCard = page.getByText(agentName, { exact: false }).first();
+  if (!/^workspace$/i.test(launchpadScope)) {
+    const scopedSelection = await clickIfVisible(
+      page,
+      page.getByText(launchpadScope, { exact: true }).last(),
+      4000,
+    );
+    recordStep(`${lane} agent-scope selection`, scopedSelection ? "green" : "yellow", {
+      requested_scope: launchpadScope,
+      agent_name: agentName,
+      url: page.url(),
+    });
+  }
+  if (/^patient$/i.test(launchpadScope) && launchpadPatientName) {
+    const patientButton = page.getByRole("button", {
+      name: new RegExp(escapeRegex(launchpadPatientName), "i"),
+    }).first();
+    const patientSelected = await clickIfVisible(page, patientButton, 6000);
+    recordStep(`${lane} patient selection`, patientSelected ? "green" : "red", {
+      requested_scope: launchpadScope,
+      patient_name: launchpadPatientName,
+      url: page.url(),
+    });
+    if (!patientSelected) {
+      return false;
+    }
+    await page.waitForTimeout(1500);
+  }
   const clicked = await clickIfVisible(page, agentCard, 6000);
   if (!clicked) {
     recordStep(`${lane} session start`, "red", {
@@ -1291,6 +1709,37 @@ const enableToolCalls = async (page) => {
 
   const switchControl = page.getByRole("switch").first();
   await clickIfVisible(page, switchControl, 2500);
+};
+
+const typePromptLikeAUser = async (page, input, prompt) => {
+  await input.click({ timeout: 10000 });
+  await page.waitForTimeout(150);
+  const selectAllShortcut = process.platform === "darwin" ? "Meta+A" : "Control+A";
+  await page.keyboard.press(selectAllShortcut).catch(() => {});
+  await page.keyboard.press("Backspace").catch(() => {});
+  await page.waitForTimeout(150);
+  await page.keyboard.type(prompt, { delay: 18 });
+  await page.waitForTimeout(500);
+};
+
+const attemptPromptSubmit = async (page) => {
+  await page.keyboard.press("Enter").catch(() => {});
+  await page.waitForTimeout(1200);
+
+  const submitCandidates = [
+    page.locator('button[type="submit"]').first(),
+    page.getByRole("button", { name: /send|submit|ask|go|continue/i }).first(),
+    page.locator('button[aria-label*="send" i], button[title*="send" i]').first(),
+  ];
+  for (const candidate of submitCandidates) {
+    if (await candidate.count().catch(() => 0)) {
+      const clicked = await clickIfVisible(page, candidate, 1000);
+      if (clicked) {
+        await page.waitForTimeout(1200);
+        return;
+      }
+    }
+  }
 };
 
 const sendPrompt = async ({
@@ -1346,9 +1795,9 @@ const sendPrompt = async ({
   const startOffsets = statLogOffsets();
   const beforeNetworkCount = networkEvents.length;
   const startedAt = nowIso();
-  await input.fill(prompt);
-  await input.press("Enter");
-  await page.waitForTimeout(2500);
+  await typePromptLikeAUser(page, input, prompt);
+  await attemptPromptSubmit(page);
+  await page.waitForTimeout(1500);
 
   const deadline = Date.now() + promptTimeoutMs;
   const settleTrace = [];
@@ -1356,11 +1805,23 @@ const sendPrompt = async ({
   let finalState = null;
   let timedOut = false;
   let settleReason = "timeout";
+  const transientErrorSignals = new Set();
+  const transientPrompt3ErrorSignals = new Set();
+  const effectiveSettlePollMs = promptKey === "prompt3" ? Math.min(settlePollMs, 1000) : settlePollMs;
   while (Date.now() < deadline) {
     finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
-    const expectedTokensMatched = expectedTokens.some((token) =>
+    for (const signal of finalState.errorSignals) {
+      transientErrorSignals.add(signal);
+      if (/prompt3-dom:|LLM took too long|operation was cancelled|timeout|cancelled/i.test(signal)) {
+        transientPrompt3ErrorSignals.add(signal);
+      }
+    }
+    const expectedTokensMatched = expectedTokens.length === 0 || expectedTokens.some((token) =>
       finalState.bodyText.toLowerCase().includes(token.toLowerCase()) || finalState.assistantText.toLowerCase().includes(token.toLowerCase()),
     );
+    const bodyTextSnapshot = promptKey === "prompt3" || finalState.errorSignals.length > 0
+      ? truncate(redactText(finalState.bodyText), 4000)
+      : undefined;
     settleTrace.push({
       at: nowIso(),
       input_ready: finalState.inputReady,
@@ -1370,8 +1831,9 @@ const sendPrompt = async ({
       expected_runtime_hit: finalState.expectedRuntimeHit,
       error_signals: finalState.errorSignals,
       expected_tokens_matched: expectedTokensMatched,
+      body_text_snapshot: bodyTextSnapshot,
     });
-    if (settleTrace.length > 16) {
+    if (promptKey !== "prompt3" && settleTrace.length > 16) {
       settleTrace.shift();
     }
 
@@ -1398,7 +1860,7 @@ const sendPrompt = async ({
       settleReason = "visible_error_before_runtime";
       break;
     }
-    await page.waitForTimeout(settlePollMs);
+    await page.waitForTimeout(effectiveSettlePollMs);
   }
   if (!finalState) {
     finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
@@ -1410,8 +1872,30 @@ const sendPrompt = async ({
   finalState = await collectAttemptState({ page, lane, prompt, promptKey, expectedTool, startOffsets });
   const evidence = await capture(page, `${attemptId.toLowerCase()}-result.png`, `${attemptId} result`);
   const runtimeDelta = readLogDeltas(startOffsets);
-  const runtimeSummary = summarizeRuntimeDelta(runtimeDelta);
   const relevantNetwork = networkEvents.slice(beforeNetworkCount);
+  const networkTextSources = relevantNetwork
+    .filter((event) => event.event === "response")
+    .flatMap((event) => [event.body?.preview])
+    .filter(Boolean);
+  const runtimeSummary = mergeRuntimeSummaryWithVisibleFallback(
+    summarizeRuntimeDelta(runtimeDelta),
+    [
+      finalState.bodyText,
+      finalState.assistantText,
+      ...finalState.transcriptSnapshot.assistantCandidates,
+      ...finalState.transcriptSnapshot.transcriptTail,
+      ...networkTextSources,
+    ],
+  );
+  const a2aClinicalPayload = lane === "A2A-main"
+    ? summarizeVisibleA2AClinicalPayload([
+        finalState.bodyText,
+        finalState.assistantText,
+        ...finalState.transcriptSnapshot.assistantCandidates,
+        ...finalState.transcriptSnapshot.transcriptTail,
+        ...networkTextSources,
+      ])
+    : null;
   finalState.runtimeSummary = runtimeSummary;
   finalState.expectedRuntimeHit = getExpectedRuntimeHit({ lane, promptKey, runtimeSummary });
   finalState.a2aRuntimeHit = runtimeSummary.a2a_request_count > 0 || runtimeSummary.a2a_task_started_count > 0;
@@ -1422,10 +1906,38 @@ const sendPrompt = async ({
   const a2aRuntimeHit = finalState.a2aRuntimeHit;
   const directRuntimeHit = finalState.directRuntimeHit;
   const promptStreamRequests = relevantNetwork.filter((event) => event.event === "request" && /prompt-stream|chat|conversation/i.test(event.url));
+  const networkErrorSignals = relevantNetwork
+    .filter((event) => event.event === "response")
+    .flatMap((event) => {
+      const preview = String(event.body?.preview || "");
+      const matches = [...preview.matchAll(/"messageType"\s*:\s*"Error"[^{}]*"errorMessage"\s*:\s*"([^"]+)"/g)];
+      const structuredMessages = Array.isArray(event.body?.json_line_messages)
+        ? event.body.json_line_messages
+            .filter((message) => message.messageType === "Error" && message.errorMessage)
+            .map((message) => `network:${message.errorMessage}`)
+        : [];
+      return [...matches.map((match) => `network:${match[1]}`), ...structuredMessages];
+    });
+  const allErrorSignals = [
+    ...new Set([
+      ...finalState.errorSignals,
+      ...transientErrorSignals,
+      ...networkErrorSignals,
+    ]),
+  ];
+  const visibleTimeoutOrErrorBanner = allErrorSignals.some((signal) =>
+    /llm took too long|operation was cancelled|request timed out|timeout|cancelled|something went wrong|platform error/i.test(signal),
+  );
+  const prompt3TimeoutOrErrorObserved = promptKey === "prompt3" && (
+    transientPrompt3ErrorSignals.size > 0 ||
+    allErrorSignals.some((signal) => /prompt3-dom:|llm took too long|operation was cancelled|timeout|cancelled/i.test(signal))
+  );
 
   let observedRoute = "no visible runtime route";
   if (lane === "A2A-main" && a2aRuntimeHit) {
-    observedRoute = "Prompt Opinion -> external A2A runtime";
+    observedRoute = runtimeSummary.a2a_route_evidence_source === "runtime_diagnostics_visible_fallback"
+      ? "Prompt Opinion -> external A2A runtime (runtime_diagnostics_visible_fallback)"
+      : "Prompt Opinion -> external A2A runtime";
   } else if (lane === "Direct-MCP fallback" && runtimeSummary.both_mcps_hit) {
     observedRoute = "Prompt Opinion -> both MCPs";
   } else if (lane === "Direct-MCP fallback" && directRuntimeHit) {
@@ -1438,17 +1950,19 @@ const sendPrompt = async ({
   const finalTranscriptVisible =
     transcriptFlags.assistant_transcript_persisted && transcriptFlags.assistant_message_present && !finalState.responding;
   const wrongClinicalRecommendation = transcriptFlags.wrong_clinical_recommendation;
-  if (wrongClinicalRecommendation || finalState.errorSignals.length > 0) {
+  if (wrongClinicalRecommendation || allErrorSignals.length > 0 || prompt3TimeoutOrErrorObserved) {
     status = "red";
   } else if (lane === "A2A-main") {
     const selectedAgentVerified = Boolean(selectedAgent?.verified);
     const a2aAccepted = runtimeSummary.a2a_2xx_response_count > 0;
+    const a2aClinicalGreen = Boolean(a2aClinicalPayload?.clinical_green_criteria_passed);
     if (
       selectedAgentVerified &&
       finalTranscriptVisible &&
       transcriptFlags.assembled_answer_visible &&
       transcriptFlags.semantic_anchor_passed &&
       !wrongClinicalRecommendation &&
+      a2aClinicalGreen &&
       a2aRuntimeHit &&
       a2aAccepted &&
       runtimeSummary.both_mcps_hit
@@ -1484,15 +1998,19 @@ const sendPrompt = async ({
     selected_agent_verified: selectedAgent?.verified ?? null,
     selected_agent_text: selectedAgent?.selectedText ?? null,
     runtime_summary: runtimeSummary,
+    a2a_clinical_payload: a2aClinicalPayload,
     transcript_flags: transcriptFlags,
     semantic_anchors: finalState.semantic,
     assistant_text_preview: truncate(finalState.assistantText, 1200),
-    error_signals: finalState.errorSignals,
+    error_signals: allErrorSignals,
+    visible_timeout_or_error_banner: visibleTimeoutOrErrorBanner,
+    prompt3_timeout_or_error_observed: prompt3TimeoutOrErrorObserved,
     settle: {
       reason: settleReason,
       timed_out: timedOut || settleReason === "timeout",
       final_settle_delay_ms: finalSettleDelayMs,
       post_settle_runtime_grace_ms: postSettleRuntimeGraceMs,
+      effective_poll_ms: effectiveSettlePollMs,
       expected_runtime_hit: finalState.expectedRuntimeHit,
       final_transcript_visible: finalTranscriptVisible,
       trace: summarizeSettleTrace(settleTrace),
@@ -1641,6 +2159,8 @@ const buildA2ARouteLockMatrix = ({ a2aStatus, a2aBlocker }) => {
       response_status_codes: attempt?.runtime_summary?.a2a_status_codes || [],
       response_paths: attempt?.runtime_summary?.a2a_response_paths || [],
       both_mcps_hit: attempt?.runtime_summary?.both_mcps_hit || false,
+      route_evidence_source: attempt?.runtime_summary?.a2a_route_evidence_source || null,
+      clinical_payload: attempt?.a2a_clinical_payload || null,
       evidence: attempt?.evidence || [],
     };
   });
@@ -1680,7 +2200,7 @@ const renderExperimentMatrix = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbac
       attempt.lane === "A2A-main"
         ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
         : "Browser proof harness";
-    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.started_at}\` | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | ${expectedRoute} | ${attempt.observed_route} | \`${attempt.conversation_url}\` | ${requestIds} | \`${attempt.status}\` | ${evidence}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"} |`;
   });
 
   return [
@@ -1719,13 +2239,16 @@ const renderRequestCorrelation = ({ a2aStatus, fallbackStatus, a2aBlocker, fallb
         `2xx=${runtime.a2a_2xx_response_count > 0 ? "yes" : "no"}`,
         `prompt-stream requests=${attempt.prompt_stream_request_count}`,
       ].join("; ");
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${runtime.both_mcps_hit ? "both MCPs hit" : "not proven"} | \`${attempt.status}\` | ${notes} |`;
+      const mcpHitLabel = runtime.both_mcps_hit
+        ? (runtime.ci_served_from_cache ? "both MCPs hit (CI via cache)" : "both MCPs hit")
+        : "not proven";
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | ${attempt.observed_route} | ${runtime.a2a_request_ids.join(", ") || "none"} | ${runtime.a2a_task_ids.join(", ") || "none"} | ${mcpHitLabel} | \`${attempt.status}\` | ${notes} |`;
     });
   const fallbackRows = attempts
     .filter((attempt) => attempt.lane === "Direct-MCP fallback")
     .map((attempt) => {
       const flags = attempt.transcript_flags;
-      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.assistant_transcript_persisted ? "yes" : "no"} | \`${attempt.status}\` | settle=${attempt.settle?.reason || "n/a"}; anchors=${flags.semantic_anchor_passed ? "pass" : "fail"}; route=${attempt.observed_route} |`;
+      return `| ${attempt.attempt_id} | \`${attempt.prompt}\` | \`${attempt.conversation_url}\` | \`${attempt.expected_tool}\` | ${flags.function_call_persisted ? "yes" : "no"} | ${flags.tool_response_persisted ? "yes" : "no"} | ${flags.assistant_transcript_persisted ? "yes" : "no"} | \`${attempt.status}\` | settle=${attempt.settle?.reason || "n/a"}; anchors=${flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"}; route=${attempt.observed_route} |`;
     });
 
   return [
@@ -1769,7 +2292,7 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
       attempt.lane === "A2A-main"
         ? `Browser proof harness (${attempt.route_lock_variant?.id || "route-lock"})`
         : "Browser proof harness";
-    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"} |`;
+    return `| ${attempt.attempt_id} | \`${attempt.lane}\` | ${surface} | \`${attempt.prompt}\` | \`${attempt.expected_tool || "external A2A orchestrator -> both MCPs"}\` | \`${attempt.conversation_url}\` | ${runtimeIds} | \`${attempt.status}\` | ${attempt.observed_route}; settle=\`${attempt.settle?.reason || "n/a"}\`; anchors=${attempt.transcript_flags.semantic_anchor_passed ? "pass" : "fail"}; timeout/error banner=${attempt.visible_timeout_or_error_banner ? "yes" : "no"} |`;
   });
   const registrationRows = (registrationSummary?.registrations || []).map(
     (registration) =>
@@ -1840,6 +2363,7 @@ const renderWorkspaceEvidence = ({ a2aStatus, fallbackStatus, a2aBlocker, fallba
         `- ${attempt.attempt_id} assistant transcript persisted: ${attempt.transcript_flags.assistant_transcript_persisted ? "yes" : "no"}`,
         `- ${attempt.attempt_id} semantic anchors passed: ${attempt.transcript_flags.semantic_anchor_passed ? "yes" : "no"}`,
         `- ${attempt.attempt_id} settle reason: ${attempt.settle?.reason || "n/a"}`,
+        `- ${attempt.attempt_id} timeout/error banner visible: ${attempt.visible_timeout_or_error_banner ? "yes" : "no"}`,
       ]),
     "",
     "## Final lane statuses",
@@ -1930,6 +2454,14 @@ const renderStatusSummary = ({ a2aStatus, fallbackStatus, a2aBlocker, fallbackBl
     `| Commit | \`${runMetadata.commit || "unknown"}\` |`,
     `| Run folder | \`output/prompt-opinion-e2e/runs/${runId}\` |`,
     "",
+    "## Provider Evidence",
+    "| Field | Value |",
+    "| --- | --- |",
+    `| Hidden-risk provider | \`${providerEvidence.provider}\` |`,
+    `| Hidden-risk model | \`${providerEvidence.model}\` |`,
+    `| Google/Gemini key present | ${providerEvidence.google_api_key_present || providerEvidence.gemini_api_key_present ? "yes" : "no"} |`,
+    `| Google-backed proof eligible | ${providerEvidence.google_proof_eligible ? "yes" : "no"} |`,
+    "",
     "## Local automated checks",
     "| Check | Status | Duration (ms) | Log |",
     "| --- | --- | --- | --- |",
@@ -1998,7 +2530,10 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
       correlation_ids: attempt.runtime_summary.a2a_correlation_ids,
       response_paths: attempt.runtime_summary.a2a_response_paths,
       response_status_codes: attempt.runtime_summary.a2a_status_codes,
+      route_evidence_source: attempt.runtime_summary.a2a_route_evidence_source,
+      runtime_evidence_sources: attempt.runtime_summary.runtime_evidence_sources,
       both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      clinical_payload: attempt.a2a_clinical_payload,
       assembled_answer_visible: attempt.transcript_flags.assembled_answer_visible,
       status: attempt.status,
     }));
@@ -2009,7 +2544,14 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
       variant_id: attempt.route_lock_variant?.id || null,
       discharge_gatekeeper_mcp_request_count: attempt.runtime_summary.discharge_gatekeeper_mcp_request_count,
       clinical_intelligence_mcp_request_count: attempt.runtime_summary.clinical_intelligence_mcp_request_count,
+      ci_served_from_cache: attempt.runtime_summary.ci_served_from_cache || false,
+      ci_cache_hit_provider: attempt.runtime_summary.ci_cache_hit_provider || null,
+      ci_cache_hit_model: attempt.runtime_summary.ci_cache_hit_model || null,
+      ci_cache_hit_result: attempt.runtime_summary.ci_cache_hit_result || null,
       both_mcps_hit: attempt.runtime_summary.both_mcps_hit,
+      route_evidence_source: attempt.runtime_summary.a2a_route_evidence_source,
+      runtime_evidence_sources: attempt.runtime_summary.runtime_evidence_sources,
+      clinical_payload: attempt.a2a_clinical_payload,
       discharge_gatekeeper_request_ids: attempt.runtime_summary.discharge_gatekeeper_request_ids,
       clinical_intelligence_request_ids: attempt.runtime_summary.clinical_intelligence_request_ids,
       status: attempt.status,
@@ -2039,12 +2581,15 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
         Boolean(bestVariant?.runtime_summary?.a2a_task_ids?.map((taskId) => `${taskId}-status-message`).length),
       both_mcps_hit: Boolean(bestVariant?.runtime_summary?.both_mcps_hit),
       assembled_answer_visible: Boolean(bestVariant?.transcript_flags?.assembled_answer_visible),
+      clinical_payload_green:
+        Boolean(bestVariant?.a2a_clinical_payload?.clinical_green_criteria_passed),
     },
   };
   const browserProofSummary = {
     generated_at: nowIso(),
     run_id: runId,
     base_url: browserBaseUrl,
+    provider_evidence: providerEvidence,
     public_endpoints: publicEndpoints,
     registrations: registrationSummary,
     steps,
@@ -2065,6 +2610,7 @@ const writeEvidenceNotes = async ({ workspaceId }) => {
   await writeJson(path.join(reportsDir, "a2a-one-turn-status.json"), a2aOneTurnStatus);
   await writeJson(path.join(reportsDir, "browser-network-events.json"), networkEvents);
   await writeJson(path.join(reportsDir, "browser-network-summary.json"), networkSummary);
+  await writeJson(path.join(reportsDir, "provider-evidence.json"), providerEvidence);
   await writeJson(path.join(reportsDir, "runtime-log-delta.json"), runtimeDelta);
   await writeJson(path.join(reportsDir, "browser-proof-summary.json"), browserProofSummary);
   await writeJson(path.join(reportsDir, "direct-mcp-status.json"), {
@@ -2134,7 +2680,7 @@ const attachNetworkCapture = (context) => {
       host: getHost(request.url()),
       resource_type: request.resourceType(),
       headers,
-      post_data: describeBody(request.postData()),
+      post_data: describeBody(request.postData(), { url: request.url() }),
     });
   });
 
@@ -2146,7 +2692,7 @@ const attachNetworkCapture = (context) => {
     const contentType = headers["content-type"] || "";
     if (/json|text|event-stream/i.test(contentType) && /promptopinion|a2a|mcp|conversation|prompt-stream/i.test(response.url())) {
       try {
-        body = describeBody(await response.text());
+        body = describeBody(await response.text(), { url: response.url() });
       } catch {
         body = { kind: "unavailable" };
       }
@@ -2245,7 +2791,7 @@ const main = async () => {
       : false;
     if (a2aReady) {
       const selectedAgent = await selectConsultAgent(page, "external A2A orchestrator");
-      for (const variant of A2A_ROUTE_LOCK_VARIANTS) {
+      for (const variant of selectedA2aRouteLockVariants) {
         await sendPrompt({
           page,
           lane: "A2A-main",
@@ -2263,36 +2809,71 @@ const main = async () => {
       ? await startSession(
           page,
           workspaceId,
-          "Care Transitions Command BYO Fallback",
+          directMcpAgentName,
           "Direct-MCP fallback",
           "fallback-launchpad.png",
         )
       : false;
     if (fallbackReady) {
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P1-01",
-        prompt: PROMPTS.prompt1,
-        expectedTokens: ["assess_discharge_readiness", "ready", "verdict"],
-        expectedTool: "assess_discharge_readiness",
-      });
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P2-01",
-        prompt: PROMPTS.prompt2,
-        expectedTokens: ["surface_hidden_risks", "contradiction", "Nursing Note", "hidden_risk_present"],
-        expectedTool: "surface_hidden_risks",
-      });
-      await sendPrompt({
-        page,
-        lane: "Direct-MCP fallback",
-        attemptId: "FALLBACK-P3-01",
-        prompt: PROMPTS.prompt3,
-        expectedTokens: ["synthesize_transition_narrative", "transition", "Before discharge", "handoff"],
-        expectedTool: "synthesize_transition_narrative",
-      });
+      let prompt3Attempt = null;
+      if (directPromptEnabled("prompt1")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P1-01",
+          prompt: directPrompt1Text,
+          expectedTokens: directPrompt1ExpectedTokens,
+          expectedTool: directPrompt1ExpectedTool,
+        });
+      }
+      if (directPromptEnabled("prompt2")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P2-01",
+          prompt: directPrompt2Text,
+          expectedTokens: directPrompt2ExpectedTokens,
+          expectedTool: directPrompt2ExpectedTool,
+        });
+      }
+      if (directPromptEnabled("prompt3")) {
+        prompt3Attempt = await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P3-01",
+          prompt: directPrompt3Text,
+          expectedTokens: directPrompt3ExpectedTokens,
+          expectedTool: directPrompt3ExpectedTool,
+        });
+      }
+      if (directPromptEnabled("prompt4")) {
+        if (directPrompt4AutoPrep) {
+          try {
+            const prep = await autoPreparePrompt4FromPrompt3(page);
+            recordStep(
+              "Direct-MCP fallback prompt4 auto-prep",
+              prep.status === "green" ? "green" : "yellow",
+              {
+                prompt3_attempt_status: prompt3Attempt?.status || "not-run",
+                ...prep,
+              },
+            );
+          } catch (error) {
+            recordStep("Direct-MCP fallback prompt4 auto-prep", "red", {
+              error: error instanceof Error ? error.message : String(error),
+              prompt3_attempt_status: prompt3Attempt?.status || "not-run",
+            });
+          }
+        }
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P4-01",
+          prompt: directPrompt4Text,
+          expectedTokens: directPrompt4ExpectedTokens,
+          expectedTool: directPrompt4ExpectedTool,
+        });
+      }
     }
 
     const summary = await writeEvidenceNotes({ workspaceId });

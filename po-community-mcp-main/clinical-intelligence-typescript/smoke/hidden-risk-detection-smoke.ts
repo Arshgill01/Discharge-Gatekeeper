@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { HiddenRiskLlmClient } from "../llm/client";
 import { HIDDEN_RISK_SYSTEM_PROMPT } from "../clinical-intelligence/prompt-contract";
-import { surfaceHiddenRisks } from "../clinical-intelligence/surface-hidden-risks";
+import {
+  SurfaceHiddenRiskOptions,
+  surfaceHiddenRisks,
+} from "../clinical-intelligence/surface-hidden-risks";
+import { generateHiddenRiskHeuristicResponse } from "../llm/heuristic-provider";
+import { formatPromptOpinionSlimHiddenRisk } from "../tools/SurfaceHiddenRisksTool";
 import {
   ALTERNATIVE_HIDDEN_RISK_INPUT,
   DUPLICATE_SIGNAL_CONTROL_INPUT,
   INCONCLUSIVE_CONTEXT_INPUT,
   MARIA_ALVAREZ_ABLATION_INPUT,
+  MEDICATION_ACCESS_HIDDEN_RISK_INPUT,
   NO_RISK_CONTROL_INPUT,
   PHASE0_TRAP_PATIENT_INPUT,
 } from "../clinical-intelligence/fixtures";
@@ -16,11 +22,29 @@ import {
   CONTROL_HIDDEN_RISK_EXPECTED_MATRIX,
   DUPLICATE_SIGNAL_EXPECTED_MATRIX,
   INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX,
+  MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX,
   TRAP_HIDDEN_RISK_EXPECTED_MATRIX,
 } from "../clinical-intelligence/expected-output-matrix";
 
+const heuristicSmokeClient: HiddenRiskLlmClient = {
+  generateHiddenRiskResponse: async (input) => ({
+    provider: "heuristic",
+    rawText: await generateHiddenRiskHeuristicResponse(input),
+  }),
+};
+
+const surfaceHiddenRisksForSmoke = (
+  input: unknown,
+  options: Omit<SurfaceHiddenRiskOptions, "llmClientOverride"> = {},
+) => {
+  return surfaceHiddenRisks(input, {
+    ...options,
+    llmClientOverride: heuristicSmokeClient,
+  });
+};
+
 const assertFindingCitationQuality = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT);
   const payload = result.payload;
 
   for (const finding of payload.hidden_risk_findings) {
@@ -45,7 +69,7 @@ const assertFindingCitationQuality = async (): Promise<void> => {
 };
 
 const assertTrapPatientBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.contract_version, "phase0_hidden_risk_v1");
@@ -93,7 +117,7 @@ const assertTrapPatientBehavior = async (): Promise<void> => {
 };
 
 const assertControlNoRiskBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(NO_RISK_CONTROL_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(NO_RISK_CONTROL_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, CONTROL_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -123,7 +147,7 @@ const assertControlNoRiskBehavior = async (): Promise<void> => {
 };
 
 const assertAblationBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(MARIA_ALVAREZ_ABLATION_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(MARIA_ALVAREZ_ABLATION_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, ABLATION_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -137,7 +161,7 @@ const assertAblationBehavior = async (): Promise<void> => {
 };
 
 const assertDuplicateSignalSuppressionBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(DUPLICATE_SIGNAL_CONTROL_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(DUPLICATE_SIGNAL_CONTROL_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, DUPLICATE_SIGNAL_EXPECTED_MATRIX.expected_status);
@@ -152,7 +176,7 @@ const assertDuplicateSignalSuppressionBehavior = async (): Promise<void> => {
 };
 
 const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(ALTERNATIVE_HIDDEN_RISK_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(ALTERNATIVE_HIDDEN_RISK_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, ALTERNATIVE_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
@@ -177,8 +201,33 @@ const assertAlternativeHiddenRiskBehavior = async (): Promise<void> => {
   }
 };
 
+const assertMedicationAccessHiddenRiskBehavior = async (): Promise<void> => {
+  const result = await surfaceHiddenRisksForSmoke(MEDICATION_ACCESS_HIDDEN_RISK_INPUT);
+  const payload = result.payload;
+
+  assert.equal(payload.status, MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_status);
+  assert.equal(payload.hidden_risk_summary.result, "hidden_risk_present");
+  assert.equal(
+    payload.hidden_risk_summary.overall_disposition_impact,
+    MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_disposition_impact,
+  );
+
+  const categories = new Set(payload.hidden_risk_findings.map((finding) => finding.category));
+  for (const category of MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.expected_categories) {
+    assert.ok(categories.has(category), `Medication-access hidden-risk case missing category ${category}.`);
+  }
+
+  const sourceLabels = payload.citations.map((citation) => citation.source_label);
+  for (const expectedSource of MEDICATION_ACCESS_HIDDEN_RISK_EXPECTED_MATRIX.required_citation_source_labels) {
+    assert.ok(
+      sourceLabels.some((label) => label.includes(expectedSource)),
+      `Medication-access hidden-risk case must cite ${expectedSource}.`,
+    );
+  }
+};
+
 const assertInconclusiveContextBehavior = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(INCONCLUSIVE_CONTEXT_INPUT);
+  const result = await surfaceHiddenRisksForSmoke(INCONCLUSIVE_CONTEXT_INPUT);
   const payload = result.payload;
 
   assert.equal(payload.status, INCONCLUSIVE_CONTEXT_EXPECTED_MATRIX.expected_status);
@@ -405,7 +454,7 @@ const assertLowConfidenceEscalationIsDowngradedToInconclusive = async (): Promis
 };
 
 const assertPromptOpinionSlimModeStaysRenderSafe = async (): Promise<void> => {
-  const result = await surfaceHiddenRisks(PHASE0_TRAP_PATIENT_INPUT, {
+  const result = await surfaceHiddenRisksForSmoke(PHASE0_TRAP_PATIENT_INPUT, {
     responseMode: "prompt_opinion_slim",
   });
   const payload = result.payload;
@@ -443,6 +492,19 @@ const assertPromptOpinionSlimModeStaysRenderSafe = async (): Promise<void> => {
       `Slim citation ${citation.citation_id} excerpt should stay bounded for transcript safety.`,
     );
   }
+
+  const visible = formatPromptOpinionSlimHiddenRisk(payload);
+  assert.ok(visible.startsWith("HIDDEN CONTRADICTION REVIEW"));
+  assert.ok(visible.includes("Structured baseline: READY"));
+  assert.ok(visible.includes("Nursing Note 2026-04-18 20:40"));
+  assert.ok(visible.includes("Why this changes the answer:"));
+  assert.ok(visible.includes("Case Management Addendum 2026-04-18 20:55"));
+  assert.ok(visible.includes("Raw FHIR references:"));
+  assert.equal(
+    visible.includes("TRANSITION PACKAGE"),
+    false,
+    "Prompt 2 visible renderer must not include the full transition package.",
+  );
 };
 
 const assertPromptContractGuardrailsPresent = (): void => {
@@ -469,6 +531,7 @@ const main = async (): Promise<void> => {
   await assertAblationBehavior();
   await assertDuplicateSignalSuppressionBehavior();
   await assertAlternativeHiddenRiskBehavior();
+  await assertMedicationAccessHiddenRiskBehavior();
   await assertInconclusiveContextBehavior();
   await assertMalformedModelOutputBecomesStructuredError();
   await assertCitationFailuresAreSuppressed();
@@ -480,6 +543,6 @@ const main = async (): Promise<void> => {
 
 void main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
+  console.error(error instanceof Error && error.stack ? error.stack : message);
   process.exitCode = 1;
 });

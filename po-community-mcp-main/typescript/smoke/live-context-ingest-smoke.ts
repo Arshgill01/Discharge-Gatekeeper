@@ -28,11 +28,19 @@ const main = async (): Promise<void> => {
   const liveResolution = await resolveWorkflowInputForRequest(liveRequest, {
     fetchContext: async (_req, patientId) => ({
       patient_id: patientId,
+      encounter_id: "live-smoke-encounter-1",
+      fhir_server: "https://example-fhir.test/fhir",
       patient: {
         resourceType: "Patient",
         id: patientId,
         name: [{ text: "Avery Johnson" }],
       },
+      encounter: {
+        resourceType: "Encounter",
+        id: "live-smoke-encounter-1",
+        subject: { reference: `Patient/${patientId}` },
+      },
+      conditions: [],
       observations: [
         {
           resourceType: "Observation",
@@ -120,6 +128,7 @@ const main = async (): Promise<void> => {
           note: [{ text: "Home health intake pending caregiver confirmation." }],
         },
       ],
+      care_plans: [],
       document_references: [
         {
           resourceType: "DocumentReference",
@@ -182,6 +191,7 @@ const main = async (): Promise<void> => {
           ],
         },
       ],
+      practitioner_roles: [],
       issues: [],
     }),
   });
@@ -237,11 +247,19 @@ assert.equal(
   const partialResolution = await resolveWorkflowInputForRequest(liveRequest, {
     fetchContext: async (_req, patientId) => ({
       patient_id: patientId,
+      encounter_id: "live-smoke-encounter-2",
+      fhir_server: "https://example-fhir.test/fhir",
       patient: {
         resourceType: "Patient",
         id: patientId,
         name: [{ text: "Avery Johnson" }],
       },
+      encounter: {
+        resourceType: "Encounter",
+        id: "live-smoke-encounter-2",
+        subject: { reference: `Patient/${patientId}` },
+      },
+      conditions: [],
       observations: [
         {
           resourceType: "Observation",
@@ -253,7 +271,9 @@ assert.equal(
       medication_requests: [],
       medication_statements: [],
       service_requests: [],
+      care_plans: [],
       document_references: [],
+      practitioner_roles: [],
       issues: [
         "MedicationRequest scope unavailable from Prompt Opinion context.",
         "DocumentReference scope unavailable from Prompt Opinion context.",

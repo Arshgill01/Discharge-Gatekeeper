@@ -1,0 +1,4 @@
+interface:
+  display_name: "CTC Baseline Gates"
+  short_description: "Run Phase 8.6 baseline proof gates without overclaiming."
+  default_prompt: "Use this skill to run the Care Transitions Command baseline proof gates in order and stop on the first failed gate."

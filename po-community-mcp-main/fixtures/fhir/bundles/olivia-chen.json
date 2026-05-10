@@ -1,0 +1,368 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "olivia-chen",
+        "name": [
+          {
+            "text": "Olivia Chen"
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1966-09-15"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/olivia-chen"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "olivia-discharge-2026-0419",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "period": {
+          "start": "2026-04-18T12:15:00Z"
+        },
+        "type": [
+          {
+            "text": "Cellulitis discharge encounter"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/olivia-discharge-2026-0419"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "olivia-cellulitis",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Cellulitis"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/olivia-cellulitis"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-heart-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 76,
+          "unit": "beats/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-heart-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-respiratory-rate",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Respiratory rate"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 17,
+          "unit": "breaths/minute"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-respiratory-rate"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-systolic-bp",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Systolic blood pressure"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 118,
+          "unit": "mmHg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-systolic-bp"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-spo2-rest",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Oxygen saturation at rest"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 97,
+          "unit": "%"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-spo2-rest"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-o2-flow-current",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Current oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-o2-flow-current"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "olivia-o2-flow-baseline",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Baseline oxygen flow rate"
+        },
+        "effectiveDateTime": "2026-04-19T14:15:00Z",
+        "valueQuantity": {
+          "value": 0,
+          "unit": "L/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/olivia-o2-flow-baseline"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "olivia-cephalexin",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "medicationCodeableConcept": {
+          "text": "Cephalexin"
+        },
+        "note": [
+          {
+            "text": "Final medication list reviewed and oral antibiotics tolerated."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationRequest/olivia-cephalexin"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "olivia-follow-up",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "code": {
+          "text": "Primary care follow-up"
+        },
+        "note": [
+          {
+            "text": "Follow-up scheduled and confirmed before discharge."
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ServiceRequest/olivia-follow-up"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "olivia-discharge-plan",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "title": "Cellulitis discharge plan",
+        "description": "Oral antibiotics, return precautions, and spouse support documented for home discharge."
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CarePlan/olivia-discharge-plan"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "olivia-nursing-note-1415",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "description": "Nursing Note 2026-04-19 14:15",
+        "type": {
+          "text": "nursing_note"
+        },
+        "date": "2026-04-19T14:15:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Teach-back complete, patient verbalized understanding, spouse available overnight, transport confirmed, and independent ambulation observed.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/olivia-nursing-note-1415"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "olivia-pharmacy-note-1420",
+        "status": "current",
+        "subject": {
+          "reference": "Patient/olivia-chen"
+        },
+        "encounter": {
+          "reference": "Encounter/olivia-discharge-2026-0419"
+        },
+        "description": "Pharmacy Note 2026-04-19 14:20",
+        "type": {
+          "text": "pharmacy_note"
+        },
+        "date": "2026-04-19T14:20:00Z",
+        "text": {
+          "status": "generated",
+          "div": "<div>Antibiotics delivered to bedside, documentation complete, and after-visit summary signed.</div>"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DocumentReference/olivia-pharmacy-note-1420"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "bedside-rn",
+        "code": [
+          {
+            "text": "Bedside RN"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/bedside-rn"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "case-manager",
+        "code": [
+          {
+            "text": "Case manager"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "PractitionerRole/case-manager"
+      }
+    }
+  ]
+}
