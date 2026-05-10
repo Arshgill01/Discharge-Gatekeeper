@@ -44,7 +44,9 @@ class RearbitrateDischargeReadinessTool implements IMcpTool {
           }
 
           const liveResult = await buildFhirDirectPatientScopeResult(req, {
-            prompt: parsed.data.resolution_update,
+            prompt:
+              `Re-arbitrate the discharge gates from the FHIR Tasks and evidence. ` +
+              parsed.data.resolution_update,
             explicitTaskGoal:
               "Prompt 4 Patient Scope discharge rearbitration from FHIR Tasks and updated evidence.",
           });
