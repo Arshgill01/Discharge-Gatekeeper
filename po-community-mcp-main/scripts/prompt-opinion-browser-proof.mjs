@@ -846,6 +846,12 @@ const REQUIRED_FHIR_SCOPES = [
   "patient/Condition.rs",
   "patient/ServiceRequest.rs",
   "patient/DocumentReference.rs",
+  "patient/Encounter.rs",
+  "patient/CarePlan.rs",
+  "patient/PractitionerRole.rs",
+  "patient/Task.rs",
+  "patient/Provenance.rs",
+  "patient/AuditEvent.rs",
 ];
 
 const ensureFhirScopes = (existing) => {

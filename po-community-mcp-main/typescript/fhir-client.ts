@@ -56,7 +56,21 @@ class FhirClient {
       const response = await axios(config);
       return response.data as T;
     } catch (error) {
-      console.error(error);
+      if (isAxiosError(error)) {
+        const status = error.response?.status ?? "unknown";
+        const method = String(config.method || "get").toUpperCase();
+        console.error(
+          `[fhir-client] ${method} ${config.url ?? "unknown-url"} failed with status ${status}: ${error.message}`,
+        );
+        if (status === 404) {
+          return null;
+        }
+      } else if (error instanceof Error) {
+        console.error(`[fhir-client] request failed: ${error.message}`);
+      } else {
+        console.error("[fhir-client] request failed with unknown error");
+      }
+
       if (isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
