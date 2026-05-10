@@ -1,6 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { upsertFhirResource } from "../../typescript/fhir-store";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import {
+  createFhirResource,
+  isLocalFhirBaseUrl,
+  upsertFhirResource,
+} from "../../typescript/fhir-store";
 import { ReconciliationResult } from "../types";
+
+const COOKIE_AUTH_FHIR_REQUEST_SCRIPT = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "scripts",
+  "po-cookie-auth-fhir-request.mjs",
+);
 
 const CTC_TAG_SYSTEM = "https://care-transitions-command.local/tags";
 
@@ -78,6 +92,64 @@ const uniqueReasonReferences = (
   return [...new Set(references.filter((reference): reference is string => Boolean(reference)))];
 };
 
+type BrowserCookieWriteResult = {
+  method: string;
+  url: string;
+  status: number;
+  ok: boolean;
+  headers: Record<string, string>;
+  text: string;
+};
+
+const createResourcesViaPromptOpinionBrowserAuth = (
+  resources: Record<string, unknown>[],
+): Record<string, unknown>[] => {
+  const workspaceFhirUrl = process.env["PO_WORKSPACE_FHIR_URL"]?.trim();
+  if (!workspaceFhirUrl || resources.length === 0) {
+    return [];
+  }
+
+  const operations = resources.map((resource) => ({
+    method: "POST",
+    url: `${workspaceFhirUrl}/${String(resource["resourceType"] ?? "")}`,
+    body: resource,
+  }));
+
+  const child = spawnSync(
+    "npx",
+    ["--yes", "--package", "playwright", "node", COOKIE_AUTH_FHIR_REQUEST_SCRIPT],
+    {
+      env: {
+        ...process.env,
+        PO_WORKSPACE_FHIR_URL: workspaceFhirUrl,
+        PO_FHIR_OPERATIONS_JSON: JSON.stringify(operations),
+      },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+
+  if (child.status !== 0) {
+    throw new Error(
+      `[po-cookie-auth-fhir-write] ${child.stderr || child.stdout || `helper exited ${child.status}`}`,
+    );
+  }
+
+  const results = JSON.parse(child.stdout || "[]") as BrowserCookieWriteResult[];
+  if (results.length !== resources.length) {
+    throw new Error("[po-cookie-auth-fhir-write] helper did not return the expected number of responses.");
+  }
+
+  return results.map((result) => {
+    if (!result.ok) {
+      throw new Error(
+        `[po-cookie-auth-fhir-write] ${result.method} ${result.url} failed with status ${result.status}: ${result.text}`,
+      );
+    }
+    return JSON.parse(result.text) as Record<string, unknown>;
+  });
+};
+
 export const writeDischargeBlockingTasks = async (
   reconciled: ReconciliationResult,
 ): Promise<ReconciliationResult> => {
@@ -85,6 +157,7 @@ export const writeDischargeBlockingTasks = async (
   const fhirServer = packet.fhir_server;
   const patientReference = reconciled.deterministic.fhir_context?.patient_reference;
   const encounterReference = reconciled.deterministic.fhir_context?.encounter_reference;
+  const accessToken = process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || undefined;
 
   if (!fhirServer || !patientReference || !encounterReference || reconciled.final_verdict === "ready") {
     return reconciled;
@@ -93,6 +166,13 @@ export const writeDischargeBlockingTasks = async (
   const practitionerRoles = reconciled.deterministic.fhir_context?.practitioner_roles ?? {};
   const categories = packet.reconciled_transition_status.blocker_categories;
   const taskWrites: typeof packet.fhir_resources_written = [];
+  const browserAuthTaskPayloads: Array<{
+    category: string;
+    authoredOn: string;
+    taskCodeText: string;
+    reasonReferences: string[];
+    taskResource: Record<string, unknown>;
+  }> = [];
   let noTaskWithoutFhirSource: "pass" | "fail" = "pass";
 
   for (const category of categories) {
@@ -119,7 +199,6 @@ export const writeDischargeBlockingTasks = async (
     const taskCodeText = buildTaskCodeText(category, step.action, step.rationale, packet);
     const taskResource: Record<string, unknown> = {
       resourceType: "Task",
-      id: taskId,
       status: "requested",
       intent: "order",
       priority: PRIORITY_BY_CATEGORY[category] ?? "asap",
@@ -137,6 +216,12 @@ export const writeDischargeBlockingTasks = async (
       note: [
         {
           text: `${reconciled.final_verdict} gate for ${category}: ${step.rationale}`,
+        },
+      ],
+      identifier: [
+        {
+          system: CTC_TAG_SYSTEM,
+          value: taskId,
         },
       ],
       meta: {
@@ -163,14 +248,58 @@ export const writeDischargeBlockingTasks = async (
       };
     }
 
-    await upsertFhirResource(fhirServer, taskResource);
+    const useBrowserCookieAuth = Boolean(process.env["PO_WORKSPACE_FHIR_URL"]?.trim());
+
+    if (useBrowserCookieAuth) {
+      const browserTaskResource: Record<string, unknown> = {
+        ...taskResource,
+        reasonReference: {
+          reference: reasonReferences[0],
+        },
+      };
+      browserAuthTaskPayloads.push({
+        category,
+        authoredOn,
+        taskCodeText,
+        reasonReferences,
+        taskResource: browserTaskResource,
+      });
+      continue;
+    }
+
+    if (isLocalFhirBaseUrl(fhirServer)) {
+      taskResource["id"] = taskId;
+    }
+
+    const writtenTask = isLocalFhirBaseUrl(fhirServer)
+      ? await upsertFhirResource(fhirServer, taskResource, { accessToken })
+      : await createFhirResource(fhirServer, taskResource, { accessToken });
+    const writtenTaskId = String(writtenTask["id"] ?? taskId);
     taskWrites.push({
-      reference: `Task/${taskId}`,
+      reference: `Task/${writtenTaskId}`,
       resource_type: "Task",
-      resource_id: taskId,
+      resource_id: writtenTaskId,
       timestamp: authoredOn,
       summary: taskCodeText,
       linked_evidence_references: reasonReferences,
+    });
+  }
+
+  if (browserAuthTaskPayloads.length > 0) {
+    const createdTasks = createResourcesViaPromptOpinionBrowserAuth(
+      browserAuthTaskPayloads.map((item) => item.taskResource),
+    );
+    createdTasks.forEach((writtenTask, index) => {
+      const source = browserAuthTaskPayloads[index];
+      const writtenTaskId = String(writtenTask["id"] ?? randomUUID());
+      taskWrites.push({
+        reference: `Task/${writtenTaskId}`,
+        resource_type: "Task",
+        resource_id: writtenTaskId,
+        timestamp: source.authoredOn,
+        summary: source.taskCodeText,
+        linked_evidence_references: source.reasonReferences,
+      });
     });
   }
 

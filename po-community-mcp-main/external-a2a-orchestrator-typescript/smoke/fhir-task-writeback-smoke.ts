@@ -1,11 +1,75 @@
 import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
 import {
   DEFAULT_LOCAL_FHIR_BASE_URL,
   DEFAULT_LOCAL_FHIR_STORE_PATH,
   searchFhirResources,
   seedFhirBundles,
 } from "../../typescript/fhir-store";
+
+const REMOTE_FHIR_SERVER_URL =
+  process.env["PROMPT_OPINION_FHIR_SERVER_URL"]?.trim() || DEFAULT_LOCAL_FHIR_BASE_URL;
+const REMOTE_FHIR_ACCESS_TOKEN =
+  process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || undefined;
+const USING_PROMPT_OPINION_FHIR = REMOTE_FHIR_SERVER_URL !== DEFAULT_LOCAL_FHIR_BASE_URL;
+const PATIENT_IDS = USING_PROMPT_OPINION_FHIR
+  ? {
+      maria: "179930bf-2ad5-441b-8762-ec700b82e2ca",
+      daniel: "db4b066b-200f-405f-9fe4-c52eefbc1425",
+      olivia: "be404f97-dfa6-4875-b715-0ec8599b7d22",
+    }
+  : {
+      maria: "maria-alvarez",
+      daniel: "daniel-brooks",
+      olivia: "olivia-chen",
+    };
+
+const COOKIE_AUTH_FHIR_REQUEST_SCRIPT = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "scripts",
+  "po-cookie-auth-fhir-request.mjs",
+);
+
+const queryViaPromptOpinionBrowserAuth = (pathSuffix: string) => {
+  const workspaceFhirUrl = process.env["PO_WORKSPACE_FHIR_URL"]?.trim();
+  if (!workspaceFhirUrl) {
+    throw new Error("PO_WORKSPACE_FHIR_URL is required for browser-auth Task verification.");
+  }
+
+  const child = spawnSync(
+    "npx",
+    ["--yes", "--package", "playwright", "node", COOKIE_AUTH_FHIR_REQUEST_SCRIPT],
+    {
+      env: {
+        ...process.env,
+        PO_WORKSPACE_FHIR_URL: workspaceFhirUrl,
+        PO_FHIR_OPERATIONS_JSON: JSON.stringify([
+          {
+            method: "GET",
+            url: `${workspaceFhirUrl}/${pathSuffix}`,
+          },
+        ]),
+      },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+
+  if (child.status !== 0) {
+    throw new Error(child.stderr || child.stdout || "browser-auth GET helper failed");
+  }
+
+  const [result] = JSON.parse(child.stdout || "[]") as Array<{ ok: boolean; text: string; status: number }>;
+  if (!result?.ok) {
+    throw new Error(`browser-auth GET ${pathSuffix} failed with status ${result?.status}: ${result?.text}`);
+  }
+
+  return JSON.parse(result.text);
+};
 
 const waitForReady = async (url: string, timeoutMs: number): Promise<void> => {
   const start = Date.now();
@@ -72,13 +136,16 @@ const createTask = async (
           patient_id: patientId,
           encounter_id: encounterId,
           fhir_context: {
-            fhir_server: DEFAULT_LOCAL_FHIR_BASE_URL,
+            fhir_server: REMOTE_FHIR_SERVER_URL,
+            ...(REMOTE_FHIR_ACCESS_TOKEN
+              ? { access_token: REMOTE_FHIR_ACCESS_TOKEN }
+              : {}),
           },
         },
       },
     }),
   });
-  assert.equal(response.status, 201);
+  assert.ok(response.status === 200 || response.status === 201);
   return response.json();
 };
 
@@ -116,34 +183,43 @@ const main = async (): Promise<void> => {
     await waitForReady(`http://127.0.0.1:${a2aPort}/readyz`, 20000);
 
     const baseUrl = `http://127.0.0.1:${a2aPort}`;
-    const maria = await createTask(baseUrl, "maria-alvarez", "maria-discharge-2026-0418", "Is this patient safe to discharge today?");
-    const daniel = await createTask(baseUrl, "daniel-brooks", "daniel-discharge-2026-0419", "Is this patient safe to discharge today?");
-    const olivia = await createTask(baseUrl, "olivia-chen", "olivia-discharge-2026-0419", "Is this patient safe to discharge today?");
+    const maria = await createTask(baseUrl, PATIENT_IDS.maria, "maria-discharge-2026-0418", "Is this patient safe to discharge today?");
+    const daniel = await createTask(baseUrl, PATIENT_IDS.daniel, "daniel-discharge-2026-0419", "Is this patient safe to discharge today?");
+    const olivia = await createTask(baseUrl, PATIENT_IDS.olivia, "olivia-discharge-2026-0419", "Is this patient safe to discharge today?");
 
-    const mariaTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/maria-discharge-2026-0418",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
-    const danielTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/daniel-discharge-2026-0419",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
-    const oliviaTasks = await searchFhirResources(DEFAULT_LOCAL_FHIR_BASE_URL, "Task", [
-      "encounter=Encounter/olivia-discharge-2026-0419",
-      "_count=20",
-    ], {
-      storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
-    });
+    const mariaTasks = process.env["PO_WORKSPACE_FHIR_URL"]?.trim()
+      ? queryViaPromptOpinionBrowserAuth(`Task?patient=${PATIENT_IDS.maria}&_count=20`)
+      : await searchFhirResources(REMOTE_FHIR_SERVER_URL, "Task", [
+          `patient=${PATIENT_IDS.maria}`,
+          "_count=20",
+        ], {
+          storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
+          accessToken: REMOTE_FHIR_ACCESS_TOKEN,
+        });
+    const danielTasks = process.env["PO_WORKSPACE_FHIR_URL"]?.trim()
+      ? queryViaPromptOpinionBrowserAuth(`Task?patient=${PATIENT_IDS.daniel}&_count=20`)
+      : await searchFhirResources(REMOTE_FHIR_SERVER_URL, "Task", [
+          `patient=${PATIENT_IDS.daniel}`,
+          "_count=20",
+        ], {
+          storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
+          accessToken: REMOTE_FHIR_ACCESS_TOKEN,
+        });
+    const oliviaTasks = process.env["PO_WORKSPACE_FHIR_URL"]?.trim()
+      ? queryViaPromptOpinionBrowserAuth(`Task?patient=${PATIENT_IDS.olivia}&_count=20`)
+      : await searchFhirResources(REMOTE_FHIR_SERVER_URL, "Task", [
+          `patient=${PATIENT_IDS.olivia}`,
+          "_count=20",
+        ], {
+          storePath: DEFAULT_LOCAL_FHIR_STORE_PATH,
+          accessToken: REMOTE_FHIR_ACCESS_TOKEN,
+        });
 
-    const mariaTaskRefs: string[] = (mariaTasks.entry ?? []).map((entry) => {
+    const mariaTaskRefs: string[] = (mariaTasks.entry ?? []).map((entry: { resource?: { id?: string } }) => {
       const resource = entry.resource as { id?: string } | undefined;
       return resource?.id ?? "";
     });
-    const danielTaskRefs: string[] = (danielTasks.entry ?? []).map((entry) => {
+    const danielTaskRefs: string[] = (danielTasks.entry ?? []).map((entry: { resource?: { id?: string } }) => {
       const resource = entry.resource as { id?: string } | undefined;
       return resource?.id ?? "";
     });
@@ -153,33 +229,51 @@ const main = async (): Promise<void> => {
       maria.output.transition_safety_packet.safety_invariants.no_task_without_fhir_source,
       "pass",
     );
-    assert.equal(
-      maria.output.transition_safety_packet.fhir_resources_written.some(
-        (resource: { reference: string }) => resource.reference === "Task/ctc-maria-discharge-2026-0418-clinical-stability",
-      ),
-      true,
-    );
-    assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-clinical-stability"),
-      true,
-    );
-    assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-equipment-and-transport"),
-      true,
-    );
-    assert.equal(
-      mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-home-support-and-services"),
-      true,
-    );
+    if (USING_PROMPT_OPINION_FHIR) {
+      assert.equal(
+        maria.output.transition_safety_packet.fhir_resources_written
+          .filter((resource: { resource_type: string }) => resource.resource_type === "Task")
+          .every((resource: { resource_id: string }) => !resource.resource_id.startsWith("ctc-")),
+        true,
+      );
+      assert.equal(mariaTaskRefs.length >= 3, true);
+    } else {
+      assert.equal(
+        maria.output.transition_safety_packet.fhir_resources_written.some(
+          (resource: { reference: string }) => resource.reference === "Task/ctc-maria-discharge-2026-0418-clinical-stability",
+        ),
+        true,
+      );
+      assert.equal(
+        mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-clinical-stability"),
+        true,
+      );
+      assert.equal(
+        mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-equipment-and-transport"),
+        true,
+      );
+      assert.equal(
+        mariaTaskRefs.includes("ctc-maria-discharge-2026-0418-home-support-and-services"),
+        true,
+      );
+    }
 
     assert.equal(daniel.output.transition_safety_packet.fhir_resources_written.length > 0, true);
     assert.equal(
       daniel.output.transition_safety_packet.safety_invariants.no_task_without_fhir_source,
       "pass",
     );
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("medication-reconciliation")), true);
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("clinical-stability")), true);
-    assert.equal(danielTaskRefs.some((reference) => reference.includes("patient-education")), true);
+    if (USING_PROMPT_OPINION_FHIR) {
+      const danielTaskWrites = daniel.output.transition_safety_packet.fhir_resources_written.filter(
+        (resource: { resource_type: string }) => resource.resource_type === "Task",
+      );
+      assert.equal(danielTaskWrites.every((resource: { resource_id: string }) => !resource.resource_id.startsWith("ctc-")), true);
+      assert.equal(danielTaskRefs.length >= 3, true);
+    } else {
+      assert.equal(danielTaskRefs.some((reference) => reference.includes("medication-reconciliation")), true);
+      assert.equal(danielTaskRefs.some((reference) => reference.includes("clinical-stability")), true);
+      assert.equal(danielTaskRefs.some((reference) => reference.includes("patient-education")), true);
+    }
 
     assert.equal(olivia.output.final_verdict, "ready");
     assert.equal(
@@ -195,6 +289,10 @@ const main = async (): Promise<void> => {
           maria_task_count: (mariaTasks.entry ?? []).length,
           daniel_task_count: (danielTasks.entry ?? []).length,
           olivia_task_count: (oliviaTasks.entry ?? []).length,
+          using_prompt_opinion_fhir: USING_PROMPT_OPINION_FHIR,
+          daniel_task_refs: daniel.output.transition_safety_packet.fhir_resources_written
+            .filter((resource: { resource_type: string }) => resource.resource_type === "Task")
+            .map((resource: { reference: string }) => resource.reference),
         },
         null,
         2,

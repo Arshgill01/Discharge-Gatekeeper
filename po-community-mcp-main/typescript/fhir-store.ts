@@ -436,6 +436,7 @@ export const readFhirResource = async (
   referenceOrPath: string,
   options?: {
     storePath?: string;
+    accessToken?: string;
   },
 ): Promise<FhirResourceLike | null> => {
   if (isLocalFhirBaseUrl(fhirServer)) {
@@ -446,6 +447,11 @@ export const readFhirResource = async (
     const response = await axios.get(`${normalizeBaseUrl(fhirServer)}/${referenceOrPath.replace(/^\/+/, "")}`, {
       headers: {
         accept: "application/fhir+json, application/json",
+        ...(options?.accessToken
+          ? {
+              Authorization: `Bearer ${options.accessToken}`,
+            }
+          : {}),
       },
     });
     return response.data as FhirResourceLike;
@@ -463,6 +469,7 @@ export const searchFhirResources = async (
   searchParameters: string[],
   options?: {
     storePath?: string;
+    accessToken?: string;
   },
 ): Promise<FhirTransactionBundle> => {
   if (isLocalFhirBaseUrl(fhirServer)) {
@@ -474,6 +481,11 @@ export const searchFhirResources = async (
     {
       headers: {
         accept: "application/fhir+json, application/json",
+        ...(options?.accessToken
+          ? {
+              Authorization: `Bearer ${options.accessToken}`,
+            }
+          : {}),
       },
     },
   );
@@ -485,6 +497,7 @@ export const upsertFhirResource = async (
   resource: FhirResourceLike,
   options?: {
     storePath?: string;
+    accessToken?: string;
   },
 ): Promise<FhirResourceLike> => {
   if (isLocalFhirBaseUrl(fhirServer)) {
@@ -503,6 +516,45 @@ export const upsertFhirResource = async (
       headers: {
         "content-type": "application/fhir+json",
         accept: "application/fhir+json, application/json",
+        ...(options?.accessToken
+          ? {
+              Authorization: `Bearer ${options.accessToken}`,
+            }
+          : {}),
+      },
+    },
+  );
+  return response.data as FhirResourceLike;
+};
+
+export const createFhirResource = async (
+  fhirServer: string,
+  resource: FhirResourceLike,
+  options?: {
+    storePath?: string;
+    accessToken?: string;
+  },
+): Promise<FhirResourceLike> => {
+  if (isLocalFhirBaseUrl(fhirServer)) {
+    return writeLocalFhirResource(resource, {
+      storePath: options?.storePath,
+      fhirServer,
+    });
+  }
+
+  const resourceType = getResourceType(resource);
+  const response = await axios.post(
+    `${normalizeBaseUrl(fhirServer)}/${resourceType}`,
+    resource,
+    {
+      headers: {
+        "content-type": "application/fhir+json",
+        accept: "application/fhir+json, application/json",
+        ...(options?.accessToken
+          ? {
+              Authorization: `Bearer ${options.accessToken}`,
+            }
+          : {}),
       },
     },
   );
