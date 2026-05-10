@@ -1,103 +1,209 @@
-<div align="center">
-  <h1>Care Transitions Command</h1>
-  <p><em>Evidence is what confers discharge authority.</em></p>
-  
-  [![Hackathon Submission](https://img.shields.io/badge/Submission-Phase_10-blue.svg)](#)
-  [![Architecture](https://img.shields.io/badge/Architecture-2_MCPs_+_1_Orchestrator-orange.svg)](#)
-  [![Status](https://img.shields.io/badge/Status-Demo_Ready-brightgreen.svg)](#)
-</div>
+# Care Transitions Command
+
+**Evidence is what confers discharge authority.**
 
 ---
 
-## ⚡ The Control Plane for Hospital Discharges
+Care Transitions Command is a care-transitions control system built for Prompt Opinion. It uses two MCPs and an external A2A orchestrator to catch the hidden discharge risk when the contradiction lives in narrative evidence, not in the clean structured snapshot.
 
-**Care Transitions Command** is a multi-agent control system designed to catch hidden discharge risks when the contradiction lives in narrative evidence, not in the clean structured snapshot.
+The structured chart can say the patient is ready. Vitals stable. Medications reconciled. Follow-up arranged. And a 10:40 PM nursing note — written after the last round, after the morning team assessment — can document that the patient desaturated to 82% on room air after six stairs, has no oxygen available at home tonight, and lives alone in a third-floor walk-up with no overnight support.
 
-Today, a patient might look "ready for discharge" on paper—stable vitals, normal labs, ordered meds. But buried in a nursing note or a social worker's assessment is a hidden risk: *a pending biopsy, a delayed wheelchair delivery, or a spouse unable to provide care.*
-
-This system acts as a **cryptographic gate** for discharge. It fuses deterministic structured data with probabilistic narrative intelligence. 
-
-**The Core Primitive:**
-> Blocking evidence creates FHIR Tasks. Task completion is what opens the gate. The system holds discharge until the FHIR layer says otherwise.
+The chart does not see any of that. The system does.
 
 ---
 
-## 🏗️ Architecture
+## The core primitive
 
-We implemented a strictly bounded **`2 MCPs + 1 external A2A`** architecture to ensure deterministic, inspectable execution.
+Blocking evidence creates FHIR Tasks. Task completion is what opens the gate. The system holds discharge until the FHIR layer says otherwise.
 
-```text
-+-------------------------------------------------------------+
-|                     EXTERNAL A2A ORCHESTRATOR               |
-|  (Prompt Opinion -> Fuses Deterministic & Narrative paths)  |
-+------------------------------+------------------------------+
-               |                               |
-      +--------v--------+             +--------v--------+
-      | Discharge       |             | Clinical        |
-      | Gatekeeper MCP  |             | Intelligence MCP|
-      +--------+--------+             +--------+--------+
-               |                               |
-   +-----------v-------------------------------v-----------+
-   |                     FHIR R4 STORE                     |
-   +-------------------------------------------------------+
+This is not a metaphor. When the Clinical Intelligence MCP surfaces a hidden risk, the orchestrator writes FHIR `Task` resources — one per blocking canonical category — with `reasonReference` pointing to the exact `DocumentReference` that produced the finding. `Provenance` and `AuditEvent` resources are written for each Task. The discharge posture is re-arbitrated when follow-on prompts signal task resolution. The gate state lives in FHIR, not in a conversation thread.
+
+---
+
+## System identity
+
+| Component | Role |
+|---|---|
+| **Discharge Gatekeeper MCP** | Deterministic structured discharge spine. Reads FHIR resources, normalizes patient context, produces a structured baseline verdict from bounded evidence across eight canonical blocker categories. |
+| **Clinical Intelligence MCP** | Narrative contradiction intelligence. Inspects note and document evidence for hidden risks that contradict the structured posture. Returns citation-anchored findings with typed safety invariant evaluations. |
+| **External A2A Orchestrator** | Prompt-level coordination. Calls both MCPs in sequence, fuses deterministic and narrative evidence into one answer, writes FHIR Tasks and Provenance, handles re-arbitration, and enforces the synchronous A2A task-lifecycle contract. |
+
+---
+
+## The 3-prompt demo
+
+The canonical demo proves this sequence in three prompts inside Prompt Opinion:
+
+**Prompt 1 — `Is this patient safe to discharge today?`**
+The structured baseline is `ready`. After hidden-risk review, the reconciled verdict is `not_ready`. Both postures are visible. Hidden-risk review status is explicit, not implied.
+
+**Prompt 2 — `What hidden risk changed that answer? Show me the contradiction and the evidence.`**
+The contradiction in precise language. Citation anchors to the exact note — `Nursing Note 2026-04-18 20:40`. Canonical blocker categories. No transition-package noise. This is the decisive moment.
+
+**Prompt 3 — `What exactly must happen before discharge, and prepare the transition package.`**
+FHIR Tasks written with `reasonReference`. Provenance chain recorded. Prioritized next steps with owner roles (`bedside_rn`, `case_manager`, `covering_clinician`) and timing. Clinician handoff brief. Patient-safe hold instructions. Re-arbitration path documented.
+
+---
+
+## Canonical blocker taxonomy
+
+Eight canonical categories enforced across all components:
+
+```
+clinical_stability
+pending_diagnostics
+medication_reconciliation
+follow_up_and_referrals
+patient_education
+home_support_and_services
+equipment_and_transport
+administrative_and_documentation
 ```
 
-### 1. Discharge Gatekeeper (DGK) MCP
-Builds the structured baseline from FHIR resources. It evaluates the deterministic structured spine—labs, vitals, active medications—and determines the baseline discharge readiness posture.
-
-### 2. Clinical Intelligence (CI) MCP
-Finds the narrative contradiction. It analyzes unstructured notes and documents to discover hidden risks that contradict the structured posture.
-
-### 3. External A2A Orchestrator
-The brain of the operation. It receives the prompt, synchronously calls both MCPs in the right order, and fuses the deterministic and narrative evidence into a single, conclusive answer.
+Canonical verdicts: `ready` | `ready_with_caveats` | `not_ready`
 
 ---
 
-## 🚀 The 3-Prompt Demo
+## Validated patient scenarios
 
-The core value is demonstrated through a canonical 3-prompt sequence in our Prompt Opinion surface:
+Four complete FHIR R4 transaction bundles are included:
 
-1. **The Baseline Check:** 
-   *Prompt:* `"Is this patient safe to discharge today?"`
-   *Result:* The patient looks acceptable on the deterministic discharge spine.
+| Patient | Hidden risk |
+|---|---|
+| **Maria Alvarez** | Exertional desaturation to 82% on stair trial. Home oxygen unavailable. No overnight support. Third-floor walk-up. |
+| **Daniel Brooks** | Medication reconciliation contradiction in a discharge summary draft. Bridge supply not arranged. |
+| **Eleanor Singh** | Home support failure documented only in a social worker's narrative note, absent from the structured plan. |
+| **Olivia Chen** | DME delivery delayed to the following morning, documented only in case management notes. |
 
-2. **The Catch:** 
-   *Prompt:* `"What hidden risk changed that answer? Show me the contradiction and the evidence."`
-   *Result:* The system catches a hidden contradiction in the notes, flips the answer to `not_ready`, and cites the exact evidence.
-
-3. **The Action:** 
-   *Prompt:* `"What exactly must happen before discharge, and prepare the transition package."`
-   *Result:* The system turns that finding into concrete FHIR Tasks and a transition package.
+Each bundle contains `Patient`, `Encounter`, `Condition`, `Observation`, `MedicationRequest`, `ServiceRequest`, `CarePlan`, `DocumentReference`, and `PractitionerRole` resources. The CI MCP reads `DocumentReference.content[].attachment.data` and maps content to typed `FhirNarrativeEvidenceSource` objects carrying `fhir_reference`, `fhir_resource_type`, and `fhir_resource_id`.
 
 ---
 
-## 🛡️ Generality & Safety Invariants
+## Safety invariants
 
-To prove the system isn't overfit to a single scenario, we validated it against four distinct trap-patient profiles:
-*   🩺 **Maria:** Catches a hidden pending pathology report.
-*   💊 **Daniel:** Catches a medication reconciliation contradiction.
-*   🏠 **Eleanor:** Identifies a hidden home-support failure.
-*   🦽 **Olivia:** Flags a delayed equipment delivery.
+Six typed safety invariants are evaluated programmatically on every CI MCP response:
 
-**Safety Invariant:** *The system never implies autonomous discharge authority.* It is a safety net that assists human review by surfacing readiness posture, contradictions, blockers, and next actions. It can delay a discharge, but it cannot authorize one without human intervention.
+| Invariant | What it checks |
+|---|---|
+| `structured_baseline_preserved` | Final answer references the structured posture, not only narrative reasoning |
+| `no_uncited_escalation` | Every escalation to `not_ready` carries a citation anchor |
+| `no_ready_with_active_hidden_blocker` | A confirmed hidden blocker cannot coexist with a `ready` final verdict |
+| `manual_review_on_uncertainty` | Inconclusive findings produce `manual_review_required` language, not fabricated risk |
+| `duplicate_signal_suppression` | Duplicate evidence sources do not produce duplicate blocker categories |
+| `no_task_without_fhir_source` | No FHIR Task is written without a traceable FHIR source reference |
+
+---
+
+## FHIR write-back shape
+
+```
+Task
+  status: "requested"
+  priority: "urgent" | "asap"
+  code.text: <action derived from blocking evidence>
+  reasonReference: [ { reference: "DocumentReference/{id}" } ]
+  meta.tag: [
+    { system: "https://care-transitions-command.local/tags", code: "ctc-generated" },
+    { system: "...", code: "ctc-category-{canonical_category}" }
+  ]
+
+Provenance
+  target: [ { reference: "Task/{id}" } ]
+  agent: [ { who.display: "CareTransitionsCommand / external A2A orchestrator" } ]
+  entity: [ { role: "source", what.reference: "DocumentReference/{id}" } ]
+  recorded: <ISO timestamp>
+
+AuditEvent
+  action: "C"
+  recorded: <ISO timestamp>
+  agent: [ { name: "CareTransitionsCommand" } ]
+  entity: [ { reference: "Task/{id}" } ]
+```
 
 ---
 
-## 📖 Documentation & System of Record
+## Re-arbitration
 
-Treat these files as the map, not the encyclopedia:
+The orchestrator polls the FHIR store when a follow-on prompt signals resolution. Resolution patterns are matched by canonical category:
 
-| Priority | Document | Purpose |
-|----------|----------|---------|
-| 1 | [`PLAN.md`](PLAN.md) | Live priorities and sequencing |
-| 2 | [`docs/product-brief.md`](docs/product-brief.md) | Product framing and core value proposition |
-| 3 | [`docs/architecture.md`](docs/architecture.md) | Architecture and component boundaries |
-| 4 | [`docs/demo-script.md`](docs/demo-script.md) | The canonical demo flow |
-| 5 | [`docs/phase0-trap-patient-spec.md`](docs/phase0-trap-patient-spec.md) | Canonical synthetic patient definitions |
+```
+clinical_stability    → "exertional reassessment passed" | "oxygen reassessment passed"
+equipment_and_transport → "oxygen delivery confirmed" | "vendor confirmed"
+home_support_and_services → "overnight support confirmed" | "caregiver confirmed"
+medication_reconciliation → "medication bridge approved" | "prior authorization resolved"
+```
 
-*For operational rules, refer to [`AGENTS.md`](AGENTS.md).*
+Resolved Tasks are marked `completed`. Remaining open Tasks determine the updated posture. The gate re-opens only when all blocking Tasks are resolved.
 
 ---
-<div align="center">
-  <i>Built with Care, FHIR, and TypeScript.</i>
-</div>
+
+## Smoke and release gates
+
+| Check | What it validates |
+|---|---|
+| `smoke:runtime` | Agent card shape, synchronous task envelope, request/task correlation |
+| `smoke:decision-matrix` | All 12 reconciliation matrix rows against live behavior |
+| `smoke:orchestrator` | Trap / control / inconclusive / no-risk contradiction quality |
+| `smoke:phase2-two-mcp` | Note-dependent escalation, clean control, citation traceability |
+| `safety-invariants-smoke` | Six typed invariants on trap, clean control, duplicate signal, inconclusive |
+| `fhir-task-writeback-smoke` | Task creation, `reasonReference` correctness, tag structure |
+| `fhir-rearbitration-smoke` | Task completion signals, gate re-evaluation |
+| `fhir-audit-writeback-smoke` | `Provenance` and `AuditEvent` resource shape |
+| `fhir-heldout-scenarios-smoke` | Daniel, Eleanor, Olivia — held-out patients |
+| `prompt-opinion-compatibility-smoke` | A2A envelope compatibility with `message/send` |
+
+---
+
+## Demo surface and lane status
+
+Primary live demo path: Direct-MCP 3 prompts in Prompt Opinion (Discharge Gatekeeper MCP for Prompt 1, Clinical Intelligence MCP for Prompts 2 and 3).
+
+Architecture proof path: one-turn Prompt Opinion → external A2A orchestrator → both MCPs → one synchronous reconciled response.
+
+Lane promotion rule: `A2A-main` is the live primary lane only when the current run folder marks both `A2A-main` and `Direct-MCP fallback` as `green`. If `A2A-main` is `yellow` or `red` and `Direct-MCP fallback` is `green`, run the fallback lane and keep the architecture narration accurate.
+
+Run-folder status source of truth: `output/prompt-opinion-e2e/latest/reports/status-summary.md`
+
+---
+
+## FHIR proof scope
+
+The system runs on a local FHIR R4 store and probes public HAPI FHIR endpoints. Prompt Opinion FHIR context forwarding is currently constrained by platform scope registration. The backend produces correct FHIR output validated by the task-writeback, audit-writeback, and rearbitration smoke checks. Run-folder evidence records the wire-level A2A response shape and the platform-side rendering constraint.
+
+---
+
+## Locked architecture constraints
+
+```
+2 MCPs + 1 external A2A
+no custom frontend
+no third MCP
+synchronous external A2A request/response only
+no A2A streaming
+Prompt Opinion is the only user-facing surface
+```
+
+These do not change without an explicit logged decision in `docs/decisions.md`.
+
+---
+
+## Document map
+
+| Document | Purpose |
+|---|---|
+| [`PLAN.md`](PLAN.md) | Live priorities, phase sequence, active workstreams |
+| [`docs/product-brief.md`](docs/product-brief.md) | Product thesis and scope |
+| [`docs/architecture.md`](docs/architecture.md) | Component boundaries and end-to-end request flow |
+| [`docs/demo-script.md`](docs/demo-script.md) | Prompt-by-prompt demo spec with narration lines and fallback rules |
+| [`docs/phase0-trap-patient-spec.md`](docs/phase0-trap-patient-spec.md) | Canonical demo patient: structured picture, note bundle, expected system behavior |
+| [`docs/decisions.md`](docs/decisions.md) | All cross-workstream architectural decisions with dates and rationale |
+| [`docs/submission-checklist.md`](docs/submission-checklist.md) | Pre-recording and pre-submission gate checks |
+| [`docs/prompt-opinion-integration-runbook.md`](docs/prompt-opinion-integration-runbook.md) | Step-by-step Prompt Opinion operator path |
+| [`docs/evals.md`](docs/evals.md) | Evaluation matrices and quality gate definitions |
+| [`AGENTS.md`](AGENTS.md) | Agent operating rules and non-goals |
+
+---
+
+## Safety framing
+
+The system supports human review. It does not claim autonomous discharge authority. It cannot authorize a discharge. It can hold one by surfacing evidence that a human reviewer must act on. Every finding is citable. Every escalation carries a citation anchor. Every Task carries a `reasonReference`. The audit trail is immutable.
