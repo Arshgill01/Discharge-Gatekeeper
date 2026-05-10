@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import {
@@ -210,6 +211,8 @@ const directPrompt4ExpectedTokens = parseExpectedTokens(
 const directPrompt1Runtime = normalizeLaneToken(getenv("PROMPT_OPINION_DIRECT_PROMPT1_RUNTIME", "dgk"));
 const networkResponsePreviewChars = Number(getenv("PROMPT_OPINION_NETWORK_RESPONSE_PREVIEW_CHARS", "1200"));
 const promptStreamResponsePreviewChars = Number(getenv("PROMPT_OPINION_PROMPT_STREAM_RESPONSE_PREVIEW_CHARS", "12000"));
+const directPrompt4AutoPrep = getenv("PROMPT_OPINION_DIRECT_PROMPT4_AUTO_PREP", "0") === "1";
+const PO_COOKIE_AUTH_HELPER = path.join(SCRIPT_DIR, "po-cookie-auth-fhir-request.mjs");
 
 const PROMPT_KEYS = Object.fromEntries(Object.entries(PROMPTS).map(([key, value]) => [value, key]));
 const laneEnabled = (lane) => enabledBrowserLanes.has("all") || enabledBrowserLanes.has(normalizeLaneToken(lane));
@@ -389,6 +392,103 @@ const publicEndpoints = {
   dischargeGatekeeperMcp: getenv("PROMPT_OPINION_DGK_PUBLIC_URL"),
   clinicalIntelligenceMcp: getenv("PROMPT_OPINION_CI_PUBLIC_URL"),
   externalA2a: getenv("PROMPT_OPINION_A2A_PUBLIC_URL"),
+};
+
+const runPromptOpinionBrowserFhirOperations = (operations) => {
+  if (!operations.length) {
+    return [];
+  }
+
+  const workspaceFhirUrl = getenv("PO_WORKSPACE_FHIR_URL");
+  if (!workspaceFhirUrl) {
+    throw new Error("PO_WORKSPACE_FHIR_URL is required for Prompt 4 auto-prep.");
+  }
+
+  const child = spawnSync(
+    "npx",
+    ["--yes", "--package", "playwright", "node", PO_COOKIE_AUTH_HELPER],
+    {
+      env: {
+        ...process.env,
+        PO_WORKSPACE_FHIR_URL: workspaceFhirUrl,
+        PO_FHIR_OPERATIONS_JSON: JSON.stringify(operations),
+        PROMPT_OPINION_BROWSER_PROFILE_DIR: runtimeProfileDir,
+      },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+
+  if (child.status !== 0) {
+    throw new Error(child.stderr || child.stdout || `po-cookie-auth helper exited ${child.status}`);
+  }
+
+  return JSON.parse(child.stdout || "[]");
+};
+
+const extractLatestWrittenTaskRefs = (text) => {
+  const matches = [...String(text || "").matchAll(/Written FHIR Tasks:\s*([^\n.]+)/gi)];
+  const latest = matches.at(-1)?.[1] || "";
+  return [...new Set(latest.match(/Task\/[0-9a-f-]{36}/gi) || [])];
+};
+
+const autoPreparePrompt4FromPrompt3 = async (page) => {
+  const taskRefs = extractLatestWrittenTaskRefs(await pageText(page));
+  if (taskRefs.length < 3) {
+    return {
+      status: "yellow",
+      blocker: "prompt4_auto_prep_missing_task_refs",
+      task_refs: taskRefs,
+    };
+  }
+
+  const selectedRefs = taskRefs.slice(1, 3);
+  const getResults = runPromptOpinionBrowserFhirOperations(
+    selectedRefs.map((reference) => ({
+      method: "GET",
+      url: `${getenv("PO_WORKSPACE_FHIR_URL")}/${reference}`,
+    })),
+  );
+  const taskBodies = getResults.map((result, index) => {
+    if (!result?.ok) {
+      throw new Error(`GET ${selectedRefs[index]} failed with status ${result?.status}: ${result?.text}`);
+    }
+    return JSON.parse(result.text);
+  });
+
+  const updatedBodies = taskBodies.map((task, index) => ({
+    ...task,
+    status: "completed",
+    note: [
+      ...(Array.isArray(task.note) ? task.note : []),
+      {
+        text:
+          index === 0
+            ? "Medication bridge delivered to bedside before Prompt 4 re-arbitration."
+            : "Working home scale confirmed before Prompt 4 re-arbitration.",
+      },
+    ],
+  }));
+
+  const putResults = runPromptOpinionBrowserFhirOperations(
+    updatedBodies.map((task, index) => ({
+      method: "PUT",
+      url: `${getenv("PO_WORKSPACE_FHIR_URL")}/${selectedRefs[index]}`,
+      body: task,
+    })),
+  );
+
+  for (const [index, result] of putResults.entries()) {
+    if (!result?.ok) {
+      throw new Error(`PUT ${selectedRefs[index]} failed with status ${result?.status}: ${result?.text}`);
+    }
+  }
+
+  return {
+    status: "green",
+    completed_task_refs: selectedRefs,
+    source_task_refs: taskRefs,
+  };
 };
 
 const requestedA2aTimeoutSeconds = Number(getenv("PROMPT_OPINION_A2A_TIMEOUT_SECONDS", "0"));
@@ -2715,6 +2815,7 @@ const main = async () => {
         )
       : false;
     if (fallbackReady) {
+      let prompt3Attempt = null;
       if (directPromptEnabled("prompt1")) {
         await sendPrompt({
           page,
@@ -2736,7 +2837,7 @@ const main = async () => {
         });
       }
       if (directPromptEnabled("prompt3")) {
-        await sendPrompt({
+        prompt3Attempt = await sendPrompt({
           page,
           lane: "Direct-MCP fallback",
           attemptId: "FALLBACK-P3-01",
@@ -2746,6 +2847,24 @@ const main = async () => {
         });
       }
       if (directPromptEnabled("prompt4")) {
+        if (directPrompt4AutoPrep) {
+          try {
+            const prep = await autoPreparePrompt4FromPrompt3(page);
+            recordStep(
+              "Direct-MCP fallback prompt4 auto-prep",
+              prep.status === "green" ? "green" : "yellow",
+              {
+                prompt3_attempt_status: prompt3Attempt?.status || "not-run",
+                ...prep,
+              },
+            );
+          } catch (error) {
+            recordStep("Direct-MCP fallback prompt4 auto-prep", "red", {
+              error: error instanceof Error ? error.message : String(error),
+              prompt3_attempt_status: prompt3Attempt?.status || "not-run",
+            });
+          }
+        }
         await sendPrompt({
           page,
           lane: "Direct-MCP fallback",
