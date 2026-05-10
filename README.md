@@ -35,7 +35,7 @@ flowchart TD
   ORCH --> LEDGER[FHIR Evidence Ledger]
   ORCH --> TASK_WRITE[FHIR Task Write-Back<br/>PO FHIR Server]
   TASK_WRITE --> PROV_WRITE[Provenance Write<br/>PO FHIR Server]
-  TASK_WRITE --> AUDIT_WRITE[AuditEvent Write<br/>PO FHIR Server]
+  TASK_WRITE -. documented blocker .-> AUDIT_WRITE[AuditEvent Write<br/>PO parser blocker documented]
   TASK_WRITE --> REARB[Polling Re-Arbitration Loop]
   REARB --> ORCH
 ```
@@ -66,7 +66,8 @@ Owns the synchronous architecture-proof lane:
 
 - prompt-level coordination across both MCPs
 - fused answer assembly
-- FHIR Task / Provenance / AuditEvent write-back
+- FHIR Task / Provenance write-back on PO
+- documented `AuditEvent` PO parser blocker
 - polling re-arbitration after partial resolution
 
 The judged direct lane still runs through Prompt Opinion Patient Scope with `Care Transitions Command BYO Fallback`.
@@ -130,7 +131,7 @@ The backend:
 2. marks only resolved gates complete
 3. recomputes unresolved blocker categories
 4. leaves `clinical_stability` unresolved when orthopnea persists
-5. writes fresh `AuditEvent` and `Provenance` artifacts
+5. preserves the `Task` and `Provenance` evidence chain on PO
 
 That is why partial resolution does **not** falsely clear discharge.
 
@@ -218,12 +219,19 @@ npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smok
 ## Artifacts
 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
+- FHIR consolidation run folder: `output/endgame/runs/20260510T160443Z-fhir-consolidation/`
 - Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
 
 ## FHIR Workspace Proof
 
-See `output/endgame/runs/20260510T101519Z/po-fhir-workspace-proof/po-fhir-workspace-proof-summary.md`
+See `output/endgame/runs/20260510T160443Z-fhir-consolidation/po-workspace-proof/summary.md`
 for a complete record of Prompt Opinion FHIR resources created and queried during the Daniel proof run, including real PO `DocumentReference`, `Task`, and `Provenance` ids.
+
+PO workspace `AuditEvent` write is still parser-blocked, so the current live PO proof chain is:
+
+- `DocumentReference`
+- `Task`
+- `Provenance`
 
 ## Read Next
 

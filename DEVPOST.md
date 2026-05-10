@@ -37,7 +37,7 @@ In the held-out Daniel Brooks demo:
 - a nursing note shows orthopnea and late symptom change
 - a case-management note shows pickup logistics failure
 
-The system escalates to `not_ready`, cites the contradiction, writes blocking FHIR Tasks, records Provenance and AuditEvent artifacts, and re-arbitrates when some tasks resolve.
+The system escalates to `not_ready`, cites the contradiction, writes blocking FHIR Tasks, records Provenance on the workspace FHIR layer, and re-arbitrates when some tasks resolve.
 
 ## How it works
 
@@ -52,7 +52,7 @@ Flow:
 2. `Discharge Gatekeeper MCP` computes the structured baseline.
 3. `Clinical Intelligence MCP` reconciles note contradiction against that baseline.
 4. Blocking evidence becomes FHIR `Task` resources.
-5. The system writes `Provenance` and `AuditEvent` artifacts.
+5. The system writes `Provenance` artifacts on Prompt Opinion's workspace FHIR server.
 6. Prompt 4 polls task state and re-arbitrates from the FHIR layer.
 
 Concrete Daniel task example:
@@ -60,16 +60,16 @@ Concrete Daniel task example:
 ```json
 {
   "resourceType": "Task",
-  "id": "047009c1-0969-4aa8-a506-1cf622def0a5",
+  "id": "dd4c6f79-5183-437d-9be0-8bca41f1240f",
   "status": "requested",
   "for": {
     "reference": "Patient/db4b066b-200f-405f-9fe4-c52eefbc1425"
   },
   "reasonReference": {
-    "reference": "DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14"
+    "reference": "DocumentReference/7978a116-881e-4280-871f-1c16c59dc500"
   },
   "code": {
-    "text": "Resolve medication access or bridge supply before discharge proceeds."
+    "text": "Reassess late symptom change and document whether discharge remains safe today."
   }
 }
 ```
@@ -86,16 +86,18 @@ After a complete Daniel Brooks discharge assessment, the following resources exi
 
 ### Discharge-Blocking Tasks
 
-- `Task/21ee518a-26f2-44c8-a36b-68c1f804a6b2` — `patient_education` — `requested`
+- `Task/dd4c6f79-5183-437d-9be0-8bca41f1240f` — `clinical_stability` — `requested`
   - `reasonReference: DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
-- `Task/047009c1-0969-4aa8-a506-1cf622def0a5` — `medication_reconciliation` — `requested`
-  - `reasonReference: DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14`
-- `Task/4e18de12-102b-41ee-8d56-98d5bf96d85a` — `clinical_stability` — `requested`
+- `Task/98f80645-4c01-4d02-a930-5094312503ce` — `medication_reconciliation` — `completed`
+  - `reasonReference: DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69`
+- `Task/3ed46a0f-d377-4ec7-8fea-7376d107cbfb` — `patient_education` — `completed`
   - `reasonReference: DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
 
 ### Provenance Chains
 
-- `Provenance/a88df349-78d0-45f8-a420-d63e1bf1d3e5` → `Task/4e18de12-102b-41ee-8d56-98d5bf96d85a` ← `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+- `Provenance/a594498d-1005-45df-ab2b-2630d351d6ad` → `Task/dd4c6f79-5183-437d-9be0-8bca41f1240f` ← `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+- `Provenance/2c19c796-c14e-4a98-8bbc-d996bb4773fc` → `Task/98f80645-4c01-4d02-a930-5094312503ce` ← `DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69`
+- `Provenance/7676e2ff-6ec1-4537-bc42-8507070c61f9` → `Task/3ed46a0f-d377-4ec7-8fea-7376d107cbfb` ← `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
 
 ### Audit Trail
 
@@ -109,7 +111,8 @@ After a complete Daniel Brooks discharge assessment, the following resources exi
 - FHIR-shaped seeded bundles for Daniel, Maria, Eleanor, and Olivia
 - local FHIR store for deterministic demo proof
 - Prompt Opinion Patient Scope integrations
-- FHIR Task / Provenance / AuditEvent write-back
+- FHIR Task / Provenance write-back on Prompt Opinion's workspace FHIR server
+- documented PO `AuditEvent` parser blocker instead of overclaiming support
 - polling re-arbitration instead of depending on webhook/subscription infrastructure
 
 ## Challenges we ran into
@@ -125,7 +128,7 @@ After a complete Daniel Brooks discharge assessment, the following resources exi
 - a held-out Daniel Brooks discharge contradiction lane that writes real FHIR coordination artifacts
 - a clean Olivia Chen control path that stays `ready` and writes zero blocking Tasks
 - a Prompt 4 re-arbitration loop that does not falsely clear all gates while `clinical_stability` remains unresolved
-- inspectable evidence lineage through `Task`, `Provenance`, and `AuditEvent`
+- inspectable evidence lineage through `Task` and `Provenance`, with the PO `AuditEvent` blocker documented honestly
 - a locked `2 MCPs + 1 external A2A` architecture with no custom frontend
 
 ## What we learned
@@ -149,13 +152,13 @@ After a complete Daniel Brooks discharge assessment, the following resources exi
 - no real FHIR Subscription/webhook claim
 - no clinician replacement claim
 
-For local demo mode, Prompt Opinion patient UUIDs for Daniel, Maria, and Olivia are mapped into seeded local FHIR bundles so the system can honestly prove FHIR-native reads, Task write-back, Provenance, AuditEvent, and polling re-arbitration without pretending it is connected to a production EHR.
+For local demo mode, Prompt Opinion patient UUIDs for Daniel, Maria, Olivia, and Eleanor are mapped into seeded local FHIR bundles so the system can honestly prove FHIR-native reads, Task write-back, Provenance, and polling re-arbitration without pretending it is connected to a production EHR.
 
 ## Proof artifacts
 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
 - PO workspace proof summary:
-  - `output/endgame/runs/20260510T101519Z/po-fhir-workspace-proof/po-fhir-workspace-proof-summary.md`
+  - `output/endgame/runs/20260510T160443Z-fhir-consolidation/po-workspace-proof/summary.md`
 - Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
 - held-out patients:
   - Daniel Brooks
