@@ -19,7 +19,9 @@ const inputSchema = {
   response_mode: z
     .enum(["prompt_opinion_slim", "full"])
     .default("prompt_opinion_slim")
-    .describe("Use prompt_opinion_slim for compact Prompt Opinion transcript output."),
+    .describe(
+      "Use prompt_opinion_slim for compact Prompt Opinion transcript output.",
+    ),
 };
 
 const toolInputSchema = z.object(inputSchema);
@@ -46,23 +48,14 @@ class AssessReconciledDischargeReadinessTool implements IMcpTool {
           });
           const text =
             parsed.data.response_mode === "prompt_opinion_slim"
-              ? [
-                  payload.prompt_opinion_visible_answer,
-                  "",
-                  `machine_summary=${JSON.stringify({
-                    final_verdict: payload.final_verdict,
-                    structured_posture: payload.structured_posture,
-                    hidden_risk_result: payload.hidden_risk_result,
-                    evidence_contains: payload.evidence_contains,
-                    blocker_categories: payload.blocker_categories,
-                  })}`,
-                ].join("\n")
+              ? payload.prompt_opinion_visible_answer
               : JSON.stringify(payload, null, 2);
           return McpUtilities.createTextResponse(text, {
             isError: payload.status === "error",
           });
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           return McpUtilities.createTextResponse(
             JSON.stringify(
               {

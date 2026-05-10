@@ -380,7 +380,7 @@
         "date": "2026-04-19T18:15:00Z",
         "text": {
           "status": "generated",
-          "div": "<div>Patient cannot afford sacubitril/valsartan refill tonight. Prior authorization pending until Monday and only two days of old medication remain at home.</div>"
+          "div": "<div>Patient cannot afford sacubitril/valsartan refill. Prior authorization pending until Monday. Patient reports only two days of old medication at home.</div>"
         }
       },
       "request": {
@@ -406,7 +406,7 @@
         "date": "2026-04-19T18:40:00Z",
         "text": {
           "status": "generated",
-          "div": "<div>Patient gained 1.8 kg from morning weight, reports orthopnea when lying flat after hallway walk, and says the home scale is broken.</div>"
+          "div": "<div>Patient gained 1.8 kg from morning weight. Reports orthopnea when lying flat after hallway walk. Home scale is broken.</div>"
         }
       },
       "request": {
@@ -432,7 +432,7 @@
         "date": "2026-04-19T19:05:00Z",
         "text": {
           "status": "generated",
-          "div": "<div>Daughter can drive patient home but cannot pick up medications tonight. Local pharmacy closes in 30 minutes and no working home scale is available.</div>"
+          "div": "<div>Daughter can drive patient home but cannot pick up medications tonight. Local pharmacy closes in 30 minutes.</div>"
         }
       },
       "request": {

@@ -163,12 +163,25 @@ const collectReferenceStrings = (value: unknown): string[] => {
   return reference ? [reference] : [];
 };
 
+const PATIENT_ID_ALIASES: Record<string, string> = {
+  "db4b066b-200f-405f-9fe4-c52eefbc1425": "daniel-brooks",
+  "179930bf-2ad5-441b-8762-ec700b82e2ca": "maria-alvarez",
+  "be404f97-dfa6-4875-b715-0ec8599b7d22": "olivia-chen",
+};
+
+const expandSearchAliases = (searchValue: string): string[] => {
+  const canonical = PATIENT_ID_ALIASES[searchValue];
+  return canonical ? [searchValue, canonical] : [searchValue];
+};
+
 const referenceMatches = (candidate: string, searchValue: string): boolean => {
-  return candidate === searchValue || candidate.endsWith(`/${searchValue}`);
+  return expandSearchAliases(searchValue).some(
+    (value) => candidate === value || candidate.endsWith(`/${value}`),
+  );
 };
 
 const matchesResourceId = (resource: FhirResourceLike, searchValue: string): boolean => {
-  return getResourceId(resource) === searchValue;
+  return expandSearchAliases(searchValue).includes(getResourceId(resource));
 };
 
 const matchesReferencePath = (
