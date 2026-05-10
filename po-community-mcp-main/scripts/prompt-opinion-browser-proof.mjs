@@ -835,6 +835,29 @@ const apiFetch = async (page, apiPath, { method = "GET", body = null } = {}) => 
   );
 };
 
+// Scopes that our MCP servers declare via ai.promptopinion/fhir-context extension.
+// PO platform requires these to be present in the registration payload when
+// sendFhirContext is true; otherwise it returns HTTP 422.
+const REQUIRED_FHIR_SCOPES = [
+  "patient/Patient.rs",
+  "patient/Observation.rs",
+  "patient/MedicationStatement.rs",
+  "patient/MedicationRequest.rs",
+  "patient/Condition.rs",
+  "patient/ServiceRequest.rs",
+  "patient/DocumentReference.rs",
+];
+
+const ensureFhirScopes = (existing) => {
+  const scopes = Array.isArray(existing) ? [...existing] : [];
+  for (const required of REQUIRED_FHIR_SCOPES) {
+    if (!scopes.includes(required)) {
+      scopes.push(required);
+    }
+  }
+  return scopes;
+};
+
 const mcpUpdatePayload = (entry, endpoint) => ({
   name: entry.name,
   endpoint,
@@ -845,15 +868,24 @@ const mcpUpdatePayload = (entry, endpoint) => ({
   basicAuthUsername: entry.basicAuthUsername || "",
   basicAuthPassword: entry.basicAuthPassword || "",
   sendFhirContext: forceSendFhirContext ? true : Boolean(entry.sendFhirContext),
-  fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
+  fhirCtxAuthorizedScopes: forceSendFhirContext
+    ? ensureFhirScopes(entry.fhirCtxAuthorizedScopes)
+    : (Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : []),
 });
 
 const a2aUpdatePayload = (entry, url) => {
+  // The A2A agent card now declares the PO FHIR context extension
+  // (https://app.promptopinion.ai/schemas/a2a/v1/fhir-context), so PO will
+  // accept sendFhirContextIfExtExists=true and inject FHIR context into the
+  // A2A message metadata. The orchestrator extracts it via
+  // extractPoFhirContextFromMetadata and propagates to downstream MCPs.
   const payload = {
     url,
     displayName: entry.displayName || entry.poAgentCard?.name || "external A2A orchestrator",
     sendFhirContextIfExtExists: forceSendFhirContext ? true : Boolean(entry.sendFhirContextIfExtExists),
-    fhirCtxAuthorizedScopes: Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : [],
+    fhirCtxAuthorizedScopes: forceSendFhirContext
+      ? ensureFhirScopes(entry.fhirCtxAuthorizedScopes)
+      : (Array.isArray(entry.fhirCtxAuthorizedScopes) ? entry.fhirCtxAuthorizedScopes : []),
   };
 
   if (entry.securityType && entry.securityType !== "Open") {
@@ -935,10 +967,13 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
   for (const expected of expectedMcps) {
     const beforeEntry = beforeMcpEntries.find((entry) => entry.name === expected.name);
     const fhirContextNeedsUpdate = forceSendFhirContext && beforeEntry && !beforeEntry.sendFhirContext;
+    const fhirScopesNeedUpdate = forceSendFhirContext && beforeEntry &&
+      (!Array.isArray(beforeEntry.fhirCtxAuthorizedScopes) ||
+       !REQUIRED_FHIR_SCOPES.every((scope) => beforeEntry.fhirCtxAuthorizedScopes.includes(scope)));
     if (
       !beforeEntry ||
       !expected.expectedUrl ||
-      (normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl) && !fhirContextNeedsUpdate)
+      (normalizeUrl(beforeEntry.endpoint) === normalizeUrl(expected.expectedUrl) && !fhirContextNeedsUpdate && !fhirScopesNeedUpdate)
     ) {
       continue;
     }
@@ -975,14 +1010,21 @@ const verifyAndMaybeUpdateRegistrations = async (page, workspaceId) => {
   );
   const a2aTimeoutNeedsUpdate =
     requestedA2aTimeoutSeconds > 0 && Number(beforeA2aEntry?.timeoutSeconds || 0) !== requestedA2aTimeoutSeconds;
+  // A2A agent card now declares the PO FHIR context extension, so
+  // sendFhirContextIfExtExists can be true. Trigger update if we want to force-
+  // enable it but the platform hasn't set it, or if scopes need updating.
   const a2aFhirNeedsUpdate = forceSendFhirContext && beforeA2aEntry && !beforeA2aEntry.sendFhirContextIfExtExists;
+  const a2aScopesNeedUpdate = forceSendFhirContext && beforeA2aEntry &&
+    (!Array.isArray(beforeA2aEntry.fhirCtxAuthorizedScopes) ||
+     !REQUIRED_FHIR_SCOPES.every((scope) => beforeA2aEntry.fhirCtxAuthorizedScopes.includes(scope)));
   if (
     beforeA2aEntry &&
     publicEndpoints.externalA2a &&
     (
       normalizeUrl(beforeA2aEntry.cardEndpoint) !== normalizeUrl(publicEndpoints.externalA2a) ||
       a2aTimeoutNeedsUpdate ||
-      a2aFhirNeedsUpdate
+      a2aFhirNeedsUpdate ||
+      a2aScopesNeedUpdate
     )
   ) {
     if (!updateRegistrations) {
