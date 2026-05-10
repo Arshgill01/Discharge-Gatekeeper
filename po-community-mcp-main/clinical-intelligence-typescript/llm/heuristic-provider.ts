@@ -67,9 +67,9 @@ const SIGNALS: Signal[] = [
     title: "Critical discharge medication access blocked before transition",
     rationaleStem:
       "Narrative evidence shows the discharge medication plan is not feasible before transition, despite structured medication readiness.",
-    riskPattern: /(doac|apixaban|anticoag|prior authorization|cannot afford|cannot dispense|pharmacy cannot|not available before discharge)/i,
+    riskPattern: /(doac|apixaban|anticoag|prior authorization|cannot afford|cannot dispense|pharmacy cannot|not available before discharge|cannot pick up medications tonight|pharmacy closes in 30 minutes|pharmacy closes soon)/i,
     reassuringPattern: /(medication ready|medications ready|meds ready|successfully dispensed|coverage confirmed|authorization approved)/i,
-    criticalPattern: /(cannot afford|cannot dispense|prior authorization pending|not available before discharge|pharmacy cannot)/i,
+    criticalPattern: /(cannot afford|cannot dispense|prior authorization pending|not available before discharge|pharmacy cannot|cannot pick up medications tonight|pharmacy closes in 30 minutes)/i,
   },
   {
     category: "patient_education",
