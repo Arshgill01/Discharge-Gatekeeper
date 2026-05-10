@@ -227,6 +227,9 @@ export const writeDischargeBlockingTasks = async (
     );
     createdTasks.forEach((writtenTask, index) => {
       const source = browserAuthTaskPayloads[index];
+      if (!source) {
+        return;
+      }
       const writtenTaskId = String(writtenTask["id"] ?? randomUUID());
       taskWrites.push({
         reference: `Task/${writtenTaskId}`,

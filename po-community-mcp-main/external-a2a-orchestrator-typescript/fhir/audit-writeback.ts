@@ -113,6 +113,9 @@ export const writeAuditArtifacts = async (
     );
     writtenProvenanceResources.forEach((resource, index) => {
       const input = browserAuthProvenancePayloads[index];
+      if (!input) {
+        return;
+      }
       const writtenProvenanceId = String(resource["id"] ?? randomUUID());
       provenanceWrites.push({
         reference: `Provenance/${writtenProvenanceId}`,
