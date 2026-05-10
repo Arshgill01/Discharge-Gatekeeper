@@ -80,12 +80,17 @@ const taskCategory = (task: TaskResource): string | null => {
 };
 
 const taskKey = (task: TaskResource): string => {
+  const category = taskCategory(task);
+  if (category) {
+    return category;
+  }
+
   const identifierValue = task.identifier?.find((identifier) => identifier.value)?.value?.trim();
   if (identifierValue) {
     return identifierValue;
   }
 
-  return taskCategory(task) ?? task.id;
+  return task.id;
 };
 
 const taskTimestamp = (task: TaskResource): number =>
