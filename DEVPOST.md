@@ -60,18 +60,47 @@ Concrete Daniel task example:
 ```json
 {
   "resourceType": "Task",
+  "id": "047009c1-0969-4aa8-a506-1cf622def0a5",
   "status": "requested",
   "for": {
     "reference": "Patient/db4b066b-200f-405f-9fe4-c52eefbc1425"
   },
   "reasonReference": {
-    "reference": "DocumentReference/daniel-pharmacy-note-1815"
+    "reference": "DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14"
   },
   "code": {
-    "text": "Resolve medication bridge before discharge"
+    "text": "Resolve medication access or bridge supply before discharge proceeds."
   }
 }
 ```
+
+## Live FHIR Workspace Evidence
+
+After a complete Daniel Brooks discharge assessment, the following resources exist on Prompt Opinion's FHIR server:
+
+### Blocking Evidence
+
+- `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500` — Nursing Note 2026-04-19 18:40
+- `DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14` — Case Management Note 2026-04-19 19:05
+- `DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69` — Pharmacy Note 2026-04-19 18:15
+
+### Discharge-Blocking Tasks
+
+- `Task/21ee518a-26f2-44c8-a36b-68c1f804a6b2` — `patient_education` — `requested`
+  - `reasonReference: DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+- `Task/047009c1-0969-4aa8-a506-1cf622def0a5` — `medication_reconciliation` — `requested`
+  - `reasonReference: DocumentReference/d7ebe424-afd0-46d6-957c-26bf381c1e14`
+- `Task/4e18de12-102b-41ee-8d56-98d5bf96d85a` — `clinical_stability` — `requested`
+  - `reasonReference: DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+
+### Provenance Chains
+
+- `Provenance/a88df349-78d0-45f8-a420-d63e1bf1d3e5` → `Task/4e18de12-102b-41ee-8d56-98d5bf96d85a` ← `DocumentReference/7978a116-881e-4280-871f-1c16c59dc500`
+
+### Audit Trail
+
+- No PO `AuditEvent` resources are currently present for Care Transitions Command.
+- `AuditEvent` write is still blocked by PO parser constraints; the live FHIR chain currently proves `DocumentReference` + `Task` + `Provenance`.
 
 ## How we built it
 
@@ -125,6 +154,8 @@ For local demo mode, Prompt Opinion patient UUIDs for Daniel, Maria, and Olivia 
 ## Proof artifacts
 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
+- PO workspace proof summary:
+  - `output/endgame/runs/20260510T101519Z/po-fhir-workspace-proof/po-fhir-workspace-proof-summary.md`
 - Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
 - held-out patients:
   - Daniel Brooks

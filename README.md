@@ -33,10 +33,10 @@ flowchart TD
   DGK --> ORCH[A2A Orchestrator / Reconciliation]
   CI --> ORCH
   ORCH --> LEDGER[FHIR Evidence Ledger]
-  LEDGER --> TASK[FHIR Task Write-Back]
-  TASK --> PROV[Provenance]
-  TASK --> AUDIT[AuditEvent]
-  TASK --> REARB[Polling Re-Arbitration Loop]
+  ORCH --> TASK_WRITE[FHIR Task Write-Back<br/>PO FHIR Server]
+  TASK_WRITE --> PROV_WRITE[Provenance Write<br/>PO FHIR Server]
+  TASK_WRITE --> AUDIT_WRITE[AuditEvent Write<br/>PO FHIR Server]
+  TASK_WRITE --> REARB[Polling Re-Arbitration Loop]
   REARB --> ORCH
 ```
 
@@ -219,6 +219,11 @@ npm --prefix po-community-mcp-main/external-a2a-orchestrator-typescript run smok
 
 - endgame run folder: `output/endgame/runs/20260510T101519Z/`
 - Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
+
+## FHIR Workspace Proof
+
+See `output/endgame/runs/20260510T101519Z/po-fhir-workspace-proof/po-fhir-workspace-proof-summary.md`
+for a complete record of Prompt Opinion FHIR resources created and queried during the Daniel proof run, including real PO `DocumentReference`, `Task`, and `Provenance` ids.
 
 ## Read Next
 
