@@ -19,6 +19,8 @@ const PROMPTS = {
   prompt1: "Is this patient safe to discharge today?",
   prompt2: "What hidden risk changed that answer? Show me the contradiction and the evidence.",
   prompt3: "What exactly must happen before discharge, and prepare the transition package.",
+  prompt4:
+    "New updates arrived: the medication bridge was delivered to bedside and the daughter arranged a working home scale, but the patient still reports orthopnea when lying flat. Re-arbitrate the discharge gates from the FHIR Tasks and evidence.",
 };
 
 const A2A_ROUTE_LOCK_VARIANTS = [
@@ -154,6 +156,7 @@ const browserSlowMoMs = Number(getenv("PROMPT_OPINION_BROWSER_SLOW_MO_MS", "0"))
 const updateRegistrations = getenv("PROMPT_OPINION_UPDATE_REGISTRATIONS", "0") === "1";
 const forceSendFhirContext = getenv("PROMPT_OPINION_FORCE_SEND_FHIR_CONTEXT", "0") === "1";
 const launchpadScope = getenv("PROMPT_OPINION_LAUNCHPAD_SCOPE", "Workspace").trim() || "Workspace";
+const launchpadPatientName = getenv("PROMPT_OPINION_PATIENT_NAME");
 const postSettleRuntimeGraceMs = Number(getenv("PROMPT_OPINION_POST_SETTLE_RUNTIME_GRACE_MS", "20000"));
 const finalSettleDelayMs = Number(getenv("PROMPT_OPINION_FINAL_SETTLE_DELAY_MS", "3000"));
 const settlePollMs = Number(getenv("PROMPT_OPINION_SETTLE_POLL_MS", "2000"));
@@ -183,9 +186,11 @@ const parseExpectedTokens = (name, fallback) =>
 const directPrompt1Text = getenv("PROMPT_OPINION_DIRECT_PROMPT1_TEXT", PROMPTS.prompt1);
 const directPrompt2Text = getenv("PROMPT_OPINION_DIRECT_PROMPT2_TEXT", PROMPTS.prompt2);
 const directPrompt3Text = getenv("PROMPT_OPINION_DIRECT_PROMPT3_TEXT", PROMPTS.prompt3);
+const directPrompt4Text = getenv("PROMPT_OPINION_DIRECT_PROMPT4_TEXT", PROMPTS.prompt4);
 const directPrompt1ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOOL", "assess_discharge_readiness");
 const directPrompt2ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT2_EXPECTED_TOOL", "surface_hidden_risks");
 const directPrompt3ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOOL", "synthesize_transition_narrative");
+const directPrompt4ExpectedTool = normalizeOptionalTool("PROMPT_OPINION_DIRECT_PROMPT4_EXPECTED_TOOL", "rearbitrate_discharge_readiness");
 const directPrompt1ExpectedTokens = parseExpectedTokens(
   "PROMPT_OPINION_DIRECT_PROMPT1_EXPECTED_TOKENS",
   "assess_discharge_readiness,structured baseline,result=hidden_risk_present,not_ready",
@@ -197,6 +202,10 @@ const directPrompt2ExpectedTokens = parseExpectedTokens(
 const directPrompt3ExpectedTokens = parseExpectedTokens(
   "PROMPT_OPINION_DIRECT_PROMPT3_EXPECTED_TOKENS",
   "synthesize_transition_narrative,transition,Before discharge,handoff",
+);
+const directPrompt4ExpectedTokens = parseExpectedTokens(
+  "PROMPT_OPINION_DIRECT_PROMPT4_EXPECTED_TOKENS",
+  "DISCHARGE STATUS UPDATE,clinical_stability,Resolved gates,Task/ctc-",
 );
 const directPrompt1Runtime = normalizeLaneToken(getenv("PROMPT_OPINION_DIRECT_PROMPT1_RUNTIME", "dgk"));
 const networkResponsePreviewChars = Number(getenv("PROMPT_OPINION_NETWORK_RESPONSE_PREVIEW_CHARS", "1200"));
@@ -339,6 +348,23 @@ const defaultSemanticAnchorSets = {
       },
     ],
     forbidden_any: [/discharge as normal/i, /routine discharge/i, /safe to discharge(?: home)? today/i],
+  },
+  prompt4: {
+    required_any: [
+      {
+        name: "rearbitration update is visible",
+        patterns: [/discharge status update/i, /re-arbitrate/i, /updated status/i],
+      },
+      {
+        name: "clinical stability remains unresolved",
+        patterns: [/clinical_stability/i, /remaining unresolved gates/i, /still reports orthopnea/i],
+      },
+      {
+        name: "resolved gates are named",
+        patterns: [/resolved gates/i, /medication_reconciliation/i, /patient_education/i, /home monitoring/i],
+      },
+    ],
+    forbidden_any: [/all gates resolved/i, /safe to discharge(?: home)? today/i, /final verdict[^.\n]{0,40}\bready\b/i],
   },
 };
 
@@ -1536,6 +1562,21 @@ const startSession = async (page, workspaceId, agentName, lane, screenshotName) 
       url: page.url(),
     });
   }
+  if (/^patient$/i.test(launchpadScope) && launchpadPatientName) {
+    const patientButton = page.getByRole("button", {
+      name: new RegExp(escapeRegex(launchpadPatientName), "i"),
+    }).first();
+    const patientSelected = await clickIfVisible(page, patientButton, 6000);
+    recordStep(`${lane} patient selection`, patientSelected ? "green" : "red", {
+      requested_scope: launchpadScope,
+      patient_name: launchpadPatientName,
+      url: page.url(),
+    });
+    if (!patientSelected) {
+      return false;
+    }
+    await page.waitForTimeout(1500);
+  }
   const clicked = await clickIfVisible(page, agentCard, 6000);
   if (!clicked) {
     recordStep(`${lane} session start`, "red", {
@@ -1568,6 +1609,37 @@ const enableToolCalls = async (page) => {
 
   const switchControl = page.getByRole("switch").first();
   await clickIfVisible(page, switchControl, 2500);
+};
+
+const typePromptLikeAUser = async (page, input, prompt) => {
+  await input.click({ timeout: 10000 });
+  await page.waitForTimeout(150);
+  const selectAllShortcut = process.platform === "darwin" ? "Meta+A" : "Control+A";
+  await page.keyboard.press(selectAllShortcut).catch(() => {});
+  await page.keyboard.press("Backspace").catch(() => {});
+  await page.waitForTimeout(150);
+  await page.keyboard.type(prompt, { delay: 18 });
+  await page.waitForTimeout(500);
+};
+
+const attemptPromptSubmit = async (page) => {
+  await page.keyboard.press("Enter").catch(() => {});
+  await page.waitForTimeout(1200);
+
+  const submitCandidates = [
+    page.locator('button[type="submit"]').first(),
+    page.getByRole("button", { name: /send|submit|ask|go|continue/i }).first(),
+    page.locator('button[aria-label*="send" i], button[title*="send" i]').first(),
+  ];
+  for (const candidate of submitCandidates) {
+    if (await candidate.count().catch(() => 0)) {
+      const clicked = await clickIfVisible(page, candidate, 1000);
+      if (clicked) {
+        await page.waitForTimeout(1200);
+        return;
+      }
+    }
+  }
 };
 
 const sendPrompt = async ({
@@ -1623,9 +1695,9 @@ const sendPrompt = async ({
   const startOffsets = statLogOffsets();
   const beforeNetworkCount = networkEvents.length;
   const startedAt = nowIso();
-  await input.fill(prompt);
-  await input.press("Enter");
-  await page.waitForTimeout(2500);
+  await typePromptLikeAUser(page, input, prompt);
+  await attemptPromptSubmit(page);
+  await page.waitForTimeout(1500);
 
   const deadline = Date.now() + promptTimeoutMs;
   const settleTrace = [];
@@ -2671,6 +2743,16 @@ const main = async () => {
           prompt: directPrompt3Text,
           expectedTokens: directPrompt3ExpectedTokens,
           expectedTool: directPrompt3ExpectedTool,
+        });
+      }
+      if (directPromptEnabled("prompt4")) {
+        await sendPrompt({
+          page,
+          lane: "Direct-MCP fallback",
+          attemptId: "FALLBACK-P4-01",
+          prompt: directPrompt4Text,
+          expectedTokens: directPrompt4ExpectedTokens,
+          expectedTool: directPrompt4ExpectedTool,
         });
       }
     }
