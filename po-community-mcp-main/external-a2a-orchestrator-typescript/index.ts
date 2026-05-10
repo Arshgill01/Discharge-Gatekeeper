@@ -269,6 +269,48 @@ const extractPatientContext = (payload: Record<string, unknown>): A2ATaskInput["
   return patientContext as A2ATaskInput["patient_context"];
 };
 
+// Prompt Opinion A2A FHIR context extension URI.
+// When the agent card declares this extension and sendFhirContextIfExtExists is
+// enabled, PO sends FHIR context in message.metadata at this key.
+// See: https://docs.promptopinion.ai/fhir-context/a2a-fhir-context
+const PO_FHIR_CONTEXT_URI = "https://app.promptopinion.ai/schemas/a2a/v1/fhir-context";
+
+const extractPoFhirContextFromMetadata = (
+  ...metadataSources: Array<unknown>
+): A2ATaskInput["patient_context"] => {
+  for (const source of metadataSources) {
+    const metadata = asRecord(source);
+    if (!metadata) continue;
+
+    const fhirCtx = asRecord(metadata[PO_FHIR_CONTEXT_URI]);
+    if (!fhirCtx) continue;
+
+    const fhirUrl = toOptionalString(fhirCtx["fhirUrl"]);
+    if (!fhirUrl) continue;
+
+    const token = toOptionalString(fhirCtx["fhirToken"]);
+    const patientId = toOptionalString(fhirCtx["patientId"]);
+    const refreshToken = toOptionalString(fhirCtx["fhirRefreshToken"]);
+    const refreshTokenUrl = toOptionalString(fhirCtx["fhirRefreshTokenUrl"]);
+
+    console.log(
+      `[a2a-orchestrator] PO FHIR context extracted: fhirUrl=${fhirUrl}, patientId=${patientId ?? "(none)"}, tokenPresent=${!!token}`,
+    );
+
+    return {
+      ...(patientId ? { patient_id: patientId } : {}),
+      fhir_context: {
+        fhir_server: fhirUrl,
+        ...(token ? { access_token: token } : {}),
+        ...(refreshToken ? { refresh_token: refreshToken } : {}),
+        ...(refreshTokenUrl ? { refresh_token_url: refreshTokenUrl } : {}),
+      },
+    };
+  }
+
+  return undefined;
+};
+
 const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
   const parts = token.split(".");
   if (parts.length < 2) {
@@ -422,6 +464,19 @@ const extractA2AMessagePrompt = (message: Record<string, unknown>): string | nul
 };
 
 const extractA2APatientContext = (...values: Array<unknown>): A2ATaskInput["patient_context"] => {
+  // First, check for PO FHIR context in any metadata objects.
+  // This is the PO-native path: message.metadata["https://app.promptopinion.ai/schemas/a2a/v1/fhir-context"]
+  const metadataObjects = values
+    .map((v) => asRecord(v))
+    .filter(Boolean)
+    .map((r) => r!["metadata"])
+    .filter(Boolean);
+  const poFhirContext = extractPoFhirContextFromMetadata(...metadataObjects);
+  if (poFhirContext) {
+    return poFhirContext;
+  }
+
+  // Fallback: look for patient_context / patientContext in the message body
   for (const value of values) {
     const record = asRecord(value);
     if (!record) {
@@ -533,6 +588,7 @@ const parseA2AJsonRpcMessageSend = (
           request.params["configuration"],
           request.params["metadata"],
           messageParams,
+          asRecord(request.params["message"]),
         ),
         headerPatientContext,
       ),

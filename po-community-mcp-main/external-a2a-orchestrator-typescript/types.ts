@@ -48,6 +48,8 @@ export type A2ATaskInput = {
     fhir_context?: {
       fhir_server: string;
       access_token?: string;
+      refresh_token?: string;
+      refresh_token_url?: string;
     };
     narrative_evidence_bundle?: NarrativeSource[];
     optional_context_metadata?: {

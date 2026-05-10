@@ -121,6 +121,25 @@ export const buildAgentCard = (config: RuntimeConfig, publicBaseUrl: string) => 
       streaming: false,
       pushNotifications: false,
       extendedAgentCard: false,
+      extensions: [
+        {
+          uri: "https://app.promptopinion.ai/schemas/a2a/v1/fhir-context",
+          description:
+            "FHIR context allowing the agent to query a FHIR server securely on behalf of the current patient",
+          required: false,
+          params: {
+            scopes: [
+              { name: "patient/Patient.rs", required: true },
+              { name: "patient/Observation.rs" },
+              { name: "patient/MedicationStatement.rs" },
+              { name: "patient/MedicationRequest.rs" },
+              { name: "patient/Condition.rs" },
+              { name: "patient/ServiceRequest.rs" },
+              { name: "patient/DocumentReference.rs" },
+            ],
+          },
+        },
+      ],
       task_lifecycle: {
         mode: "synchronous",
         streaming: false,
