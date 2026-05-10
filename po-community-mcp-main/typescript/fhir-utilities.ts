@@ -36,23 +36,36 @@ const shouldUseLocalFixtureStore = (url: string, patientId: string | null): bool
   return /app\.promptopinion\.ai\/api\/workspaces\/.+\/fhir/i.test(url);
 };
 
+const getRawFhirContext = (req: Request): FhirContext | null => {
+  const headers = req.headers;
+  const url = headers[McpConstants.FhirServerUrlHeaderName]?.toString();
+  if (!url) {
+    return null;
+  }
+
+  const token = headers[McpConstants.FhirAccessTokenHeaderName]?.toString();
+  return { url, token };
+};
+
 export const FhirUtilities = {
   getFhirContext: (req: Request): FhirContext | null => {
-    const headers = req.headers;
-    const url = headers[McpConstants.FhirServerUrlHeaderName]?.toString();
-
-    if (!url) {
+    const rawContext = getRawFhirContext(req);
+    if (!rawContext) {
       return null;
     }
 
     const patientId = getPatientIdFromRequest(req);
-    if (shouldUseLocalFixtureStore(url, patientId)) {
-      return { url: DEFAULT_LOCAL_FHIR_BASE_URL };
+    if (shouldUseLocalFixtureStore(rawContext.url, patientId)) {
+      return {
+        url: DEFAULT_LOCAL_FHIR_BASE_URL,
+        token: rawContext.token,
+        remoteUrl: rawContext.url,
+      };
     }
 
-    const token = headers[McpConstants.FhirAccessTokenHeaderName]?.toString();
-    return { url, token };
+    return rawContext;
   },
+  getOriginalFhirContext: (req: Request): FhirContext | null => getRawFhirContext(req),
   getPatientIdIfContextExists: (req: Request) => getPatientIdFromRequest(req),
   getEncounterIdIfContextExists: (req: Request) => {
     return req.headers[McpConstants.EncounterIdHeaderName]?.toString() || null;

@@ -11,10 +11,30 @@ import {
 
 process.env["CLINICAL_INTELLIGENCE_LLM_PROVIDER"] = "heuristic";
 
+const REMOTE_FHIR_SERVER_URL =
+  process.env["PROMPT_OPINION_FHIR_SERVER_URL"]?.trim() || DEFAULT_LOCAL_FHIR_BASE_URL;
+const REMOTE_FHIR_ACCESS_TOKEN =
+  process.env["PROMPT_OPINION_FHIR_ACCESS_TOKEN"]?.trim() || "";
+const USING_PROMPT_OPINION_FHIR = REMOTE_FHIR_SERVER_URL !== DEFAULT_LOCAL_FHIR_BASE_URL;
+const PATIENT_IDS = USING_PROMPT_OPINION_FHIR
+  ? {
+      maria: "179930bf-2ad5-441b-8762-ec700b82e2ca",
+      daniel: "db4b066b-200f-405f-9fe4-c52eefbc1425",
+      olivia: "be404f97-dfa6-4875-b715-0ec8599b7d22",
+    }
+  : {
+      maria: "maria-alvarez",
+      daniel: "daniel-brooks",
+      olivia: "olivia-chen",
+    };
+
 const makeRequest = (patientId: string, encounterId: string): Request => {
   return {
     headers: {
-      "x-fhir-server-url": DEFAULT_LOCAL_FHIR_BASE_URL,
+      "x-fhir-server-url": REMOTE_FHIR_SERVER_URL,
+      ...(REMOTE_FHIR_ACCESS_TOKEN
+        ? { "x-fhir-access-token": REMOTE_FHIR_ACCESS_TOKEN }
+        : {}),
       "x-patient-id": patientId,
       "x-encounter-id": encounterId,
     },
@@ -59,15 +79,15 @@ const main = async (): Promise<void> => {
   });
 
   const maria = await surfaceHiddenRisks(
-    await buildHiddenRiskInput("maria-alvarez", "maria-discharge-2026-0418"),
+    await buildHiddenRiskInput(PATIENT_IDS.maria, "maria-discharge-2026-0418"),
     { responseMode: "full" },
   );
   const daniel = await surfaceHiddenRisks(
-    await buildHiddenRiskInput("daniel-brooks", "daniel-discharge-2026-0419"),
+    await buildHiddenRiskInput(PATIENT_IDS.daniel, "daniel-discharge-2026-0419"),
     { responseMode: "full" },
   );
   const olivia = await surfaceHiddenRisks(
-    await buildHiddenRiskInput("olivia-chen", "olivia-discharge-2026-0419"),
+    await buildHiddenRiskInput(PATIENT_IDS.olivia, "olivia-discharge-2026-0419"),
     { responseMode: "full" },
   );
 
@@ -96,6 +116,8 @@ const main = async (): Promise<void> => {
         olivia_result: olivia.payload.hidden_risk_summary.result,
         maria_citation_count: maria.payload.citations.length,
         daniel_citation_count: daniel.payload.citations.length,
+        using_prompt_opinion_fhir: USING_PROMPT_OPINION_FHIR,
+        daniel_citation_references: daniel.payload.citations.map((citation) => citation.fhir_reference),
       },
       null,
       2,

@@ -13,6 +13,29 @@ import {
 class FhirClient {
   async read<T extends DomainResource>(req: Request, path: string) {
     const fhirContext = this._getFhirContextOrThrow(req);
+    if (this._shouldPreferRemoteDocumentReferences(fhirContext, path)) {
+      const remoteContext = this._getRemoteContext(fhirContext);
+      if (remoteContext) {
+        try {
+          const remoteResource = await this._callAxios<T>(
+            {
+              method: "get",
+              url: this._addPath(remoteContext, path),
+            },
+            req,
+            remoteContext,
+          );
+          if (remoteResource) {
+            return remoteResource;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[fhir-client] remote DocumentReference read failed for ${path}; falling back to local fixture store. ${message}`,
+          );
+        }
+      }
+    }
     if (isLocalFhirBaseUrl(fhirContext.url)) {
       return readLocalFhirResource(path) as T | null;
     }
@@ -28,6 +51,37 @@ class FhirClient {
 
   async search(req: Request, resourceType: string, searchParameters: string[]) {
     const fhirContext = this._getFhirContextOrThrow(req);
+    if (this._shouldPreferRemoteDocumentReferences(fhirContext, resourceType)) {
+      const remoteContext = this._getRemoteContext(fhirContext);
+      if (remoteContext) {
+        try {
+          const remoteBundle = await this._callAxios<fhirR4.Bundle>(
+            {
+              method: "get",
+              url: this._addPath(
+                remoteContext,
+                `${resourceType}?${searchParameters.join("&")}`,
+              ),
+            },
+            req,
+            remoteContext,
+          );
+          const remoteEntryCount = Array.isArray(remoteBundle?.entry) ? remoteBundle.entry.length : 0;
+          const remoteTotal =
+            typeof remoteBundle?.total === "number"
+              ? remoteBundle.total
+              : remoteEntryCount;
+          if (remoteTotal > 0 || remoteEntryCount > 0) {
+            return remoteBundle;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[fhir-client] remote DocumentReference search failed; falling back to local fixture store. ${message}`,
+          );
+        }
+      }
+    }
     if (isLocalFhirBaseUrl(fhirContext.url)) {
       return searchLocalFhirResources(resourceType, searchParameters) as fhirR4.Bundle;
     }
@@ -44,8 +98,12 @@ class FhirClient {
     );
   }
 
-  private async _callAxios<T>(config: AxiosRequestConfig, req: Request) {
-    const fhirContext = this._getFhirContextOrThrow(req);
+  private async _callAxios<T>(
+    config: AxiosRequestConfig,
+    req: Request,
+    fhirContextOverride?: FhirContext,
+  ) {
+    const fhirContext = fhirContextOverride || this._getFhirContextOrThrow(req);
     if (fhirContext.token) {
       config.headers = {
         Authorization: `Bearer ${fhirContext.token}`,
@@ -96,6 +154,26 @@ class FhirClient {
     }
 
     return `${fhirContext.url}/${path}`;
+  }
+
+  private _getRemoteContext(fhirContext: FhirContext): FhirContext | null {
+    return fhirContext.remoteUrl
+      ? {
+          url: fhirContext.remoteUrl,
+          token: fhirContext.token,
+        }
+      : null;
+  }
+
+  private _shouldPreferRemoteDocumentReferences(
+    fhirContext: FhirContext,
+    resourceTypeOrPath: string,
+  ): boolean {
+    if (!isLocalFhirBaseUrl(fhirContext.url) || !fhirContext.remoteUrl) {
+      return false;
+    }
+
+    return /^DocumentReference(?:[/?]|$)/i.test(resourceTypeOrPath);
   }
 }
 
