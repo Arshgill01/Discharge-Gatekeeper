@@ -2,21 +2,32 @@
 
 ## Inspiration
 
-Discharge is where clean structured confidence and messy real-world failure collide.
+Discharge failure rarely comes from a missing summary.
 
-The chart can say:
+It comes from a contradiction that arrived too late, lived in the wrong layer, and never became explicit work.
 
-- vitals stabilized
-- medications entered
-- follow-up ordered
+The chart can look clean:
 
-And the actual discharge can still be unsafe because the contradiction shows up late:
+- vitals are stable
+- follow-up exists
+- medications are entered
 
-- the medication will not actually be available tonight
-- the patient’s symptoms changed after the morning snapshot
-- the home support plan is weaker than the structured chart suggests
+And discharge can still be unsafe because the real story changed after the structured snapshot:
 
-We wanted to build a system that does not just summarize that situation, but changes the operational state because of it.
+- the patient cannot actually get the medication tonight
+- symptoms worsened after the morning assessment
+- the home support plan is weaker than the chart implies
+
+We built Care Transitions Command to change the control plane when that happens, not just describe it better.
+
+<table>
+  <tr>
+    <td bgcolor="#F3E8FF">
+      <strong>The wedge</strong><br/>
+      This is not a generic discharge copilot. It is a discharge contradiction system. It starts from a deterministic structured baseline, checks whether late narrative evidence breaks that posture, and turns the contradiction into visible FHIR coordination work.
+    </td>
+  </tr>
+</table>
 
 ## What it does
 
@@ -26,36 +37,54 @@ Care Transitions Command is a Prompt Opinion-native discharge control plane buil
 - `Clinical Intelligence MCP`
 - `external A2A orchestrator`
 
-The core primitive is:
+The primitive is:
 
 **Blocking evidence creates FHIR Tasks. Task completion opens the gate. The system holds discharge until the FHIR layer says otherwise.**
 
 In the held-out Daniel Brooks demo:
 
-- the structured chart looks discharge-ready
-- a pharmacy note shows medication access failure
-- a nursing note shows orthopnea and late symptom change
-- a case-management note shows pickup logistics failure
+- the deterministic chart looks discharge-ready
+- a pharmacy note shows the medication bridge is not actually available
+- a nursing note shows late orthopnea and weight gain concern
+- a case-management note shows pickup logistics failure tonight
 
-The system escalates to `not_ready`, cites the contradiction, writes blocking FHIR Tasks, records Provenance on the workspace FHIR layer, and re-arbitrates when some tasks resolve.
+The system escalates to `not_ready`, cites the contradiction, writes blocking FHIR Tasks, records Provenance, and re-arbitrates when some tasks resolve.
 
 ## How it works
 
 Structured EHR resources — observations, medications, orders — flow through Prompt Opinion’s FHIR context. Narrative notes live in the care documentation layer, accessed through the Clinical Intelligence MCP.
 
-The judged direct lane uses Prompt Opinion Patient Scope with `Care Transitions Command BYO Fallback`.
+The live direct lane uses Prompt Opinion Patient Scope with `Care Transitions Command BYO Fallback`.
 The architecture-proof lane keeps the synchronous `external A2A orchestrator`.
 
-Flow:
+End-to-end flow:
 
 1. Prompt Opinion forwards Patient Scope context.
 2. `Discharge Gatekeeper MCP` computes the structured baseline.
-3. `Clinical Intelligence MCP` reconciles note contradiction against that baseline.
+3. `Clinical Intelligence MCP` checks note contradiction against that baseline.
 4. Blocking evidence becomes FHIR `Task` resources.
-5. The system writes `Provenance` artifacts on Prompt Opinion's workspace FHIR server.
-6. Prompt 4 polls task state and re-arbitrates from the FHIR layer.
+5. `Provenance` links each task to the actual blocking evidence.
+6. Prompt 4 rereads `Task.status` and re-arbitrates from the FHIR layer.
 
-Concrete Daniel task example:
+<table>
+  <tr>
+    <td bgcolor="#EDE9FE">
+      <strong>Why this feels different in the demo</strong><br/>
+      Prompt 1 changes the answer. Prompt 3 creates the work. Prompt 4 refuses to lie about progress. If only the non-clinical gates resolve, discharge still stays held.
+    </td>
+  </tr>
+</table>
+
+## How we built it
+
+- TypeScript MCP runtimes for DGK and Clinical Intelligence
+- synchronous A2A runtime with JSON-RPC, `/tasks`, and `/message:send` surfaces
+- seeded FHIR bundles for Daniel, Maria, Eleanor, and Olivia
+- Prompt Opinion Patient Scope integration
+- PO workspace FHIR writeback for `Task` and `Provenance`
+- polling re-arbitration instead of pretending real webhook / subscription behavior we cannot prove
+
+### Real Daniel task example
 
 ```json
 {
@@ -76,7 +105,7 @@ Concrete Daniel task example:
 
 ## Live FHIR Workspace Evidence
 
-After a complete Daniel Brooks discharge assessment, the following resources exist on Prompt Opinion's FHIR server:
+After a complete Daniel Brooks discharge assessment, the following resources exist on Prompt Opinion’s workspace FHIR server:
 
 ### Blocking Evidence
 
@@ -101,71 +130,66 @@ After a complete Daniel Brooks discharge assessment, the following resources exi
 
 ### Audit Trail
 
-- No PO `AuditEvent` resources are currently present for Care Transitions Command.
-- `AuditEvent` write is still blocked by PO parser constraints; the live FHIR chain currently proves `DocumentReference` + `Task` + `Provenance`.
+- Prompt Opinion’s workspace FHIR server still rejects our live `AuditEvent` write shape.
+- Local repo-side `AuditEvent` proof still exists and stays green.
+- The current live PO proof chain is therefore `DocumentReference` + `Task` + `Provenance`.
 
-## How we built it
+These resources are independently queryable at:
 
-- TypeScript MCP runtimes for DGK and Clinical Intelligence
-- synchronous A2A runtime with `/tasks`, `/message:send`, and JSON-RPC surfaces
-- FHIR-shaped seeded bundles for Daniel, Maria, Eleanor, and Olivia
-- local FHIR store for deterministic demo proof
-- Prompt Opinion Patient Scope integrations
-- FHIR Task / Provenance write-back on Prompt Opinion's workspace FHIR server
-- documented PO `AuditEvent` parser blocker instead of overclaiming support
-- polling re-arbitration instead of depending on webhook/subscription infrastructure
+`https://app.promptopinion.ai/api/workspaces/<workspace-id>/fhir/`
 
 ## Challenges we ran into
 
-- getting Prompt Opinion Patient Scope, MCP execution, and visible proof standards to line up
-- avoiding stale ngrok/runtime state during repeated live proofs
-- keeping the A2A lane honest instead of hiding behind backend-only evidence
-- making Daniel work as a held-out case instead of a Maria-specific overfit path
-- proving FHIR-native writeback without overclaiming production EHR connectivity
+- making a held-out Daniel lane work instead of a Maria-specific demo hack
+- getting Prompt Opinion Patient Scope, MCP tools, and visible transcripts to stay aligned
+- handling stale ngrok / runtime state during repeated live proofs
+- proving FHIR-native writeback honestly without overclaiming production hospital connectivity
+- discovering that Prompt Opinion’s live `AuditEvent` parser shape is stricter than our current write shape
 
 ## Accomplishments that we're proud of
 
-- a held-out Daniel Brooks discharge contradiction lane that writes real FHIR coordination artifacts
-- a clean Olivia Chen control path that stays `ready` and writes zero blocking Tasks
-- a Prompt 4 re-arbitration loop that does not falsely clear all gates while `clinical_stability` remains unresolved
-- inspectable evidence lineage through `Task` and `Provenance`, with the PO `AuditEvent` blocker documented honestly
-- a locked `2 MCPs + 1 external A2A` architecture with no custom frontend
+- a held-out Daniel contradiction lane that writes real PO `Task` and `Provenance` artifacts
+- a clean Olivia Chen control that stays `ready` and writes zero blocking Tasks
+- a Prompt 4 path that rereads real `Task.status` and still refuses to clear discharge when `clinical_stability` is unresolved
+- Eleanor Singh present in the scenario matrix as a mobility / fall / home-support safety case
+- a direct Prompt Opinion lane and an A2A architecture lane that both stay inspectable
 
 ## What we learned
 
-- the strongest healthcare AI moment is not “LLM summary,” it is contradiction detection with bounded evidence
-- the product becomes more credible when evidence changes control-plane state, not when the model just describes what should happen
-- polling re-arbitration is a far more reliable proof primitive than claiming real webhook/subscription behavior we cannot demonstrate
+- the most credible healthcare AI moment is not “better summarization,” it is contradiction detection with bounded evidence
+- the product becomes more real when evidence changes the FHIR coordination state, not when the model just explains what should happen
+- polling re-arbitration is a far more honest proof primitive than claiming live webhook / subscription behavior we cannot demonstrate
+- Prompt Opinion workspace capabilities can become a real platform constraint; those constraints need to be logged explicitly, not hidden
 
-## What's next for Care Transitions Command
+## What’s next
 
-- stabilize one completely fresh Prompt Opinion browser-proof bundle across Daniel Prompt 1–4 plus Olivia clean control
-- keep A2A as a provable synchronous architecture lane with stronger visible rendering
-- improve final evidence packaging and judge-facing proof audits
-- keep expanding held-out scenario coverage without changing the locked architecture
+- make marketplace publication green if Prompt Opinion enables publishing for this subscription / workspace
+- harden the final publish / discoverability path for MCPs and the A2A surface
+- keep improving the quality of the proof bundle and judge-facing packaging without changing the locked architecture
+- keep expanding held-out scenario coverage while preserving the same deterministic-plus-contradiction wedge
 
 ## Safety and feasibility
 
 - no autonomous discharge authority
 - no production hospital deployment claim
 - no full Epic SMART integration claim
-- no real FHIR Subscription/webhook claim
+- no real FHIR Subscription / webhook claim
 - no clinician replacement claim
 
-For local demo mode, Prompt Opinion patient UUIDs for Daniel, Maria, Olivia, and Eleanor are mapped into seeded local FHIR bundles so the system can honestly prove FHIR-native reads, Task write-back, Provenance, and polling re-arbitration without pretending it is connected to a production EHR.
+For the local proof lane, Prompt Opinion patient UUIDs for Daniel, Maria, Olivia, and Eleanor are mapped into seeded local FHIR bundles so the deterministic structured reads remain inspectable and reproducible without pretending this is a production hospital EHR integration.
 
 ## Proof artifacts
 
-- endgame run folder: `output/endgame/runs/20260510T101519Z/`
-- PO workspace proof summary:
-  - `output/endgame/runs/20260510T160443Z-fhir-consolidation/po-workspace-proof/summary.md`
-- Prompt Opinion historical proof bundles: `output/prompt-opinion-e2e/runs/`
-- held-out patients:
-  - Daniel Brooks
-  - Olivia Chen
-  - Eleanor Singh
-  - Maria Alvarez
+- endgame proof root: `output/endgame/runs/20260510T101519Z/`
+- FHIR consolidation proof root: `output/endgame/runs/20260510T160443Z-fhir-consolidation/`
+- current Daniel full browser proof:
+  - `output/playwright/20260510T-final-daniel-p1-p4-autoprep/`
+- current Olivia control:
+  - `output/playwright/20260510T-final-olivia-p1-longwait/`
+- current A2A proof:
+  - `output/playwright/20260510T-final-a2a-vc-longwait/`
 
-Daniel is the held-out live demo patient.
-Olivia is the clean control.
-Eleanor remains required scenario-matrix coverage.
+Daniel Brooks is the held-out live demo patient.
+Olivia Chen is the clean control.
+Eleanor Singh is the scenario-matrix safety case.
+Maria Alvarez remains the regression trap.
