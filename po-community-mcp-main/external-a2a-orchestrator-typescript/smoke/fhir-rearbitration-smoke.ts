@@ -178,7 +178,7 @@ const main = async (): Promise<void> => {
         "Task?encounter=Encounter/maria-discharge-2026-0418&_count=20",
       );
       auditBundle = readBundleViaPromptOpinionBrowserAuth("AuditEvent?_count=20");
-      provenanceBundle = readBundleViaPromptOpinionBrowserAuth("Provenance?_count=50");
+      provenanceBundle = readBundleViaPromptOpinionBrowserAuth("Provenance?_count=200");
     } else {
       partial = await createTask(baseUrl, "Oxygen delivery confirmed — update discharge status.");
       full = await createTask(
@@ -201,7 +201,7 @@ const main = async (): Promise<void> => {
       provenanceBundle = await searchFhirResources(
         DEFAULT_LOCAL_FHIR_BASE_URL,
         "Provenance",
-        ["_count=50"],
+        ["_count=200"],
         { storePath: DEFAULT_LOCAL_FHIR_STORE_PATH },
       );
     }

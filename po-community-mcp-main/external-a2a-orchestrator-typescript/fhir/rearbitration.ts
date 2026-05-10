@@ -168,13 +168,13 @@ export const applyTaskResolutionAndRearbitration = async (
   }
 
   const taskBundle = isPromptOpinionBrowserAuthEnabled()
-    ? readBundleViaPromptOpinionBrowserAuth(
-        `Task?encounter=${encodeURIComponent(encounterReference)}&_count=50`,
+      ? readBundleViaPromptOpinionBrowserAuth(
+        `Task?encounter=${encodeURIComponent(encounterReference)}&_count=200`,
       )
-    : await searchFhirResources(
+      : await searchFhirResources(
         fhirServer,
         "Task",
-        [`encounter=${encounterReference}`, "_count=50"],
+        [`encounter=${encounterReference}`, "_count=200"],
       );
   const taskEntries = Array.isArray(taskBundle["entry"])
     ? (taskBundle["entry"] as Array<{ resource?: unknown }>)
@@ -238,7 +238,7 @@ export const applyTaskResolutionAndRearbitration = async (
     : await searchFhirResources(
         fhirServer,
         "Task",
-        [`encounter=${encounterReference}`, "_count=50"],
+        [`encounter=${encounterReference}`, "_count=200"],
       );
   const refreshedEntries = Array.isArray(refreshedBundle["entry"])
     ? (refreshedBundle["entry"] as Array<{ resource?: unknown }>)
