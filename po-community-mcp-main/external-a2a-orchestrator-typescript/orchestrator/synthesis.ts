@@ -33,7 +33,11 @@ const detectPromptMode = (prompt: string): PromptMode => {
 const compactSentence = (value: string, maxLength: number = 180): string => {
   const compacted = value
     .replace(/\s+/g, " ")
+    .replace(/\bPatient\/[A-Za-z0-9.-]+/g, "")
+    .replace(/\bEncounter\/[A-Za-z0-9.-]+/g, "")
+    .replace(/\bDocumentReference\/[A-Za-z0-9.-]+/g, "")
     .replace(/\s+\[[^\]]+\](?=\s|$)/g, "")
+    .replace(/\s+([,.;:])/g, "$1")
     .trim();
   return compacted.length > maxLength
     ? `${compacted.slice(0, maxLength - 3).trimEnd()}...`
@@ -134,6 +138,13 @@ const buildReferenceList = (
   return unique.length > 0 ? unique.join(" | ") : fallback;
 };
 
+const buildReferenceBulletLines = (
+  references: Array<string | undefined>,
+): string[] => {
+  const unique = [...new Set(references.filter((reference): reference is string => Boolean(reference)))];
+  return unique.length > 0 ? unique.map((reference) => `- ${reference}`) : ["- none"];
+};
+
 const compactVisibleAction = (value: string, maxLength: number = 110): string => {
   const condensed = value
     .replace(/^Immediate discharge hold action:\s*/i, "")
@@ -162,21 +173,28 @@ const buildControllingEvidenceLines = (
     ? reconciled.transition_safety_packet.controlling_evidence
     : reconciled.transition_safety_packet.narrative_evidence;
 
-  return evidence.slice(0, limit).map((item) => {
+  return evidence.slice(0, limit).flatMap((item) => {
     const label = item.timestamp
       ? `${item.resource_type} ${item.timestamp}`
       : `${item.resource_type}/${item.resource_id}`;
-    return `- ${compactSentence(item.summary, 120)} [${item.reference}] ${label}`;
+    const supports = item.supports.length > 0 ? `${item.supports.join(", ")} - ` : "";
+    return [
+      `- ${supports}${compactSentence(item.summary, 112)} (${label})`,
+      `  FHIR ref: ${item.reference}`,
+    ];
   });
 };
 
 const buildControllingFhirReferenceLine = (
   reconciled: ReconciliationResult,
-): string => {
+): string[] => {
   const evidence = reconciled.transition_safety_packet.controlling_evidence.length > 0
     ? reconciled.transition_safety_packet.controlling_evidence
     : reconciled.transition_safety_packet.narrative_evidence;
-  return `Raw FHIR references: ${buildReferenceList(evidence.map((item) => item.reference))}.`;
+  return [
+    "Raw FHIR references:",
+    ...buildReferenceBulletLines(evidence.map((item) => item.reference)),
+  ];
 };
 
 const buildWrittenTaskRows = (reconciled: ReconciliationResult): string[] => {
@@ -185,7 +203,7 @@ const buildWrittenTaskRows = (reconciled: ReconciliationResult): string[] => {
     .slice(0, 6)
     .map((resource) => {
       const reasons = buildReferenceList(resource.linked_evidence_references ?? []);
-      return `- ${resource.reference}: ${compactSentence(resource.summary, 110)} (reason: ${reasons})`;
+      return `- ${resource.reference}: ${compactSentence(resource.summary, 110)}. Reason refs: ${reasons}`;
     });
 };
 
@@ -343,7 +361,7 @@ const renderPrompt1Narrative = (
     "",
     "Hidden contradiction evidence:",
     ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
-    buildControllingFhirReferenceLine(reconciled),
+    ...buildControllingFhirReferenceLine(reconciled),
     "",
     "Blocking FHIR work:",
     ...(taskRows.length > 0 ? taskRows : ["- none", "Written FHIR Tasks: none."]),
@@ -371,9 +389,9 @@ const renderPrompt2Narrative = (
     "",
     "Contradicting evidence:",
     ...evidenceLines,
-    buildControllingFhirReferenceLine(reconciled),
     "",
-    `FHIR references: ${buildReferenceList(evidenceLines.map((line) => line.match(/\[(.*?)\]/)?.[1]))}`,
+    ...buildControllingFhirReferenceLine(reconciled),
+    "",
     ...(taskRows.length > 0 ? ["", "Blocking FHIR Tasks:", ...taskRows] : []),
     ...(reconciled.manual_review_required
       ? ["Manual clinician review is required before discharge proceeds."]
@@ -427,8 +445,8 @@ const renderPrompt3Narrative = (
     "",
     "Evidence:",
     ...evidenceLines,
-    buildControllingFhirReferenceLine(reconciled),
-    `FHIR references: ${buildReferenceList(evidenceLines.map((line) => line.match(/\[(.*?)\]/)?.[1]))}`,
+    "",
+    ...buildControllingFhirReferenceLine(reconciled),
     ...(auditRows.length > 0 ? ["", "Audit proof:", ...auditRows] : []),
     ...(clinicianLine ? ["", clinicianLine] : []),
     ...(patientLine ? [patientLine] : []),
