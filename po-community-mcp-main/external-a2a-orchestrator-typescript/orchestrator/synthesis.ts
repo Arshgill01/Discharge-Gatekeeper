@@ -140,9 +140,31 @@ const buildReferenceList = (
 
 const buildReferenceBulletLines = (
   references: Array<string | undefined>,
+  fhirServer?: string | null,
 ): string[] => {
   const unique = [...new Set(references.filter((reference): reference is string => Boolean(reference)))];
-  return unique.length > 0 ? unique.map((reference) => `- ${reference}`) : ["- none"];
+  return unique.length > 0
+    ? unique.map((reference) => {
+        const readUrl = buildFhirReadUrl(fhirServer, reference);
+        return readUrl ? `- ${reference} ([open in PO FHIR](${readUrl}))` : `- ${reference}`;
+      })
+    : ["- none"];
+};
+
+const buildFhirReadUrl = (
+  fhirServer: string | null | undefined,
+  reference: string | undefined,
+): string | null => {
+  if (!fhirServer || !reference || !/^https?:\/\//i.test(fhirServer)) {
+    return null;
+  }
+
+  const [resourceType, resourceId] = reference.split("/");
+  if (!resourceType || !resourceId) {
+    return null;
+  }
+
+  return `${fhirServer.replace(/\/+$/, "")}/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`;
 };
 
 const compactVisibleAction = (value: string, maxLength: number = 110): string => {
@@ -178,9 +200,11 @@ const buildControllingEvidenceLines = (
       ? `${item.resource_type} ${item.timestamp}`
       : `${item.resource_type}/${item.resource_id}`;
     const supports = item.supports.length > 0 ? `${item.supports.join(", ")} - ` : "";
+    const readUrl = buildFhirReadUrl(reconciled.transition_safety_packet.fhir_server, item.reference);
     return [
       `- ${supports}${compactSentence(item.summary, 112)} (${label})`,
       `  FHIR ref: ${item.reference}`,
+      ...(readUrl ? [`  Open in PO FHIR: [view resource](${readUrl})`] : []),
     ];
   });
 };
@@ -193,7 +217,10 @@ const buildControllingFhirReferenceLine = (
     : reconciled.transition_safety_packet.narrative_evidence;
   return [
     "Raw FHIR references:",
-    ...buildReferenceBulletLines(evidence.map((item) => item.reference)),
+    ...buildReferenceBulletLines(
+      evidence.map((item) => item.reference),
+      reconciled.transition_safety_packet.fhir_server,
+    ),
   ];
 };
 
