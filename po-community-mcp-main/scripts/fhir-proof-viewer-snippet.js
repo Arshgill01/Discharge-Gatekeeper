@@ -22,7 +22,7 @@
         resource.id,
         resource.status,
         resource.code?.text || "",
-        (resource.reasonReference || []).map((item) => item.reference).filter(Boolean).join(", "),
+        asArray(resource.reasonReference).map((item) => item.reference).filter(Boolean).join(", "),
       ],
     },
     {
@@ -40,6 +40,11 @@
 
   const previous = document.getElementById("ctc-fhir-proof-viewer");
   if (previous) previous.remove();
+
+  const asArray = (value) => {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+  };
 
   const root = document.createElement("section");
   root.id = "ctc-fhir-proof-viewer";
