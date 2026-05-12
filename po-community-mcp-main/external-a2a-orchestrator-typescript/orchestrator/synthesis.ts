@@ -141,14 +141,37 @@ const buildReferenceList = (
 const buildReferenceBulletLines = (
   references: Array<string | undefined>,
   fhirServer?: string | null,
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string[] => {
   const unique = [...new Set(references.filter((reference): reference is string => Boolean(reference)))];
   return unique.length > 0
     ? unique.map((reference) => {
-        const readUrl = buildFhirReadUrl(fhirServer, reference);
-        return readUrl ? `- ${reference} ([open in PO FHIR](${readUrl}))` : `- ${reference}`;
+        const readUrl = buildEvidenceReadUrl(evidenceLinkOptions, reference) ??
+          buildFhirReadUrl(fhirServer, reference);
+        return readUrl ? `- ${reference} ([open evidence](${readUrl}))` : `- ${reference}`;
       })
     : ["- none"];
+};
+
+type EvidenceLinkOptions = {
+  publicBaseUrl?: string;
+  taskId?: string;
+};
+
+const buildEvidenceReadUrl = (
+  options: EvidenceLinkOptions | undefined,
+  reference: string | undefined,
+): string | null => {
+  if (!options?.publicBaseUrl || !options.taskId || !reference) {
+    return null;
+  }
+
+  const [resourceType, resourceId] = reference.split("/");
+  if (!resourceType || !resourceId) {
+    return null;
+  }
+
+  return `${options.publicBaseUrl.replace(/\/+$/, "")}/evidence/${encodeURIComponent(options.taskId)}/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`;
 };
 
 const buildFhirReadUrl = (
@@ -190,6 +213,7 @@ const buildImpactedCategories = (reconciled: ReconciliationResult): string[] => 
 const buildControllingEvidenceLines = (
   reconciled: ReconciliationResult,
   limit: number,
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string[] => {
   const evidence = reconciled.transition_safety_packet.controlling_evidence.length > 0
     ? reconciled.transition_safety_packet.controlling_evidence
@@ -200,17 +224,19 @@ const buildControllingEvidenceLines = (
       ? `${item.resource_type} ${item.timestamp}`
       : `${item.resource_type}/${item.resource_id}`;
     const supports = item.supports.length > 0 ? `${item.supports.join(", ")} - ` : "";
-    const readUrl = buildFhirReadUrl(reconciled.transition_safety_packet.fhir_server, item.reference);
+    const readUrl = buildEvidenceReadUrl(evidenceLinkOptions, item.reference) ??
+      buildFhirReadUrl(reconciled.transition_safety_packet.fhir_server, item.reference);
     return [
       `- ${supports}${compactSentence(item.summary, 112)} (${label})`,
       `  FHIR ref: ${item.reference}`,
-      ...(readUrl ? [`  Open in PO FHIR: [view resource](${readUrl})`] : []),
+      ...(readUrl ? [`  Open evidence: [view cited evidence](${readUrl})`] : []),
     ];
   });
 };
 
 const buildControllingFhirReferenceLine = (
   reconciled: ReconciliationResult,
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string[] => {
   const evidence = reconciled.transition_safety_packet.controlling_evidence.length > 0
     ? reconciled.transition_safety_packet.controlling_evidence
@@ -220,6 +246,7 @@ const buildControllingFhirReferenceLine = (
     ...buildReferenceBulletLines(
       evidence.map((item) => item.reference),
       reconciled.transition_safety_packet.fhir_server,
+      evidenceLinkOptions,
     ),
   ];
 };
@@ -327,6 +354,7 @@ export const buildPromptPayload = (
 const renderPrompt1Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string => {
   if (
     promptPayload.prompt_mode === "prompt_4" ||
@@ -366,7 +394,7 @@ const renderPrompt1Narrative = (
     ].join("\n");
   }
 
-  const evidenceLines = buildControllingEvidenceLines(reconciled, 3);
+  const evidenceLines = buildControllingEvidenceLines(reconciled, 3, evidenceLinkOptions);
   const taskRows = buildWrittenTaskRows(reconciled);
   const auditRows = buildAuditRows(reconciled);
   const hiddenRiskLine = reconciled.hidden_risk_result === "hidden_risk_present"
@@ -388,7 +416,7 @@ const renderPrompt1Narrative = (
     "",
     "Hidden contradiction evidence:",
     ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
-    ...buildControllingFhirReferenceLine(reconciled),
+    ...buildControllingFhirReferenceLine(reconciled, evidenceLinkOptions),
     "",
     "Blocking FHIR work:",
     ...(taskRows.length > 0 ? taskRows : ["- none", "Written FHIR Tasks: none."]),
@@ -399,8 +427,9 @@ const renderPrompt1Narrative = (
 
 const renderPrompt2Narrative = (
   reconciled: ReconciliationResult,
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string => {
-  const evidenceLines = buildControllingEvidenceLines(reconciled, 4);
+  const evidenceLines = buildControllingEvidenceLines(reconciled, 4, evidenceLinkOptions);
   const taskRows = buildWrittenTaskRows(reconciled);
   return [
     "HIDDEN CONTRADICTION REVIEW",
@@ -417,7 +446,7 @@ const renderPrompt2Narrative = (
     "Contradicting evidence:",
     ...evidenceLines,
     "",
-    ...buildControllingFhirReferenceLine(reconciled),
+    ...buildControllingFhirReferenceLine(reconciled, evidenceLinkOptions),
     "",
     ...(taskRows.length > 0 ? ["", "Blocking FHIR Tasks:", ...taskRows] : []),
     ...(reconciled.manual_review_required
@@ -431,6 +460,7 @@ const renderPrompt2Narrative = (
 const renderPrompt3Narrative = (
   reconciled: ReconciliationResult,
   promptPayload: ReconciliationResult["prompt_payload"],
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): string => {
   const taskRows = buildWrittenTaskRows(reconciled);
   const prioritizedSteps = taskRows.length > 0
@@ -453,7 +483,7 @@ const renderPrompt3Narrative = (
   const patientLine = promptPayload.patient_discharge_guidance
     ? `Patient guidance: ${promptPayload.patient_discharge_guidance}`
     : "";
-  const evidenceLines = buildControllingEvidenceLines(reconciled, 4);
+  const evidenceLines = buildControllingEvidenceLines(reconciled, 4, evidenceLinkOptions);
   const auditRows = buildAuditRows(reconciled);
   return [
     reconciled.final_verdict === "not_ready"
@@ -473,7 +503,7 @@ const renderPrompt3Narrative = (
     "Evidence:",
     ...evidenceLines,
     "",
-    ...buildControllingFhirReferenceLine(reconciled),
+    ...buildControllingFhirReferenceLine(reconciled, evidenceLinkOptions),
     ...(auditRows.length > 0 ? ["", "Audit proof:", ...auditRows] : []),
     ...(clinicianLine ? ["", clinicianLine] : []),
     ...(patientLine ? [patientLine] : []),
@@ -500,6 +530,7 @@ export const buildSynthesisPrompt = (
 export const renderBoundedSynthesis = (
   taskInput: A2ATaskInput,
   reconciled: ReconciliationResult,
+  evidenceLinkOptions?: EvidenceLinkOptions,
 ): {
   prompt_used: string;
   narrative: string;
@@ -514,11 +545,11 @@ export const renderBoundedSynthesis = (
 
   let narrative: string;
   if (promptPayload.prompt_mode === "prompt_2") {
-    narrative = renderPrompt2Narrative(reconciled);
+    narrative = renderPrompt2Narrative(reconciled, evidenceLinkOptions);
   } else if (promptPayload.prompt_mode === "prompt_3") {
-    narrative = renderPrompt3Narrative(reconciled, promptPayload);
+    narrative = renderPrompt3Narrative(reconciled, promptPayload, evidenceLinkOptions);
   } else {
-    narrative = renderPrompt1Narrative(reconciled, promptPayload);
+    narrative = renderPrompt1Narrative(reconciled, promptPayload, evidenceLinkOptions);
   }
 
   return {

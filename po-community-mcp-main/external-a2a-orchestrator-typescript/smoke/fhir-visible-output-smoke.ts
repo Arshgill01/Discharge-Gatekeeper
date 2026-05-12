@@ -85,6 +85,30 @@ const assertVisibleFhirReferences = (text: string, context: string): void => {
   );
 };
 
+const assertEvidenceViewerLink = async (
+  text: string,
+  context: string,
+): Promise<void> => {
+  const match = text.match(/\[open evidence\]\((http:\/\/127\.0\.0\.1:\d+\/evidence\/[^)]+)\)/i);
+  assert.ok(match?.[1], `${context}: expected an A2A evidence viewer link.`);
+
+  const htmlResponse = await fetch(match[1], {
+    headers: { accept: "text/html" },
+  });
+  assert.equal(htmlResponse.status, 200, `${context}: evidence viewer HTML must load.`);
+  const html = await htmlResponse.text();
+  assert.match(html, /Care Transitions Command Evidence/i, `${context}: evidence viewer title missing.`);
+  assert.match(html, /maria-nursing-note-2040/i, `${context}: evidence viewer missing cited ref.`);
+
+  const jsonResponse = await fetch(`${match[1]}?format=json`, {
+    headers: { accept: "application/json" },
+  });
+  assert.equal(jsonResponse.status, 200, `${context}: evidence viewer JSON must load.`);
+  const payload = await jsonResponse.json();
+  assert.equal(payload.reference, "DocumentReference/maria-nursing-note-2040");
+  assert.ok(Array.isArray(payload.evidence) && payload.evidence.length > 0);
+};
+
 const main = async (): Promise<void> => {
   await seedFhirBundles({
     fhirServer: DEFAULT_LOCAL_FHIR_BASE_URL,
@@ -134,6 +158,7 @@ const main = async (): Promise<void> => {
     assertVisibleFhirReferences(String(prompt1.output.contradiction_summary), "Prompt 1");
     assertVisibleFhirReferences(String(prompt2.output.contradiction_summary), "Prompt 2");
     assertVisibleFhirReferences(String(prompt3.output.contradiction_summary), "Prompt 3");
+    await assertEvidenceViewerLink(String(prompt2.output.contradiction_summary), "Prompt 2");
     assert.equal(
       String(prompt3.output.contradiction_summary).includes("TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE"),
       true,

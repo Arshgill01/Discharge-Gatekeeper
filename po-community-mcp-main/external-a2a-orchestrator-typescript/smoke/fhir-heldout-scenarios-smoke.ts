@@ -81,6 +81,24 @@ const createTask = async (
   return response.json();
 };
 
+const assertEvidenceViewerLoads = async (text: string, expectedReference: string): Promise<void> => {
+  const links = [...text.matchAll(/\[open evidence\]\((http:\/\/127\.0\.0\.1:\d+\/evidence\/[^)]+)\)/gi)]
+    .map((match) => match[1]);
+  const [resourceType, resourceId] = expectedReference.split("/");
+  const expectedPath = `/evidence/`;
+  const expectedSuffix = `/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`;
+  const link = links.find((candidate) => candidate.includes(expectedPath) && candidate.endsWith(expectedSuffix));
+  assert.ok(link, `Expected evidence viewer link for ${expectedReference}.`);
+  const response = await fetch(`${link}?format=json`, {
+    headers: { accept: "application/json" },
+  });
+  assert.equal(response.status, 200, `Evidence viewer JSON must load for ${expectedReference}.`);
+  const payload = await response.json();
+  assert.equal(payload.reference, expectedReference);
+  assert.equal(payload.final_verdict, "not_ready");
+  assert.ok(Array.isArray(payload.evidence) && payload.evidence.length > 0);
+};
+
 const main = async (): Promise<void> => {
   await seedFhirBundles({
     fhirServer: DEFAULT_LOCAL_FHIR_BASE_URL,
@@ -127,6 +145,10 @@ const main = async (): Promise<void> => {
     assert.equal(danielPrompt1.output.final_verdict, "not_ready");
     assert.match(String(danielPrompt1.output.contradiction_summary), /DocumentReference\/daniel-pharmacy-note-1815/);
     assert.match(String(danielPrompt1.output.contradiction_summary), /Task\/ctc-daniel-discharge-2026-0419-medication-reconciliation/);
+    await assertEvidenceViewerLoads(
+      String(danielPrompt1.output.contradiction_summary),
+      "DocumentReference/daniel-nursing-note-1840",
+    );
     assert.equal(
       danielPrompt1.output.transition_safety_packet.fhir_resources_written.some(
         (resource: { reference: string }) => resource.reference === "Task/ctc-daniel-discharge-2026-0419-clinical-stability",

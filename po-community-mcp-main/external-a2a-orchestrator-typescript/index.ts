@@ -98,6 +98,14 @@ const derivePublicBaseUrl = (req: express.Request): string => {
   return `${protocol}://${host}`;
 };
 
+const escapeHtml = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 app.use(cors());
 app.use(express.json({ limit: "1mb", type: ["application/json", "application/*+json"] }));
 app.use(express.text({ limit: "1mb", type: ["text/plain", "text/markdown"] }));
@@ -803,6 +811,7 @@ const runTask = async (
   taskId: string,
   incomingRequest: IncomingRequestDiagnostic,
   patientContextSource: string,
+  publicBaseUrl: string,
 ): Promise<{ result: ReconciliationResult; diagnostics: TaskRuntimeDiagnostics }> => {
   const taskStartMs = Date.now();
   const executionStartedAt = new Date(taskStartMs).toISOString();
@@ -1012,7 +1021,10 @@ const runTask = async (
   const reconciled = await writeAuditArtifacts(reconciledWithTasks);
 
   try {
-    const synthesized = renderBoundedSynthesis(taskInput, reconciled);
+    const synthesized = renderBoundedSynthesis(taskInput, reconciled, {
+      publicBaseUrl,
+      taskId,
+    });
     const diagnostics: TaskRuntimeDiagnostics = {
       request_id: requestId,
       task_id: taskId,
@@ -1165,6 +1177,151 @@ const buildListTasksResponse = (taskRecords: A2ATaskRecord[]) => {
     count: taskRecords.length,
     tasks: taskRecords.map(buildResponseTaskRecord),
   };
+};
+
+type TaskEvidenceItem = {
+  group: string;
+  reference: string;
+  resource_type: string;
+  resource_id: string;
+  timestamp?: string;
+  role?: string;
+  summary: string;
+  supports?: string[];
+  source?: string;
+  linked_evidence_references?: string[];
+};
+
+const collectTaskEvidenceItems = (task: A2ATaskRecord): TaskEvidenceItem[] => {
+  const packet = task.output?.transition_safety_packet;
+  if (!packet) {
+    return [];
+  }
+
+  const groups: Array<[string, Array<Record<string, unknown>>]> = [
+    ["FHIR resources read", packet.fhir_resources_read as unknown as Array<Record<string, unknown>>],
+    ["Structured evidence", packet.structured_evidence as unknown as Array<Record<string, unknown>>],
+    ["Narrative evidence", packet.narrative_evidence as unknown as Array<Record<string, unknown>>],
+    ["Controlling evidence", packet.controlling_evidence as unknown as Array<Record<string, unknown>>],
+    ["Superseded evidence", packet.superseded_evidence as unknown as Array<Record<string, unknown>>],
+    ["Resolution evidence", packet.resolution_evidence as unknown as Array<Record<string, unknown>>],
+    ["FHIR resources written", packet.fhir_resources_written as unknown as Array<Record<string, unknown>>],
+  ];
+
+  return groups.flatMap(([group, items]) =>
+    items
+      .map((item): TaskEvidenceItem | null => {
+        const reference = toOptionalString(item["reference"]);
+        const resourceType = toOptionalString(item["resource_type"]);
+        const resourceId = toOptionalString(item["resource_id"]);
+        const summary = toOptionalString(item["summary"]);
+        if (!reference || !resourceType || !resourceId || !summary) {
+          return null;
+        }
+        return {
+          group,
+          reference,
+          resource_type: resourceType,
+          resource_id: resourceId,
+          timestamp: toOptionalString(item["timestamp"]) ?? undefined,
+          role: toOptionalString(item["role"]) ?? undefined,
+          summary,
+          supports: asStringArray(item["supports"]),
+          source: toOptionalString(item["source"]) ?? undefined,
+          linked_evidence_references: asStringArray(item["linked_evidence_references"]),
+        };
+      })
+      .filter((item): item is TaskEvidenceItem => item !== null),
+  );
+};
+
+const findTaskEvidenceItems = (
+  task: A2ATaskRecord,
+  resourceType: string,
+  resourceId: string,
+): TaskEvidenceItem[] => {
+  const requestedReference = `${resourceType}/${resourceId}`;
+  return collectTaskEvidenceItems(task).filter(
+    (item) =>
+      item.reference === requestedReference ||
+      (item.resource_type === resourceType && item.resource_id === resourceId),
+  );
+};
+
+const renderEvidenceHtml = (
+  task: A2ATaskRecord,
+  resourceType: string,
+  resourceId: string,
+  items: TaskEvidenceItem[],
+): string => {
+  const packet = task.output?.transition_safety_packet;
+  const patient = packet?.patient;
+  const reference = `${resourceType}/${resourceId}`;
+  const sourceUrl =
+    packet?.fhir_server && /^https?:\/\//i.test(packet.fhir_server)
+      ? `${packet.fhir_server.replace(/\/+$/, "")}/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
+      : null;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Care Transitions Evidence ${escapeHtml(reference)}</title>
+  <style>
+    body { margin: 0; background: #0f1417; color: #f3f7f8; font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 36px 22px 56px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 { font-size: 18px; margin: 28px 0 10px; }
+    .card { background: #202629; border: 1px solid #344149; border-radius: 16px; padding: 18px; margin: 16px 0; }
+    .meta { color: #b8c4c8; margin: 0 0 18px; }
+    code { background: #12181b; border: 1px solid #2f3b42; border-radius: 6px; padding: 2px 6px; color: #d7f7ff; word-break: break-all; }
+    dt { color: #91d5e8; font-weight: 700; margin-top: 10px; }
+    dd { margin: 4px 0 0; }
+    pre { background: #12181b; border: 1px solid #2f3b42; border-radius: 12px; padding: 14px; overflow: auto; white-space: pre-wrap; }
+    a { color: #7dd3fc; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Care Transitions Command Evidence</h1>
+    <p class="meta">A2A task-scoped evidence ledger for <code>${escapeHtml(reference)}</code>. This page does not reconstruct a FHIR resource body; it shows the real cited ledger retained from the MCP workflow.</p>
+    <section class="card">
+      <dl>
+        <dt>Patient</dt>
+        <dd>${escapeHtml(patient?.display_name ?? "unknown")} ${patient?.patient_id ? `<code>Patient/${escapeHtml(patient.patient_id)}</code>` : ""}</dd>
+        <dt>Task</dt>
+        <dd><code>${escapeHtml(task.task_id)}</code></dd>
+        <dt>Final verdict</dt>
+        <dd>${escapeHtml(task.output?.final_verdict ?? "unknown")}</dd>
+        <dt>Source FHIR server</dt>
+        <dd>${sourceUrl ? `<code>${escapeHtml(packet?.fhir_server)}</code>` : escapeHtml(packet?.fhir_server ?? "not available")}</dd>
+        ${sourceUrl ? `<dt>Authenticated source URL</dt><dd><code>${escapeHtml(sourceUrl)}</code></dd>` : ""}
+      </dl>
+    </section>
+    <h2>Matching Evidence Entries</h2>
+    ${
+      items.length > 0
+        ? items.map((item) => `
+          <section class="card">
+            <dl>
+              <dt>Group</dt><dd>${escapeHtml(item.group)}</dd>
+              <dt>Reference</dt><dd><code>${escapeHtml(item.reference)}</code></dd>
+              ${item.timestamp ? `<dt>Timestamp</dt><dd>${escapeHtml(item.timestamp)}</dd>` : ""}
+              ${item.role ? `<dt>Role</dt><dd>${escapeHtml(item.role)}</dd>` : ""}
+              ${item.supports?.length ? `<dt>Supports</dt><dd>${escapeHtml(item.supports.join(", "))}</dd>` : ""}
+              ${item.linked_evidence_references?.length ? `<dt>Linked evidence</dt><dd>${item.linked_evidence_references.map((ref) => `<code>${escapeHtml(ref)}</code>`).join(" ")}</dd>` : ""}
+              <dt>Summary</dt><dd>${escapeHtml(item.summary)}</dd>
+            </dl>
+          </section>
+        `).join("")
+        : `<section class="card"><p>No matching evidence entry was retained for <code>${escapeHtml(reference)}</code> in this task.</p></section>`
+    }
+    <h2>JSON</h2>
+    <pre>${escapeHtml(JSON.stringify({ task_id: task.task_id, reference, evidence: items }, null, 2))}</pre>
+  </main>
+</body>
+</html>`;
 };
 
 const diagnosticHeaderAllowList = new Set([
@@ -1545,6 +1702,7 @@ const executeParsedTaskRequest = async ({
         taskRecord.task_id,
         incomingRequest,
         patientContextSource,
+        derivePublicBaseUrl(req),
       ),
       config.taskTimeoutMs,
     );
@@ -1691,6 +1849,51 @@ app.get("/.well-known/agent-card.json", (req, res) => {
 
 app.get("/agent-card", (req, res) => {
   res.status(200).json(buildAgentCard(config, derivePublicBaseUrl(req)));
+});
+
+app.get("/evidence/:taskId/:resourceType/:resourceId", (req, res) => {
+  const task = tasks.get(req.params.taskId);
+  if (!task) {
+    res.status(404).json({
+      status: "error",
+      message: `Unknown task id: ${req.params.taskId}`,
+    });
+    return;
+  }
+
+  if (!task.output?.transition_safety_packet) {
+    res.status(409).json({
+      status: "error",
+      message: `Task ${req.params.taskId} does not have completed evidence output.`,
+    });
+    return;
+  }
+
+  const resourceType = req.params.resourceType;
+  const resourceId = req.params.resourceId;
+  const items = findTaskEvidenceItems(task, resourceType, resourceId);
+  const payload = {
+    task_id: task.task_id,
+    request_id: task.request_id,
+    reference: `${resourceType}/${resourceId}`,
+    final_verdict: task.output.final_verdict,
+    patient: task.output.transition_safety_packet.patient,
+    fhir_server: task.output.transition_safety_packet.fhir_server,
+    evidence: items,
+  };
+
+  if (
+    req.query.format?.toString().toLowerCase() === "json" ||
+    req.accepts(["html", "json"]) === "json"
+  ) {
+    res.status(items.length > 0 ? 200 : 404).json(payload);
+    return;
+  }
+
+  res
+    .status(items.length > 0 ? 200 : 404)
+    .type("html")
+    .send(renderEvidenceHtml(task, resourceType, resourceId, items));
 });
 
 const sendTaskValidationError = (res: express.Response, requestId: string, message: string): void => {
