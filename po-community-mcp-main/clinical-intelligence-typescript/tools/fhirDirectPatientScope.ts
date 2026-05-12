@@ -122,6 +122,28 @@ export const canUseLivePatientScope = (req: Request): boolean => {
   );
 };
 
+export const requireLivePatientScopeIfConfigured = (
+  req: Request,
+  toolName: string,
+): void => {
+  if (process.env["CLINICAL_INTELLIGENCE_REQUIRE_PATIENT_SCOPE"] !== "1") {
+    return;
+  }
+  if (canUseLivePatientScope(req)) {
+    return;
+  }
+
+  const hasFhirContext = Boolean(FhirUtilities.getFhirContext(req));
+  const hasPatientId = Boolean(FhirUtilities.getPatientIdIfContextExists(req));
+  throw new Error(
+    `${toolName} requires Prompt Opinion Patient Scope FHIR context when ` +
+      `CLINICAL_INTELLIGENCE_REQUIRE_PATIENT_SCOPE=1. Missing ` +
+      `${hasFhirContext ? "" : "x-fhir-server-url"}${!hasFhirContext && !hasPatientId ? " and " : ""}` +
+      `${hasPatientId ? "" : "x-patient-id"}. ` +
+      "Refusing canonical fallback to avoid returning a stale or wrong-patient discharge verdict.",
+  );
+};
+
 export const buildFhirDirectPatientScopeResult = async (
   req: Request,
   options: {

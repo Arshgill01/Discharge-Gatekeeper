@@ -17,6 +17,7 @@ import {
 import {
   buildFhirDirectPatientScopeResult,
   DIRECT_PATIENT_SCOPE_PROMPTS,
+  requireLivePatientScopeIfConfigured,
 } from "./fhirDirectPatientScope";
 
 export const SYNTHESIZE_TRANSITION_NARRATIVE_TOOL_DESCRIPTION =
@@ -137,6 +138,9 @@ class SynthesizeTransitionNarrativeTool implements IMcpTool {
             }
 
             return McpUtilities.createTextResponse(liveResult.narrative);
+          }
+          if (!parsed.data.deterministic_snapshot) {
+            requireLivePatientScopeIfConfigured(req, "synthesize_transition_narrative");
           }
 
           const hiddenRiskInput = resolveHiddenRiskToolInput(

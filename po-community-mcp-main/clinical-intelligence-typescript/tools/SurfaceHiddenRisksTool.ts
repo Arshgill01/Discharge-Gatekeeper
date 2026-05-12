@@ -17,6 +17,7 @@ import {
 import {
   buildFhirDirectPatientScopeResult,
   DIRECT_PATIENT_SCOPE_PROMPTS,
+  requireLivePatientScopeIfConfigured,
 } from "./fhirDirectPatientScope";
 
 export const SURFACE_HIDDEN_RISKS_TOOL_DESCRIPTION =
@@ -125,6 +126,9 @@ class SurfaceHiddenRisksTool implements IMcpTool {
             }
 
             return McpUtilities.createTextResponse(liveResult.narrative);
+          }
+          if (!parsed.data.deterministic_snapshot) {
+            requireLivePatientScopeIfConfigured(req, "surface_hidden_risks");
           }
 
           const hiddenRiskInput = resolveHiddenRiskToolInput(

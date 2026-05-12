@@ -65,13 +65,18 @@ const readToolText = (result: any): string => {
 const verifyWarmText = (text: string): void => {
   assert.match(
     text,
-    /final verdict[^.\n]*not_ready|not ready/i,
+    /discharge.status.*not.?ready|final verdict.*not.?ready/i,
     "Warm-up response must preserve a not_ready discharge result.",
   );
   assert.match(
     text,
-    /DocumentReference\/7978a116-881e-4280-871f-1c16c59dc500|Nursing Note/i,
+    /DocumentReference\/daniel-nursing-note-1840|Nursing Note 2026-04-19 18:40|Nursing Note/i,
     "Warm-up response must include Daniel nursing evidence.",
+  );
+  assert.match(
+    text,
+    /DocumentReference\/daniel-pharmacy-note-1815|Pharmacy Note 2026-04-19 18:15|sacubitril/i,
+    "Warm-up response must include Daniel medication-access evidence.",
   );
   assert.doesNotMatch(
     text,

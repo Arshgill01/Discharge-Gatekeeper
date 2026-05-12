@@ -10,6 +10,7 @@ import {
 import {
   buildFhirDirectPatientScopeResult,
   DIRECT_PATIENT_SCOPE_PROMPTS,
+  requireLivePatientScopeIfConfigured,
 } from "./fhirDirectPatientScope";
 
 export const ASSESS_RECONCILED_DISCHARGE_READINESS_TOOL_DESCRIPTION =
@@ -67,6 +68,10 @@ class AssessReconciledDischargeReadinessTool implements IMcpTool {
                   );
             return McpUtilities.createTextResponse(text);
           }
+          requireLivePatientScopeIfConfigured(
+            req,
+            "assess_reconciled_discharge_readiness",
+          );
 
           const payload = await assessReconciledDischargeReadiness({
             responseMode: parsed.data.response_mode,
