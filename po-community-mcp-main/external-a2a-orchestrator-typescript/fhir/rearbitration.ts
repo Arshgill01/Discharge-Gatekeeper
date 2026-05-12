@@ -121,6 +121,22 @@ const shouldCompleteTask = (category: string, prompt: string): boolean => {
   return (RESOLUTION_PATTERNS[category] ?? []).some((pattern) => pattern.test(prompt));
 };
 
+const unresolvedCategoriesFromPrompt = (
+  prompt: string,
+): ReconciliationResult["transition_safety_packet"]["reconciled_transition_status"]["blocker_categories"] => {
+  const unresolved: ReconciliationResult["transition_safety_packet"]["reconciled_transition_status"]["blocker_categories"] = [];
+
+  if (/still reports orthopnea|continues? to report orthopnea|orthopnea persists|still orthopneic|orthopnea when lying flat/i.test(prompt)) {
+    unresolved.push("clinical_stability");
+  }
+
+  if (/still (?:does not|cannot) monitor|home scale still broken|no working home scale/i.test(prompt)) {
+    unresolved.push("patient_education");
+  }
+
+  return unresolved;
+};
+
 const toCanonicalCategory = (value: string): ReconciliationResult["transition_safety_packet"]["reconciled_transition_status"]["blocker_categories"][number] | null => {
   return [
     "clinical_stability",
@@ -256,10 +272,23 @@ export const applyTaskResolutionAndRearbitration = async (
       (category): category is ReconciliationResult["transition_safety_packet"]["reconciled_transition_status"]["blocker_categories"][number] =>
         Boolean(category),
     );
+  const explicitlyUnresolvedCategories = unresolvedCategoriesFromPrompt(taskPrompt);
+  const allUnresolvedCategories = [
+    ...new Set([...unresolvedCategories, ...explicitlyUnresolvedCategories]),
+  ];
+  const allCompletedCategories = [
+    ...new Set([
+      ...completedCategories,
+      ...refreshedTasks
+        .filter((task) => task.status === "completed")
+        .map((task) => taskCategory(task))
+        .filter((category): category is string => Boolean(category)),
+    ]),
+  ];
 
-  const updatedFinalVerdict = unresolvedCategories.length === 0 ? "ready_with_caveats" : "not_ready";
-  const resolvedLabel = completedCategories.length > 0 ? completedCategories.join(", ") : "none";
-  const unresolvedLabel = unresolvedCategories.length > 0 ? unresolvedCategories.join(", ") : "none";
+  const updatedFinalVerdict = allUnresolvedCategories.length === 0 ? "ready_with_caveats" : "not_ready";
+  const resolvedLabel = allCompletedCategories.length > 0 ? allCompletedCategories.join(", ") : "none";
+  const unresolvedLabel = allUnresolvedCategories.length > 0 ? allUnresolvedCategories.join(", ") : "none";
   const taskStateSummary = refreshedTasks
     .map((task) => `Task/${task.id} [${task.status ?? "unknown"}]`)
     .join(" | ") || "none";
@@ -284,7 +313,7 @@ export const applyTaskResolutionAndRearbitration = async (
       reconciled_transition_status: {
         ...packet.reconciled_transition_status,
         final_verdict: updatedFinalVerdict,
-        blocker_categories: unresolvedCategories,
+        blocker_categories: allUnresolvedCategories,
         manual_review_required: true,
         why_changed:
           `Previous status ${reconciled.final_verdict}; updated status ${updatedFinalVerdict}. ` +

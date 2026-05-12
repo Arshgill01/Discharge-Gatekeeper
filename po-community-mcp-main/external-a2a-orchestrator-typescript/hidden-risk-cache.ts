@@ -56,6 +56,11 @@ const CANONICAL_TRAP_ANCHORS = {
   caseManagement: "Case Management Addendum 2026-04-18 20:55",
 };
 
+const CANONICAL_TRAP_PATIENT = {
+  patientId: "phase0-trap-maria-alvarez",
+  encounterId: "enc-phase0-trap-001",
+};
+
 const stableJsonValue = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map((entry) => stableJsonValue(entry));
@@ -133,6 +138,19 @@ const checkEvidenceAnchors = (result: HiddenRiskResponse): HiddenRiskCacheEntry[
   };
 };
 
+const hasAtLeastTwoDistinctCitations = (result: HiddenRiskResponse): boolean => {
+  const distinct = new Set(
+    result.citations
+      .filter((citation) => citation.source_label.trim().length > 0 && citation.excerpt.trim().length > 0)
+      .map((citation) => `${citation.source_label}::${citation.locator}::${citation.excerpt}`),
+  );
+  return distinct.size >= 2;
+};
+
+const isCanonicalTrapPatient = (result: HiddenRiskResponse): boolean =>
+  result.patient_id === CANONICAL_TRAP_PATIENT.patientId ||
+  result.encounter_id === CANONICAL_TRAP_PATIENT.encounterId;
+
 /**
  * Determine whether a CI result is safe to cache.
  */
@@ -143,11 +161,16 @@ const isCacheable = (result: HiddenRiskResponse): boolean => {
   if (result.hidden_risk_summary.result !== "hidden_risk_present") {
     return false;
   }
-  const anchors = checkEvidenceAnchors(result);
-  if (!anchors.hasNursingNote20260418 || !anchors.hasCaseManagementAddendum20260418) {
-    return false;
+
+  if (isCanonicalTrapPatient(result)) {
+    const anchors = checkEvidenceAnchors(result);
+    if (!anchors.hasNursingNote20260418 || !anchors.hasCaseManagementAddendum20260418) {
+      return false;
+    }
+    return true;
   }
-  return true;
+
+  return hasAtLeastTwoDistinctCitations(result);
 };
 
 export class HiddenRiskCache {

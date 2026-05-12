@@ -81,7 +81,7 @@ start_server() {
 
   (
     cd "${working_dir}"
-    nohup env "$@" npm run start >"${log_file}" 2>&1 </dev/null &
+    nohup env "$@" ./node_modules/.bin/tsx index.ts >"${log_file}" 2>&1 </dev/null &
     echo $! >"${pid_file}"
   )
 
@@ -121,6 +121,14 @@ start_server \
 
 wait_for_health "http://${DISCHARGE_GATEKEEPER_HOST}:${DISCHARGE_GATEKEEPER_PORT}/healthz" "Discharge Gatekeeper MCP"
 wait_for_health "http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_INTELLIGENCE_PORT}/healthz" "Clinical Intelligence MCP"
+
+DIRECT_CACHE_WARMUP_ENABLED="${PROMPT_OPINION_DIRECT_CACHE_WARMUP:-0}"
+if [[ "${DIRECT_CACHE_WARMUP_ENABLED}" != "0" ]]; then
+  echo "[two-mcp] warming direct patient-scope hidden-risk cache"
+  if ! bash "${SCRIPT_DIR}/warm-direct-patient-scope-cache.sh"; then
+    echo "[two-mcp] WARNING: direct patient-scope cache warm-up failed" >&2
+  fi
+fi
 
 echo "[two-mcp] logs:"
 echo "  ${RUNTIME_DIR}/discharge-gatekeeper.log"

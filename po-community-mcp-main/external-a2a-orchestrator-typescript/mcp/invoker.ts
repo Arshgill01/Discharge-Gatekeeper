@@ -355,7 +355,7 @@ export class McpToolInvoker {
             readiness_mode: "deterministic_structured_baseline",
             context_mode: input.patient_context?.fhir_context ? "fhir_native" : "standard",
           },
-        });
+        }, undefined, { timeout: this.config.taskTimeoutMs });
       },
       (payload) => {
         const parsed = deterministicResponseSchema.safeParse(payload);
@@ -413,7 +413,7 @@ export class McpToolInvoker {
             fhir_context: deterministic.fhir_context,
             response_mode: "full",
           },
-        });
+        }, undefined, { timeout: this.config.taskTimeoutMs });
       },
       (payload) => {
         const parsed = hiddenRiskResponseSchema.safeParse(payload);

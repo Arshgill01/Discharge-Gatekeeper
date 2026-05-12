@@ -129,6 +129,28 @@ const run = (): void => {
   missingAnchor.hidden_risk_findings[0].rationale = "Only the nursing note is cited.";
   assert.equal(cache.set("missing-anchor", missingAnchor, "google", "gemma-4-31b-it", 3), false);
 
+  const heldOutPatient = clone(hiddenRisk);
+  heldOutPatient.patient_id = "db4b066b-200f-405f-9fe4-c52eefbc1425";
+  heldOutPatient.encounter_id = "daniel-discharge-2026-0419";
+  heldOutPatient.citations = [
+    {
+      citation_id: "daniel-1",
+      source_type: "pharmacy_note",
+      source_label: "Pharmacy Note 2026-04-19 18:15",
+      locator: "DocumentReference/cbd60b4b-e4af-4657-8ad7-df51cd782e69",
+      excerpt: "Patient cannot afford required medications.",
+    },
+    {
+      citation_id: "daniel-2",
+      source_type: "nursing_note",
+      source_label: "Nursing Note 2026-04-19 18:40",
+      locator: "DocumentReference/7978a116-881e-4280-871f-1c16c59dc500",
+      excerpt: "Patient gained 1.8 kg, indicating potential fluid retention and instability.",
+    },
+  ];
+  heldOutPatient.hidden_risk_findings[0].citation_ids = ["daniel-1", "daniel-2"];
+  assert.equal(cache.set("held-out-patient", heldOutPatient, "google", "gemini-3.1-flash-lite", 2), true);
+
   const disabled = new HiddenRiskCache(parseHiddenRiskCacheConfig({ A2A_HIDDEN_RISK_CACHE_ENABLED: "false" }));
   assert.equal(disabled.set("disabled", hiddenRisk, "google", "gemma-4-31b-it", 3), false);
   assert.equal(disabled.get("disabled"), null);

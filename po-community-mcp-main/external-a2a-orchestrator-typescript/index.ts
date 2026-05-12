@@ -802,6 +802,7 @@ const runTask = async (
   requestId: string,
   taskId: string,
   incomingRequest: IncomingRequestDiagnostic,
+  patientContextSource: string,
 ): Promise<{ result: ReconciliationResult; diagnostics: TaskRuntimeDiagnostics }> => {
   const taskStartMs = Date.now();
   const executionStartedAt = new Date(taskStartMs).toISOString();
@@ -874,6 +875,12 @@ const runTask = async (
         hiddenRiskProvider.model,
       )
     : null;
+
+  log("info", "[A2A] Patient context received", buildPatientContextLogMetadata(
+    taskInput,
+    patientContextSource,
+    cacheKeyHash,
+  ));
 
   // Try cache lookup
   const cachedEntry = cacheKeyHash ? hiddenRiskCache.get(cacheKeyHash) : null;
@@ -1201,6 +1208,63 @@ const collectDiagnosticHeaders = (req: express.Request): Record<string, string> 
   return result;
 };
 
+const containsKeyDeep = (value: unknown, predicate: (key: string) => boolean): boolean => {
+  if (Array.isArray(value)) {
+    return value.some((entry) => containsKeyDeep(entry, predicate));
+  }
+
+  const record = asRecord(value);
+  if (!record) {
+    return false;
+  }
+
+  return Object.entries(record).some(([key, entryValue]) =>
+    predicate(key) || containsKeyDeep(entryValue, predicate),
+  );
+};
+
+const inferPatientContextSource = (
+  req: express.Request,
+  parsedTask: ParsedTaskInput,
+  effectiveParsedTask: ParsedTaskInput,
+): string => {
+  if (!parsedTask.input.patient_context && effectiveParsedTask.input.patient_context) {
+    return "fallback";
+  }
+
+  if (
+    req.headers[McpConstants.FhirServerUrlHeaderName] ||
+    req.headers[McpConstants.PatientIdHeaderName] ||
+    req.headers[McpConstants.EncounterIdHeaderName]
+  ) {
+    return "header";
+  }
+
+  if (containsKeyDeep(req.body, (key) => key === PO_FHIR_CONTEXT_URI || key === "metadata")) {
+    return "metadata";
+  }
+
+  if (containsKeyDeep(req.body, (key) => key === "patient_context" || key === "patientContext")) {
+    return "body";
+  }
+
+  return effectiveParsedTask.input.patient_context ? "unknown" : "none";
+};
+
+const buildPatientContextLogMetadata = (
+  taskInput: A2ATaskInput,
+  contextSource: string,
+  cacheKeyUsed: string | null,
+): Record<string, unknown> => ({
+  patientId: taskInput.patient_context?.patient_id ?? null,
+  encounterId: taskInput.patient_context?.encounter_id ?? null,
+  fhirPatientId: taskInput.patient_context?.patient_id ?? null,
+  fhirUrlPresent: Boolean(taskInput.patient_context?.fhir_context?.fhir_server),
+  tokenPresent: Boolean(taskInput.patient_context?.fhir_context?.access_token),
+  context_source: contextSource,
+  cache_key_used: cacheKeyUsed,
+});
+
 const buildIncomingRequestDiagnostic = (
   req: express.Request,
   binding: A2AExecutionBinding,
@@ -1263,68 +1327,26 @@ const buildCompatibleTaskText = (task: A2ATaskRecord): string => {
     return task.error?.message || "Task accepted.";
   }
 
-  if (task.output.prompt_payload.prompt_mode === "prompt_2") {
-    return [
-      "HIDDEN CONTRADICTION FOUND",
-      "",
-      "Structured baseline:",
-      "READY - stable at rest, meds ready, follow-up scheduled.",
-      "",
-      "Contradicting narrative evidence:",
-      "Nursing Note 2026-04-18 20:40:",
-      "SpO2 dropped to 82% after 20 feet and 6 stairs.",
-      "",
-      "Case Management Addendum 2026-04-18 20:55:",
-      "Oxygen delivery delayed until tomorrow; daughter unavailable overnight.",
-      "",
-      "Why this changes the answer:",
-      "The chart was stable at rest, but home discharge tonight requires stair tolerance, oxygen availability, and overnight support. Those conditions are not met.",
-      "",
-      "Final transition status:",
-      "NOT_READY",
-    ].join("\n");
+  if (typeof task.output.contradiction_summary === "string" && task.output.contradiction_summary.trim().length > 0) {
+    return task.output.contradiction_summary;
   }
 
-  if (task.output.prompt_payload.prompt_mode === "prompt_3") {
-    return [
-      "TRANSITION PACKAGE - DISCHARGE HOLD ACTIVE",
-      "",
-      "Release condition:",
-      "Do not discharge until exertional stability, oxygen logistics, and overnight support are confirmed.",
-      "",
-      "Actions:",
-      "1. Bedside RN - repeat exertional room-air assessment before discharge.",
-      "2. Covering clinician - reassess discharge readiness after exertional result.",
-      "3. Case manager - confirm oxygen concentrator delivery or alternate disposition.",
-      "4. Family/support - confirm overnight support for first night home.",
-      "5. Care team - document updated handoff and patient-facing instructions.",
-      "",
-      "Evidence:",
-      "- Nursing Note 2026-04-18 20:40",
-      "- Case Management Addendum 2026-04-18 20:55",
-    ].join("\n");
-  }
+  const evidenceLines = task.output.prompt_payload.evidence_anchors.map((anchor) => {
+    const reference = anchor.fhir_reference ? `${anchor.fhir_reference} | ` : "";
+    return `- ${reference}${anchor.source_label}`;
+  });
 
   return [
-    "Care Transitions Command result:",
-    `Final verdict: ${task.output.final_verdict}.`,
-    `Structured baseline: ${task.output.prompt_payload.baseline_structured_verdict}.`,
-    `Hidden-risk result: ${task.output.hidden_risk_result}.`,
+    "Care Transitions Command result",
     "",
-    "Why the answer changed:",
-    "The structured chart looked discharge-ready at rest, but narrative evidence shows exertional oxygen desaturation and unsafe home setup tonight.",
+    `DISCHARGE STATUS: ${task.output.final_verdict.toUpperCase()}`,
+    `Structured baseline: ${task.output.prompt_payload.baseline_structured_verdict.toUpperCase()}`,
+    `Hidden-risk result: ${task.output.hidden_risk_result}`,
     "",
     "Evidence:",
-    "- Nursing Note 2026-04-18 20:40: SpO2 dropped to 82% after walking/stairs with dyspnea.",
-    "- Case Management Addendum 2026-04-18 20:55: home oxygen delivery delayed until tomorrow; daughter cannot stay overnight.",
+    ...(evidenceLines.length > 0 ? evidenceLines : ["- none"]),
     "",
-    "Immediate blockers:",
-    "- clinical_stability",
-    "- equipment_and_transport",
-    "- home_support_and_services",
-    "",
-    "Required before discharge:",
-    "Hold discharge today; reassess exertional oxygen needs; confirm oxygen delivery; confirm overnight support/transport plan; update clinician handoff.",
+    "This is assistive discharge decision support and does not replace clinician authority.",
   ].join("\n");
 };
 
@@ -1483,6 +1505,7 @@ const executeParsedTaskRequest = async ({
   correlationId: string | null;
 }): Promise<{ taskRecord: A2ATaskRecord; taskSucceeded: boolean }> => {
   const effectiveParsedTask = hydrateCanonicalDemoPatientContext(parsedTask);
+  const patientContextSource = inferPatientContextSource(req, parsedTask, effectiveParsedTask);
   const taskRecord = createTaskRecord(requestId, effectiveParsedTask.input);
   tasks.set(taskRecord.task_id, taskRecord);
   trimTaskHistory();
@@ -1498,6 +1521,11 @@ const executeParsedTaskRequest = async ({
     path: req.path,
     input_surface: effectiveParsedTask.inputSurface,
     prompt_preview: effectiveParsedTask.input.prompt.slice(0, 80),
+    patient_context: buildPatientContextLogMetadata(
+      effectiveParsedTask.input,
+      patientContextSource,
+      null,
+    ),
     canonical_patient_context_hydrated:
       !parsedTask.input.patient_context && Boolean(effectiveParsedTask.input.patient_context),
   });
@@ -1511,7 +1539,13 @@ const executeParsedTaskRequest = async ({
       correlationId,
     );
     const runResult = await withTimeout(
-      runTask(effectiveParsedTask.input, requestId, taskRecord.task_id, incomingRequest),
+      runTask(
+        effectiveParsedTask.input,
+        requestId,
+        taskRecord.task_id,
+        incomingRequest,
+        patientContextSource,
+      ),
       config.taskTimeoutMs,
     );
 

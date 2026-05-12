@@ -32,7 +32,7 @@ const hiddenRiskOutputCache = new Map<string, CachedHiddenRiskOutput>();
 const cloneHiddenRiskOutput = (payload: HiddenRiskOutput): HiddenRiskOutput =>
   JSON.parse(JSON.stringify(payload)) as HiddenRiskOutput;
 
-const buildPromptOpinionCacheKey = (input: HiddenRiskInput): string => {
+const buildHiddenRiskCacheKey = (input: HiddenRiskInput): string => {
   const narrativeKey = input.narrative_evidence_bundle.map((source) => ({
     source_id: source.source_id,
     source_label: source.source_label,
@@ -41,22 +41,45 @@ const buildPromptOpinionCacheKey = (input: HiddenRiskInput): string => {
   }));
 
   return JSON.stringify({
+    patient_id: input.deterministic_snapshot.patient_id ?? null,
+    encounter_id: input.deterministic_snapshot.encounter_id ?? null,
     baseline_verdict: input.deterministic_snapshot.baseline_verdict,
+    deterministic_blockers: input.deterministic_snapshot.deterministic_blockers.map((blocker) => ({
+      blocker_id: blocker.blocker_id,
+      category: blocker.category,
+      severity: blocker.severity,
+      description: blocker.description,
+    })),
+    care_setting: input.optional_context_metadata?.care_setting ?? null,
+    discharge_destination: input.optional_context_metadata?.discharge_destination ?? null,
     narrative: narrativeKey,
   });
 };
 
 export const parseJsonObject = (text: string): unknown => {
   const trimmed = text.trim();
+  const parseCandidate = (candidate: string): unknown => {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      const repaired = candidate
+        .replace(/,\s*([}\]])/g, "$1")
+        .replace(/"\s*(?=")/g, "\",")
+        .replace(/}\s*(?={\s*")/g, "},")
+        .replace(/]\s*(?=")/g, "],");
+      return JSON.parse(repaired);
+    }
+  };
+
   try {
-    return JSON.parse(trimmed);
+    return parseCandidate(trimmed);
   } catch {
     const start = trimmed.indexOf("{");
     const end = trimmed.lastIndexOf("}");
     if (start < 0 || end <= start) {
       throw new Error("Could not locate a JSON object in model output.");
     }
-    return JSON.parse(trimmed.slice(start, end + 1));
+    return parseCandidate(trimmed.slice(start, end + 1));
   }
 };
 
@@ -130,11 +153,22 @@ const sharesMeaningfulTokens = (a: string, b: string): boolean => {
 };
 
 const categoryKeywordMap: Record<HiddenRiskFinding["category"], string[]> = {
-  clinical_stability: ["oxygen", "desaturation", "dyspnea", "ambulation", "stairs", "hypoxia"],
+  clinical_stability: [
+    "oxygen",
+    "desaturation",
+    "dyspnea",
+    "ambulation",
+    "stairs",
+    "hypoxia",
+    "orthopnea",
+    "weight",
+    "symptom",
+    "stability",
+  ],
   pending_diagnostics: ["pending", "result", "diagnostic", "imaging", "lab"],
   medication_reconciliation: ["medication", "reconciliation", "dose", "prescription"],
   follow_up_and_referrals: ["follow", "referral", "appointment", "clinic"],
-  patient_education: ["education", "teach", "understanding", "instruction"],
+  patient_education: ["education", "teach", "understanding", "instruction", "scale", "monitoring", "weight"],
   home_support_and_services: ["caregiver", "support", "alone", "overnight", "services"],
   equipment_and_transport: ["oxygen", "equipment", "delivery", "transport", "concentrator"],
   administrative_and_documentation: ["documentation", "paperwork", "handoff", "summary"],
@@ -203,8 +237,8 @@ const categorySignalPatterns: Record<
   }
 > = {
   clinical_stability: {
-    risk: [/desaturat/i, /dropped to/i, /dyspne/i, /hypoxi/i, /worsen/i],
-    reassuring: [/stable/i, /without desaturat/i, /no desaturat/i, /no dyspne/i, /remained above/i],
+    risk: [/desaturat/i, /dropped to/i, /dyspne/i, /hypoxi/i, /worsen/i, /orthopnea/i, /weight gain/i, /gained [0-9.]+ kg/i],
+    reassuring: [/stable/i, /without desaturat/i, /no desaturat/i, /no dyspne/i, /remained above/i, /orthopnea resolved/i],
   },
   pending_diagnostics: {
     risk: [/pending/i, /awaiting/i, /not resulted/i],
@@ -219,8 +253,8 @@ const categorySignalPatterns: Record<
     reassuring: [/follow[- ]?up.*scheduled/i, /appointment confirmed/i],
   },
   patient_education: {
-    risk: [/teach[- ]?back incomplete/i, /does not understand/i, /education gap/i],
-    reassuring: [/teach[- ]?back complete/i, /understands instructions/i],
+    risk: [/teach[- ]?back incomplete/i, /does not understand/i, /education gap/i, /home scale is broken/i, /no working home scale/i, /cannot monitor at home/i],
+    reassuring: [/teach[- ]?back complete/i, /understands instructions/i, /working home scale/i, /home monitoring .*arranged/i],
   },
   home_support_and_services: {
     risk: [/lives alone/i, /cannot stay/i, /unavailable overnight/i, /no caregiver/i],
@@ -523,6 +557,20 @@ const inferFindingCategories = (
     /\b(oxygen|concentrator|equipment|delivery delayed|cannot deliver|transport)\b/i.test(lowered)
   ) {
     categories.push("equipment_and_transport");
+  }
+
+  if (
+    !categories.includes("clinical_stability") &&
+    /\b(orthopnea|weight gain|gained [0-9.]+ kg|lying flat|late symptom change|clinical instability)\b/i.test(lowered)
+  ) {
+    categories.push("clinical_stability");
+  }
+
+  if (
+    !categories.includes("patient_education") &&
+    /\b(home scale|working scale|daily weight|home monitoring|monitor at home)\b/i.test(lowered)
+  ) {
+    categories.push("patient_education");
   }
 
   return categories.slice(0, 3);
@@ -1015,8 +1063,8 @@ export const surfaceHiddenRisks = async (
     };
   }
 
-  const cacheKey = responseMode === "prompt_opinion_slim" && !options?.llmClientOverride
-    ? buildPromptOpinionCacheKey(input)
+  const cacheKey = !options?.llmClientOverride
+    ? buildHiddenRiskCacheKey(input)
     : null;
   if (cacheKey) {
     const cached = hiddenRiskOutputCache.get(cacheKey);
@@ -1031,7 +1079,7 @@ export const surfaceHiddenRisks = async (
   const llmClient = options?.llmClientOverride || getHiddenRiskLlmClient();
 
   let lastError: unknown = null;
-  const maxAttempts = responseMode === "prompt_opinion_slim" ? 1 : 2;
+  const maxAttempts = 2;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const llmResult = await llmClient.generateHiddenRiskResponse(input, { responseMode });

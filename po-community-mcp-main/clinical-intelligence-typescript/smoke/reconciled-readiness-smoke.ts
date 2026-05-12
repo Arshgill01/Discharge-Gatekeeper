@@ -41,7 +41,7 @@ const main = async (): Promise<void> => {
     true,
   );
   assert.equal(payload.provider_evidence.configured_provider, "google");
-  assert.equal(payload.provider_evidence.model, "gemma-4-31b-it");
+  assert.match(payload.provider_evidence.model, /^(gemma-4-31b-it|gemini-3\.1-flash-lite)$/);
   assert.equal(payload.provider_evidence.key_present, true);
   assert.equal(payload.provider_evidence.hidden_risk_output_provider, "google");
 

@@ -45,7 +45,8 @@ two_mcp_ready() {
 
 if ! two_mcp_ready; then
   echo "[start-a2a-local] two MCP runtimes are not running; booting them first"
-  "${SCRIPT_DIR}/start-two-mcp-local.sh"
+  PROMPT_OPINION_DIRECT_CACHE_WARMUP="${PROMPT_OPINION_DIRECT_CACHE_WARMUP:-0}" \
+    "${SCRIPT_DIR}/start-two-mcp-local.sh"
 else
   echo "[start-a2a-local] reusing healthy two-MCP runtimes"
 fi
@@ -73,12 +74,20 @@ CLINICAL_INTELLIGENCE_MCP_URL="http://${CLINICAL_INTELLIGENCE_HOST}:${CLINICAL_I
 A2A_TASK_TIMEOUT_MS="${A2A_TASK_TIMEOUT_MS:-120000}" \
 A2A_PO_RESPONSE_MODE="${A2A_PO_RESPONSE_MODE:-compact}" \
 A2A_INCLUDE_VERBOSE_DIAGNOSTICS="${A2A_INCLUDE_VERBOSE_DIAGNOSTICS:-0}" \
-nohup npm run start >"${PID_DIR}/external-a2a.log" 2>&1 </dev/null &
+nohup ./node_modules/.bin/tsx index.ts >"${PID_DIR}/external-a2a.log" 2>&1 </dev/null &
 
 echo $! > "${PID_DIR}/external-a2a.pid"
 popd >/dev/null
 
 wait_for_health "http://${EXTERNAL_A2A_HOST}:${EXTERNAL_A2A_PORT}/readyz" "external A2A orchestrator"
+
+A2A_PATIENT_SCOPE_WARMUP_ENABLED="${PROMPT_OPINION_A2A_PATIENT_SCOPE_WARMUP:-0}"
+if [[ "${A2A_PATIENT_SCOPE_WARMUP_ENABLED}" != "0" ]]; then
+  echo "[start-a2a-local] warming Daniel patient-scope A2A cache"
+  if ! bash "${SCRIPT_DIR}/warm-a2a-patient-scope-cache.sh"; then
+    echo "[start-a2a-local] WARNING: patient-scope A2A warm-up failed" >&2
+  fi
+fi
 
 echo "[start-a2a-local] external A2A started on ${EXTERNAL_A2A_HOST}:${EXTERNAL_A2A_PORT} (pid=$(cat "${PID_DIR}/external-a2a.pid"))"
 echo "[start-a2a-local] log file: ${PID_DIR}/external-a2a.log"

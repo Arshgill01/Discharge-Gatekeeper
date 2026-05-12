@@ -138,7 +138,7 @@ class DefaultHiddenRiskLlmClient implements HiddenRiskLlmClient {
         timeoutMs: this.config.timeoutMs,
         systemPrompt: HIDDEN_RISK_SYSTEM_PROMPT,
         userPrompt,
-        maxOutputTokens: useCompactPrompt ? 384 : 2048,
+        maxOutputTokens: useCompactPrompt ? 1024 : 2048,
       });
       return { rawText, provider: "google" };
     }
